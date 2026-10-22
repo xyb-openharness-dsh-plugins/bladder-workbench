@@ -24,12 +24,12 @@ cd /Users/qinxiaoqiang/Downloads/bladder-workbench/prototypes/v0.1 && python3 -m
 
 | 文件 | 用途 | sha256（前 16 位） |
 |---|---|---|
-| `index.html` | 外壳：顶栏三段式 + 左侧导航 + 业务主区 + Agent 抽屉 | `6348da9b621c9c38` |
+| `index.html` | 外壳：顶栏三段式 + 左侧导航 + 业务主区 + Agent 抽屉 | `cbcd779f4ae644bc` |
 | `tokens.css` | 语义 token：品牌色、数据色、字号三档、间距、圆角 | `8b36dfac64f14e41` |
-| `shell.css` | 布局与组件：顶栏、导航、卡片、表格、弹窗、Agent 面板、窄屏覆盖 | `5d4205a06a9608b2` |
+| `shell.css` | 布局与组件：顶栏、导航、卡片、表格、弹窗、Agent 面板、窄屏覆盖 | `2f8127dcb09c64a0` |
 | `data.js` | 演示数据（**全部为演示用假数据，不含任何真实病历**）+ 指标目录 + 2026 试验真实样本 | `ad949f6e48c98af6` |
-| `charts.js` | 一图秀渲染（C1–C12）与折线动画 | `c332cdc9cd087bfb` |
-| `app.js` | 15 个一级页 + 二级页签、状态持久化、分级与提醒、草稿生成 | `0b8d8b0cc7ee6149` |
+| `charts.js` | 一图秀渲染（C1–C12）与折线动画；按容器**实测宽度 1:1** 渲染 | `10c47294c4a5c9e7` |
+| `app.js` | 15 个一级页 + 二级页签、状态持久化、分级与提醒、草稿生成 | `97fa5f93d7ea5852` |
 
 **版本号**：`v0.1.0`（顶上角版本 chip 与页脚两处同源，均由 `app.js` 的 `APP_VERSION` 注入）。
 
@@ -41,7 +41,7 @@ cd /Users/qinxiaoqiang/Downloads/bladder-workbench/prototypes/v0.1 && python3 -m
 cd /Users/qinxiaoqiang/Downloads/bladder-workbench && node scripts/verify-prototype.mjs
 ```
 
-结果：**断言 84 条，通过 84，失败 0**（含真浏览器 Chromium 驱动、`390px` 横向不溢出、零控制台 error）。
+结果：**断言 116 条，通过 116，失败 0**（含真浏览器 Chromium 驱动、`390px` 横向不溢出、零控制台 error，以及图表真实几何对齐）。
 
 ## 三、2026 临床试验数据（`research/bladder-cancer/`）
 

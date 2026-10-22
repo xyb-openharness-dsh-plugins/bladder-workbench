@@ -22,7 +22,7 @@
 | **P03** | 差异化矩阵 | P01 | `docs/DIFF-MATRIX.md` | ≥3 行，每条「场景→功能→验收」 | **15 行** | **完成** |
 | **P04** | SPEC 与核心模块 | P02/P03 | `docs/SPEC.md`、`docs/CORE-MODULES.md` | M01–M14 规格 + 四个核心模块及其判定理由 | 已落盘 | **完成** |
 | **P05** | 2026 临床试验数据 | — | `scripts/fetch-bladder-trials-2026.mjs`、`research/bladder-cancer/` | 双源、可重跑、口径写入 manifest、PII 剥除 | **295 条**（CT.gov 212 + ChiCTR 83） | **完成** |
-| **P06** | HTML 原型 | P03/P04 | `prototypes/v0.1/` | 可点通 15 个一级页 + 二级页签；C1–C12；390px 不溢出 | 自检 **84/84**，22 张截图 | **完成** |
+| **P06** | HTML 原型 | P03/P04 | `prototypes/v0.1/` | 可点通 15 个一级页 + 二级页签；C1–C12；390px 不溢出 | 自检 **116/116**，22 张截图 | **完成** |
 | **P07** | 数据模型草案 | P04 | `docs/SCHEMA.md` | **只到草案**，含报告导入契约 | 已落盘；**无 DDL、无迁移** | **完成（草案）** |
 | **P08** | 文件体系与交付索引 | P01–P07 | `docs/DEMO-INDEX.md` | 一页看清交付物、怎么打开、没做什么 | 已落盘 | **完成** |
 | **T01** | 接入基线 | **G1 + G2** | `package.json`、`cordis.patch.yml`、`dsh/index.js`、`lib/client.js` | 实际包可被目标宿主加载 | 待填 | **阻塞（G2 未签）** |
@@ -36,7 +36,7 @@
 
 ## 当前失败/复现
 
-无。`node scripts/verify-prototype.mjs` → 84 条断言全部通过，浏览器控制台零 error。
+无。`node scripts/verify-prototype.mjs` → 117 条断言全部通过，浏览器控制台零 error。
 
 ## 未验证项（不得写成「已支持」）
 

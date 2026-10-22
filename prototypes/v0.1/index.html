@@ -9,6 +9,12 @@
 </head>
 <body>
 
+<!-- ============ 原型横幅：整页最顶，先声明「这是假的」 ============ -->
+<div class="wb-demo-bar" role="note">
+  <span class="db-left"><b>交互原型 v0.1.0</b> · 全部为模拟资料</span>
+  <span class="db-right">仅本页演示 · 刷新重置 · 未接入 DSH / AI · 无数据库</span>
+</div>
+
 <!-- ============ customFrame 顶栏（三段式）============ -->
 <header class="wb-topbar" role="banner">
   <!-- 左：品牌 + 版本 chip（版本号首屏可见 = 发布可见性 P1） -->
@@ -21,8 +27,11 @@
   <!-- 中：一句状态说明（随页面变化） -->
   <p class="tb-status" id="tbStatus">原型模式 · 资料未接入 · 无真实患者数据</p>
 
-  <!-- 右：主操作按钮组（紧贴右缘） -->
+  <!-- 右：状态灯 + 主操作按钮组（紧贴右缘） -->
   <div class="tb-actions">
+    <span class="tb-pill" id="pillDir" data-state="off"><i aria-hidden="true"></i>资料目录 未接入</span>
+    <span class="tb-pill" id="pillTalk" data-state="off"><i aria-hidden="true"></i>对话 未接入</span>
+    <button type="button" class="tb-btn tb-btn-ghost" id="btnTextSize" aria-pressed="false" title="切换大字模式（正文字号升一档）">大字 <span class="tbig">Aa</span></button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnWording" title="文案红线自检（本页扫描）">文案自检</button>
     <button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane">打开 AI 对话</button>
   </div>
@@ -30,11 +39,12 @@
 
 <div class="wb-body">
 
-  <!-- ============ 左侧导航 ============ -->
+  <!-- ============ 左侧导航（品牌块 + 演示档案 + 分组导航，由 app.js 渲染）============ -->
   <nav class="wb-nav" id="wbNav" aria-label="主导航"></nav>
 
   <!-- ============ 业务主区 ============ -->
   <main class="wb-main" id="wbMain" tabindex="-1">
+    <div class="wb-crumb" id="wbCrumb"><!-- 面包屑，由 app.js 渲染 --></div>
     <div class="wb-page" id="wbPage"><!-- 由 app.js 渲染 --></div>
     <footer class="wb-footer">
       <span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">0.1.0</b></span>

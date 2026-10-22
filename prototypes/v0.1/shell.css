@@ -12,15 +12,15 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  height: var(--topbar-h);
+  min-height: var(--topbar-h);
   padding: 6px 12px;
   /* 左缘是 macOS 窗口按钮区，必须留出让位变量 */
   padding-inline-start: var(--dsh-frame-leading-clearance, 12px);
   background: var(--wb-card);
   border-bottom: 1px solid var(--wb-line);
   position: sticky;
-  top: 0;
-  z-index: 40;
+  top: var(--demo-h, 26px);   /* 横幅 sticky 在它上面 */
+  z-index: 45;
 }
 
 .tb-brand { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
@@ -81,7 +81,7 @@
 .wb-body {
   display: flex;
   align-items: stretch;
-  min-height: calc(100vh - var(--topbar-h));
+  min-height: calc(100vh - var(--chrome-h, 70px));
 }
 
 /* —— 左侧导航 —— */
@@ -93,13 +93,10 @@
   padding: 10px 8px 24px;
   overflow-y: auto;
   position: sticky;
-  top: var(--topbar-h);
-  max-height: calc(100vh - var(--topbar-h));
+  top: var(--chrome-h, 70px);
+  max-height: calc(100vh - var(--chrome-h, 70px));
 }
-.nav-group-label {
-  font-size: var(--fs-xs); color: var(--wb-ghost);
-  padding: 12px 10px 4px; letter-spacing: .04em;
-}
+
 .nav-item {
   display: flex; align-items: center; gap: 8px;
   width: 100%; text-align: left;
@@ -253,6 +250,7 @@
 /* —— 来源标注 —— */
 .src { font-size: var(--fs-xs); color: var(--wb-ghost); }
 .src::before { content: "来源："; }
+.crumb-note { font-size: var(--fs-xs); color: var(--wb-ghost); font-weight: 400; }
 .verify-tag {
   font-size: var(--fs-xs); color: var(--wb-warn);
   background: var(--wb-warn-bg); border: 1px dashed #E0C88F;
@@ -360,8 +358,10 @@ table.tbl td.num { text-align: right; }
   background: var(--wb-card);
   padding: var(--sp-4) var(--sp-3) var(--sp-2);
 }
-.chart-inner { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 660px; }
-@media (max-width: 700px) { .chart-inner { min-width: 560px; } }
+/* 图表块：宿主按容器真实测宽后 1:1 渲染（见 charts.js 顶部说明） */
+.chart-block { display: block; }
+.chart-host { display: block; min-width: 660px; }
+@media (max-width: 700px) { .chart-host { min-width: 560px; } }
 
 /* 治疗条：独立一行，在绘图区上方 */
 .treat-lane { position: relative; height: 30px; border-bottom: 1px dashed var(--wb-line); margin-bottom: 6px; }
@@ -485,16 +485,7 @@ table.tbl td.num { text-align: right; }
 /* ------------------------------------------------------------
    8. 页面局部
    ------------------------------------------------------------ */
-.dash-cards { display: grid; gap: var(--sp-4); grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 1100px) { .dash-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 760px)  { .dash-cards { grid-template-columns: minmax(0, 1fr); } }
-
-.big-card { display: flex; flex-direction: column; gap: 8px; }
-.big-card .bc-top { display: flex; align-items: center; gap: 8px; }
-.big-card h3 { flex: 1; }
-.big-card .bc-main { font-size: var(--fs-lg); font-weight: 600; }
-.big-card .bc-sub { font-size: var(--fs-sm); color: var(--wb-muted); }
-.big-card .bc-foot { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.bc-main { font-size: var(--fs-lg); font-weight: 600; }
 
 /* 灌注周期：两段结构 */
 .course-seg { display: flex; flex-direction: column; gap: 8px; }
@@ -541,6 +532,179 @@ table.tbl td.num { text-align: right; }
 .wording-list { margin: 0; padding-left: 20px; font-size: var(--fs-md); }
 .wording-list li.hit { color: var(--wb-stop); }
 
+.gate-page { border: 0; background: none; padding: 0; margin-bottom: 0; }
+.gate-page .gate-note { margin-top: 12px; }
+.gate-choices { margin-top: 4px; }
+
+/* ------------------------------------------------------------
+   9. 原型横幅 / 顶栏状态灯 / 导航品牌块 / 面包屑 / 首页构件
+   ------------------------------------------------------------ */
+
+/* 原型横幅：整页最顶，先声明「这是假的」 */
+.wb-demo-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 5px 14px; background: #123A42; color: #C6E4EA;
+  font-size: 11.5px; letter-spacing: .01em;
+  position: sticky; top: 0; z-index: 46;
+}
+.wb-demo-bar b { color: #FFFFFF; font-weight: 600; }
+.db-right { color: #8FB6BE; }
+
+/* 顶栏状态灯（如实回显，未接入就写未接入） */
+.tb-pill {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  font-size: 11px; color: var(--wb-muted);
+  border: 1px solid var(--wb-line); border-radius: 999px;
+  padding: 2px 9px; background: #F7FAFB; white-space: nowrap;
+}
+.tb-pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--wb-ghost); flex: 0 0 auto; }
+.tb-pill[data-state="on"] { color: #2F6F66; border-color: #BFDCD8; background: #F1F8F7; }
+.tb-pill[data-state="on"] i { background: #2F7D6B; }
+.tb-pill[data-state="off"] { color: var(--wb-ghost); }
+
+/* 导航品牌块 */
+.nav-brand { display: flex; align-items: center; gap: 9px; padding: 14px 14px 10px; }
+.nav-logo {
+  width: 34px; height: 34px; border-radius: 11px; flex: 0 0 auto;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.95) 0 15%, transparent 16%),
+    linear-gradient(150deg, var(--wb-brand) 0%, var(--wb-brand-ink) 100%);
+  box-shadow: 0 2px 6px rgba(13,90,102,.28);
+}
+.nav-brand-txt { display: flex; flex-direction: column; min-width: 0; }
+.nav-brand-name { font-size: var(--fs-md); font-weight: 700; letter-spacing: -.01em; }
+.nav-brand-tag { font-size: 11px; color: var(--wb-ghost); }
+
+/* 导航演示档案卡 */
+.nav-profile {
+  margin: 2px 10px 12px; padding: 9px 10px;
+  border: 1px solid var(--wb-line); border-radius: var(--r-md);
+  background: var(--wb-brand-soft);
+}
+.np-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.np-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--wb-card); color: var(--wb-brand-ink);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.np-txt { display: flex; flex-direction: column; min-width: 0; }
+.np-name { font-size: var(--fs-sm); font-weight: 600; }
+.np-meta { font-size: 11px; color: var(--wb-muted); }
+.nav-profile select {
+  width: 100%; margin-top: 7px; font-size: 11.5px;
+  border: 1px solid var(--wb-line); border-radius: var(--r-sm);
+  padding: 3px 6px; background: var(--wb-card); color: var(--wb-ink);
+}
+
+/* 导航分组标题 */
+.nav-sec {
+  padding: 12px 14px 4px; font-size: 11px;
+  color: var(--wb-ghost); letter-spacing: .06em;
+}
+
+/* 面包屑 */
+.wb-crumb { padding: 12px 24px 0; font-size: var(--fs-sm); color: var(--wb-muted); }
+.wb-crumb b { color: var(--wb-ink); font-weight: 600; }
+
+/* Hero */
+.hero { margin-bottom: 16px; }
+/* 勿加 text-transform: uppercase：会把 UroPal 变成 UROPAL，
+   也会把分期写法 Ta/T1/Tis 变成 TA/T1/TIS。 */
+.hero-eyebrow {
+  font-size: 11px; letter-spacing: .14em;
+  color: var(--wb-brand); font-weight: 700;
+}
+/* max-width 用 em 不用 ch：ch 按「0」宽算，中文字符约占 2ch，
+   26ch 会把中文标题拦腰截断（曾断在「同时保 / 住膀胱」）。 */
+.hero-title {
+  font-size: calc(var(--fs-h1) * 1.12); line-height: 1.35;
+  margin-top: 6px; letter-spacing: -.02em; max-width: 34em;
+  text-wrap: balance;
+}
+.hero-sub { margin-top: 8px; color: var(--wb-muted); font-size: var(--fs-md); max-width: 60ch; }
+.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* 主行动条 */
+.strip {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px; margin-bottom: 16px;
+  border: 1px solid #CBE6EA; border-radius: var(--r-lg);
+  background: linear-gradient(180deg, #F1FAFB 0%, var(--wb-brand-soft) 100%);
+}
+.strip-main { flex: 1 1 320px; min-width: 0; }
+.strip-head { font-size: var(--fs-lg); font-weight: 600; }
+.strip-note { font-size: var(--fs-sm); color: var(--wb-muted); margin-top: 4px; }
+.strip-actions { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
+
+/* 入口卡 */
+.entry-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 18px; }
+.entry-card {
+  display: flex; align-items: flex-start; gap: 11px; text-align: left; width: 100%;
+  padding: 14px; border: 1px solid var(--wb-line); border-radius: var(--r-lg);
+  background: var(--wb-card); cursor: pointer; box-shadow: var(--shadow-1);
+  transition: border-color .15s ease, box-shadow .15s ease;
+  font: inherit; color: inherit;
+}
+.entry-card:hover { border-color: var(--wb-brand); box-shadow: var(--shadow-2); }
+.entry-ico {
+  width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+  background: var(--wb-brand-soft); color: var(--wb-brand-ink);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.entry-txt { display: flex; flex-direction: column; min-width: 0; }
+.entry-t { font-size: var(--fs-base); font-weight: 600; }
+.entry-d { font-size: var(--fs-sm); color: var(--wb-muted); margin-top: 3px; }
+.entry-arrow { margin-left: auto; color: var(--wb-ghost); align-self: center; flex: 0 0 auto; }
+
+/* 待办列表 */
+.todo-list { display: flex; flex-direction: column; }
+.todo-item { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--wb-line-soft); }
+.todo-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.todo-item:first-child { padding-top: 0; }
+.todo-dot {
+  width: 19px; height: 19px; border-radius: 50%; flex: 0 0 auto; margin-top: 3px;
+  border: 1.5px solid var(--wb-line); background: var(--wb-card);
+}
+.todo-txt { display: flex; flex-direction: column; min-width: 0; }
+.todo-date { font-size: 11px; color: var(--wb-ghost); }
+.todo-t { font-size: var(--fs-base); font-weight: 600; }
+.todo-m { font-size: var(--fs-sm); color: var(--wb-muted); }
+/* 同样必须显式成列：否则 .q-q / .q-src / 按钮会挤成一行 */
+.q-txt { display: flex; flex-direction: column; min-width: 0; }
+
+/* 问题清单 */
+.q-list { display: flex; flex-direction: column; gap: 8px; }
+.q-item {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 9px 11px; border-radius: var(--r-md); background: var(--wb-brand-soft);
+}
+.q-q { font-size: var(--fs-base); }
+.q-src { font-size: 11px; color: var(--wb-muted); margin-top: 2px; }
+
+/* 两列布局 */
+.cols-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: start; }
+.cols-2-wide { display: grid; grid-template-columns: minmax(0,1.32fr) minmax(0,1fr); gap: 16px; align-items: start; }
+
+/* 参考范围尺（中性：只标位置，不判好坏） */
+.m-ruler { margin-top: 12px; }
+.m-ruler-bar { position: relative; height: 5px; border-radius: 3px; background: var(--wb-line-soft); }
+.m-ruler-in { position: absolute; top: 0; bottom: 0; background: #D9E9ED; border-radius: 3px; }
+.m-ruler-mark { position: absolute; top: -3px; width: 2px; height: 11px; border-radius: 1px; background: var(--wb-muted); }
+.m-ruler-cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--wb-ghost); margin-top: 4px; min-height: 13px; }
+.m-ruler-note { font-size: 11px; color: var(--wb-ghost); margin-top: 1px; line-height: 1.35; }
+
+/* 分野卡片内的说明列表 + 急症按钮 + 图例 */
+.gc-list { margin: 9px 0 0; padding-left: 17px; }
+.gc-list li { font-size: var(--fs-sm); color: var(--wb-muted); margin-bottom: 3px; }
+.btn-urgent {
+  border-color: #E8C7A6; background: var(--wb-accent-soft); color: var(--wb-accent-ink);
+}
+.btn-urgent:hover { border-color: var(--wb-accent); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--wb-muted); }
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+
 /* ============================================================
    窄屏覆盖 —— 必须保留在文件末尾
    坑（勿改回）：这些覆盖与上面的基础规则同优先级，若放在文件中段，
@@ -554,7 +718,10 @@ table.tbl td.num { text-align: right; }
      坑：不换行时 .tb-actions 会把 topbar 顶到 581px，整页在 390px 横向溢出。 */
   .wb-topbar { flex-wrap: wrap; row-gap: 6px; }
   .tb-status { flex: 1 1 100%; min-width: 0; order: 3; }
-  .tb-actions { margin-left: auto; }
+  /* 坑（勿改回）：基础规则是 flex: 0 0 auto（不收缩），只加 flex-wrap 没用——
+     .tb-actions 会保持 477px 宽，把整页在 390px 顶到 489px。
+     必须改成可收缩（flex: 1 1 auto）才会真正换行。 */
+  .tb-actions { margin-left: auto; flex: 1 1 auto; flex-wrap: wrap; row-gap: 5px; justify-content: flex-end; }
   /* 标签在窄屏必须能折行：chip 默认 nowrap，长枚举（如 mibc-or-perioperative、
      「对照 CTCAE v5.0 · 2 级」）会把表格单元顶出容器。 */
   .chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
@@ -566,12 +733,29 @@ table.tbl td.num { text-align: right; }
   .nav-item span.nav-text { display: none; }
   /* 坑：只隐藏 nav-text 不够——nav-dot（"4/7" / "急"）仍在行内，
      会把 64px 宽的导航顶到 70px，进而把整页撑到 449px。改成绝对定位角标。 */
+  /* 坑：分组标题在 64px 窄轨里会竖排成「病/情」「安/全/与/生/活」。
+     不是隐藏掉，而是塌成一条分隔线，保留分组感。 */
+  .nav-sec {
+    font-size: 0; letter-spacing: 0; height: 1px; padding: 0;
+    margin: 12px 14px 8px; background: var(--wb-line-soft);
+  }
   .nav-item { position: relative; justify-content: center; padding: 8px 6px; }
   .nav-dot { position: absolute; top: 1px; right: 1px; font-size: 9px; padding: 0 3px; }
   .wb-splitter { display: none !important; }
   .wb-agent {
-    position: fixed; top: var(--topbar-h); right: 0; bottom: 0;
+    position: fixed; top: var(--chrome-h, 70px); right: 0; bottom: 0;
     width: min(420px, 92vw); max-height: none;
     z-index: 50; box-shadow: var(--shadow-2);
   }
+}
+
+/* 新增构件的窄屏覆盖（与上面同优先级，必须留在文件末尾） */
+@media (max-width: 1100px) { .entry-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 820px) {
+  .entry-grid { grid-template-columns: minmax(0,1fr); }
+  .cols-2, .cols-2-wide { grid-template-columns: minmax(0,1fr); }
+  .wb-crumb { padding: 10px 16px 0; }
+  .hero-title { font-size: calc(var(--fs-h1) * 1.02); max-width: none; }
+  .strip-actions { width: 100%; }
+  .strip-actions .btn { flex: 1 1 auto; }
 }

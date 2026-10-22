@@ -13,14 +13,19 @@
      C10 分类变量不进折线
      C11 lab/method 不同不连线（拆可比组）
      C12 点值可回来源
+
+   重要（勿改回）：图形按调用方量到的容器真实宽度 1:1 渲染。
+   早期版本把 viewBox 固定成 700 宽再让 CSS 拉满，浏览器按
+   preserveAspectRatio 居中留白（letterbox），绘图区被缩窄、而治疗条
+   是满宽的 HTML 层 —— 两者必然对不齐，末点标签也会飘在空处。
+   现在由 app.js 传入 width，viewBox 宽度 == 容器宽度，1 用户单位 = 1px。
    ============================================================ */
 'use strict';
 
 const CHART = (() => {
-  const W = 700, H = 200;
-  const PAD = { t: 10, r: 96, b: 24, l: 10 };   // 右侧留 96px 给末点标签
-  const INNER_W = W - PAD.l - PAD.r;
-  const INNER_H = H - PAD.t - PAD.b;
+  const H = 200;                                  // 绘图区高度（固定，文字不缩放）
+  const DEFAULT_W = 700;
+  const PAD = { t: 10, r: 96, b: 24, l: 10 };     // 右侧留 96px 给末点标签
 
   const TREATMENTS = [
     { d: '2026-09-18', label: 'TURBT', id: 'ev-turbt' },
@@ -30,6 +35,13 @@ const CHART = (() => {
 
   const day = (s) => new Date(`${s}T00:00:00`).getTime();
   const DAY = 86400000;
+  const pad2 = (n) => String(n).padStart(2, '0');
+  /* 本地日期格式化。勿改回 toISOString()：东八区零点会退到前一天，
+     轴标签会整整差一天（曾把 10-22 显示成 10-21）。 */
+  const iso = (ts) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  };
 
   function windowStart(win, allDates) {
     if (win === 'all') return Math.min(...allDates.map(day));
@@ -42,8 +54,11 @@ const CHART = (() => {
     const picked = METRICS.filter((m) => codes.includes(m.code));
     const allDates = picked.flatMap((m) => m.points.map((p) => p.d));
     if (!allDates.length) return { series: [], from: 0, to: 0 };
-    const from = windowStart(win, allDates);
-    const to = Math.max(...allDates.map(day));
+    /* 窗口边界要把治疗事件算进去：否则「最近一次治疗」只要晚于最后一次
+       化验就会从「全部」里消失（曾把 2026-10-23 灌注取消吞掉）。 */
+    const spans = allDates.concat(TREATMENTS.map((t) => t.d));
+    const from = windowStart(win, spans);
+    const to = Math.max(...spans.map(day));
     const series = picked.map((m) => {
       const pts = m.points.filter((p) => day(p.d) >= from && day(p.d) <= to)
         .sort((a, b) => day(a.d) - day(b.d));
@@ -57,28 +72,27 @@ const CHART = (() => {
     return { series, from, to };
   }
 
-  function xScale(from, to) {
-    const span = Math.max(to - from, DAY);        // 单点也不除零
-    return (d) => PAD.l + ((day(d) - from) / span) * INNER_W;
-  }
-
-  /** C1：每条线用它自己的全期 min/max 映射；min===max 时画在中线 */
-  function yScale(s) {
-    if (s.max === s.min) return () => PAD.t + INNER_H / 2;
-    return (v) => PAD.t + INNER_H - ((v - s.min) / (s.max - s.min)) * INNER_H;
-  }
-
   const fmt = (v) => (Math.round(v * 10) / 10).toString();
 
-  /** 主渲染：返回 { treatLane, svg, legend, empty } */
-  function render(codes, win) {
+  /** 主渲染：返回 { treatLane, svg, legend, empty, reason } */
+  function render(codes, win, width) {
+    const W = Math.max(360, Math.round(width || DEFAULT_W));
+    const INNER_W = W - PAD.l - PAD.r;
+    const INNER_H = H - PAD.t - PAD.b;
+
     const { series, from, to } = collect(codes, win);
     const withData = series.filter((s) => s.pts.length > 0);
     if (!withData.length) {
       return { empty: true, treatLane: '', svg: '', legend: '', reason: '所选时间窗内没有记录' };
     }
 
-    const X = xScale(from, to);
+    // C1 的坐标函数：与绘图区同宽，1 用户单位 = 1px
+    const span = Math.max(to - from, DAY);          // 单点也不除零
+    const X = (d) => PAD.l + ((day(d) - from) / span) * INNER_W;
+    const Y = (s) => (s.max === s.min
+      ? () => PAD.t + INNER_H / 2
+      : (v) => PAD.t + INNER_H - ((v - s.min) / (s.max - s.min)) * INNER_H);
+
     const parts = [];
     let animDelay = 0;
 
@@ -90,8 +104,8 @@ const CHART = (() => {
 
     const labels = [];
     withData.forEach((s, si) => {
-      const Y = yScale(s);
-      const coords = s.pts.map((p) => [X(p.d), Y(p.v)]);
+      const ys = Y(s);
+      const coords = s.pts.map((p) => [X(p.d), ys(p.v)]);
 
       // C2：单点不连线
       if (coords.length > 1) {
@@ -112,8 +126,8 @@ const CHART = (() => {
 
       // C5/C6/C7：末点只标一次；靠右改 end；多序列错开 ≥11px
       const last = s.pts[s.pts.length - 1];
-      const lx = X(last.d), ly = Y(last.v);
-      const atEnd = (W - PAD.r) - lx < 46;
+      const lx = X(last.d), ly = ys(last.v);
+      const atEnd = (PAD.l + INNER_W) - lx < 46;
       let ty = ly + 4 + (si % 2 === 0 ? -1 : 1) * Math.floor(si / 2) * 11 + (si % 2 ? 6 : -6);
       ty = Math.max(PAD.t + 8, Math.min(H - PAD.b - 2, ty));
       labels.push(
@@ -123,22 +137,32 @@ const CHART = (() => {
     });
     parts.push(...labels);
 
-    // C4：治疗条（独立行，不叠在绘图区）——竖线与节点同 ID 联动
-    const tFrom = from, tTo = to;
-    const tx = (d) => ((day(d) - tFrom) / Math.max(tTo - tFrom, DAY)) * 100;
-    const inWin = TREATMENTS.filter((t) => day(t.d) >= tFrom && day(t.d) <= tTo);
-    const treatLane = inWin.map((t) =>
-      `<div class="treat-mark" style="left:${tx(t.d).toFixed(2)}%" data-ev="${t.id}">`
+    // C4：治疗条（独立行，不叠在绘图区）—— 与绘图区同宽同位，竖线与节点同 ID 联动
+    /* 事件靠得近时标签会挤成一串（曾出现「TURBTBCG 诱导开始灌注取消」）。
+       按 px 贪心分行：同一行里两个标签间距不足 78px 就落到下一行。
+       行数决定泳道高度，竖线照样从各自行位贯到绘图区。 */
+    const marks = TREATMENTS
+      .filter((t) => day(t.d) >= from && day(t.d) <= to)
+      .map((t) => ({ ...t, x: PAD.l + ((day(t.d) - from) / span) * INNER_W }));
+    const rowRight = [];
+    const rows = marks.map((m) => {
+      let r = 0;
+      while (rowRight[r] != null && m.x - rowRight[r] < 78) r++;
+      rowRight[r] = m.x;
+      return r;
+    });
+    const maxRow = rows.reduce((a, b) => Math.max(a, b), 0);
+    const treatLane = marks.map((m, i) =>
+      `<div class="treat-mark" style="left:${(m.x / W * 100).toFixed(3)}%;top:${4 + rows[i] * 13}px" data-ev="${m.id}">`
       + `<div class="tm-diamond" aria-hidden="true"></div>`
-      + `<div class="tm-label">${t.label}</div>`
+      + `<div class="tm-label">${m.label}</div>`
       + `<div class="tm-stem" aria-hidden="true"></div></div>`
     ).join('');
+    const laneH = 30 + maxRow * 13;
 
     // 轴：首末日期
-    const dFrom = new Date(from).toISOString().slice(0, 10);
-    const dTo = new Date(to).toISOString().slice(0, 10);
-    parts.push(`<text class="axis-label" x="${PAD.l}" y="${H - 6}">${dFrom}</text>`);
-    parts.push(`<text class="axis-label" x="${PAD.l + INNER_W}" y="${H - 6}" text-anchor="end">${dTo}</text>`);
+    parts.push(`<text class="axis-label" x="${PAD.l}" y="${H - 6}">${iso(from)}</text>`);
+    parts.push(`<text class="axis-label" x="${PAD.l + INNER_W}" y="${H - 6}" text-anchor="end">${iso(to)}</text>`);
 
     const legend = withData.map((s) =>
       `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>`
@@ -148,6 +172,7 @@ const CHART = (() => {
     return {
       empty: false,
       treatLane,
+      laneH,
       svg: `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" `
          + `aria-label="多指标时间轴，共 ${withData.length} 条线，每线按各自全期范围归一化，彼此不可比">${parts.join('')}</svg>`,
       legend,

@@ -57,31 +57,105 @@ function saveState() {
 /* 面板宽度 clamp（唯一来源；真实项目里与 lib/layout.js 同源） */
 const clampAgentWidth = (p) => Math.min(45, Math.max(25, Math.round(p)));
 
+/* 让「横幅 + 顶栏」的实测高度成为唯一来源：sticky 偏移与窄屏抽屉都读它 */
+function syncChromeHeight() {
+  const bar = document.querySelector('.wb-demo-bar');
+  const top = document.querySelector('.wb-topbar');
+  const d = bar ? bar.offsetHeight : 0;
+  const t = top ? top.offsetHeight : 0;
+  const root = document.documentElement.style;
+  root.setProperty('--demo-h', `${d}px`);
+  root.setProperty('--chrome-h', `${d + t}px`);
+}
+
 function applyPrefs() {
   document.documentElement.dataset.textsize = STATE.textsize;
   document.documentElement.dataset.motion = STATE.motion === 'reduce' ? 'reduce' : 'auto';
   document.documentElement.style.setProperty('--agent-w', `${STATE.agentWidth}%`);
   $('#versionChip').textContent = `v${APP_VERSION}`;
   $('#footVersion').textContent = APP_VERSION;
+  syncChromeHeight();
 }
 
 /* ---------------- 左侧导航 ---------------- */
+/* 导航分组：与 SPEC §功能范围一致（12 个一级页 + 设置） */
+const NAV_GROUPS = [
+  { label: '', ids: ['dashboard'] },
+  { label: '我的病情', ids: ['records', 'staging', 'surgery', 'instillation', 'diversion', 'treatment', 'followup', 'metrics', 'chart'] },
+  { label: '安全与生活', ids: ['urgent', 'life', 'visit'] },
+  { label: '其他', ids: ['trials', 'settings'] },
+];
+
+/* 演示档案卡：切换它等于重新选择分野（同一个 setLine，只有一份实现） */
+function profileHTML() {
+  const nmibc = STATE.line === 'nmibc';
+  const has = !!STATE.line && STATE.line !== 'undetermined';
+  const name = has ? (nmibc ? '张先生（演示）' : '李先生（演示）') : (STATE.line === 'undetermined' ? '保持未定' : '未选择分野');
+  const meta = has ? (nmibc ? 'DEMO-1 · NMIBC 保膀胱线' : 'DEMO-2 · MIBC 根治与改道线')
+                   : '选定后看板才会长出内容';
+  const av = has ? (nmibc ? '张' : '李') : '—';
+  return `<div class="nav-profile">
+    <div class="np-top">
+      <span class="np-avatar" aria-hidden="true">${av}</span>
+      <span class="np-txt">
+        <span class="np-name">${esc(name)}</span>
+        <span class="np-meta">${esc(meta)}</span>
+      </span>
+    </div>
+    <select id="selDemo" aria-label="切换演示档案（等于重新选择分野，改动会留痕）">
+      <option value="__none" ${!STATE.line ? 'selected' : ''}>未选择分野</option>
+      <option value="nmibc" ${nmibc ? 'selected' : ''}>DEMO-1 · NMIBC 保膀胱线</option>
+      <option value="mibc" ${STATE.line === 'mibc' ? 'selected' : ''}>DEMO-2 · MIBC 根治与改道线</option>
+      <option value="undetermined" ${STATE.line === 'undetermined' ? 'selected' : ''}>我还不确定</option>
+    </select>
+  </div>`;
+}
+
+/* 分野切换唯一入口：改动留痕，不改写历史，不覆盖旧值 */
+function setLine(v) {
+  const next = v || null;
+  if (STATE.line && next && STATE.line !== next) {
+    STATE.lineHistory.unshift(`${STATE.line} → ${next}`);
+  }
+  STATE.line = next;
+  // 「重新选择分野」要回到闸门，而不是原地重渲染当前页
+  if (!next) { STATE.route = 'dashboard'; location.hash = '#/dashboard'; }
+  saveState(); renderNav(); renderPage();
+}
+
 function renderNav() {
   const nav = $('#wbNav');
-  nav.innerHTML = NAV.map((n) => `
+  const map = {};
+  NAV.forEach((n) => { map[n.id] = n; });
+  const itemHTML = (n) => `
     <button type="button" class="nav-item" data-route="${n.id}"
             ${STATE.route === n.id ? 'aria-current="page"' : ''}>
       <span class="nav-ico" aria-hidden="true">${n.ico}</span>
       <span class="nav-text">${esc(n.text)}</span>
       ${(n.id === 'instillation' && STATE.line === 'nmibc') ? '<span class="nav-dot">4/7</span>' : ''}
       ${(n.id === 'urgent') ? '<span class="nav-dot">急</span>' : ''}
-    </button>
-  `).join('') + `
-    <div class="nav-group-label">其他</div>
-    <button type="button" class="nav-item" data-act="settings">
-      <span class="nav-ico" aria-hidden="true">⚙</span><span class="nav-text">设置</span>
-    </button>
-  `;
+    </button>`;
+
+  nav.innerHTML = `
+    <div class="nav-brand">
+      <span class="nav-logo" aria-hidden="true"></span>
+      <span class="nav-brand-txt">
+        <span class="nav-brand-name">小泉宝 UroPal</span>
+        <span class="nav-brand-tag">陪你把两条路走清楚</span>
+      </span>
+    </div>
+    ${profileHTML()}
+  ` + NAV_GROUPS.map((g) => (
+    (g.label ? `<div class="nav-sec">${esc(g.label)}</div>` : '')
+    + g.ids.map((id) => {
+      if (id === 'settings') {
+        return `<button type="button" class="nav-item" data-act="settings">
+          <span class="nav-ico" aria-hidden="true">⚙</span><span class="nav-text">设置</span></button>`;
+      }
+      return map[id] ? itemHTML(map[id]) : '';
+    }).join('')
+  )).join('');
+
   $$('.nav-item', nav).forEach((b) => b.addEventListener('click', () => {
     if (b.dataset.act === 'settings') return openSettings();
     STATE.route = b.dataset.route;
@@ -89,6 +163,26 @@ function renderNav() {
     renderNav();
     renderPage();
   }));
+
+  const sel = $('#selDemo');
+  if (sel) sel.addEventListener('change', () => {
+    const v = sel.value === '__none' ? null : sel.value;
+    setLine(v);
+    toast(v === 'undetermined' ? '保持未定：不显示任何一条线的专属内容'
+      : v ? '已切换分野，看板与导航一起更新' : '已回到分野闸门');
+  });
+}
+
+/* 面包屑（顶栏中间那句状态说明之外的第二个「我在哪」） */
+function renderCrumb() {
+  const def = NAV.find((n) => n.id === STATE.route);
+  const { current } = tabsFor(STATE.route);
+  const line = STATE.line === 'nmibc' ? 'NMIBC 保膀胱线'
+             : STATE.line === 'mibc' ? 'MIBC 根治与改道线'
+             : STATE.line === 'undetermined' ? '分野未定' : '未分野';
+  $('#wbCrumb').innerHTML = `小泉宝工作台 / <b>${esc(def ? def.text : '看板')}</b>`
+    + (current ? ` / ${esc(current)}` : '')
+    + ` <span class="crumb-note">· 演示档案 ${esc(line)} · 全部为模拟资料</span>`;
 }
 
 /* ---------------- 复用的页面片段 ---------------- */
@@ -124,80 +218,207 @@ function card(title, body, extra = '') {
 
 /* ================= 1. 看板 ================= */
 function pageDashboard() {
-  if (!STATE.line) return gateHTML();
+  // 未分野 / 保持未定：都不显示任何一条线的专属卡片
+  if (!STATE.line || STATE.line === 'undetermined') return gateHTML();
 
   const nmibc = STATE.line === 'nmibc';
-  const cards = nmibc ? [
-    { t: '膀胱灌注', m: '诱导 3 / 6 次已完成', s: '2026-10-23 因肉眼血尿取消 · 下次 10-30', chips: ['BCG 120 mg', '禁忌保护'] },
-    { t: '下次膀胱镜', m: '2026-12-16', s: '2022 保膀胱共识口径：每 3 个月', chips: ['尿细胞学同次'] },
-    { t: '尿细胞学', m: '非典型', s: '2026-09-18 · 膀胱冲洗标本', chips: ['四态之一'] },
-    { t: '肾功能', m: 'eGFR 66', s: '2026-10-22 · CKD-EPI', chips: ['接近顺铂门槛 60'] },
-    { t: '疼痛自评', m: '2 分', s: '2026-10-22 · 本人自评', chips: ['表达面'] },
-    { t: '病理待澄清', m: '「未见肌层」', s: '分期可能不完整，是需要问医生的点', chips: ['待核对'] },
+  const lineName = nmibc ? '非肌层浸润（Ta/T1/Tis）· 保膀胱线' : '肌层浸润（T2+）· 根治与改道线';
+  const stage = nmibc ? '膀胱灌注诱导期' : '术后待定改道术式';
+
+  const hero = `
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-eyebrow">UroPal · ${esc(lineName)}</div>
+          <h1 class="hero-title">${nmibc ? '这条线的重点：把肿瘤控住，同时保住膀胱。' : '这条线的重点：先活下来，再学会带着改道生活。'}</h1>
+          <p class="hero-sub">${nmibc
+            ? '你要长期做三件事：把每次灌注记准、把每次膀胱镜排上、把复发恐惧说出来。工作台只帮你记清楚，不替你判断。'
+            : '你要面对两个不可逆的选择：膀胱切不切、改道走哪一种。这里把三种术式并排摆出来，不给倾向。'}</p>
+        </div>
+        <span class="chip chip-brand">当前阶段：${esc(stage)}</span>
+      </div>
+    </div>`;
+
+  const strip = nmibc ? `
+    <div class="strip">
+      <div class="strip-main">
+        <div class="strip-head">膀胱灌注 诱导 3 / 6 次已完成</div>
+        <div class="strip-note">2026-10-23 因<b>肉眼血尿</b>取消这一次 · 下一次计划 2026-10-30。
+          取消不是恶化，是禁忌在保护你；漏做不做补做建议。</div>
+      </div>
+      <div class="strip-actions">
+        <button type="button" class="btn btn-primary" data-goto="instillation">看灌注周期</button>
+        <button type="button" class="btn" data-goto="visit">带去复诊的问题</button>
+      </div>
+    </div>` : `
+    <div class="strip">
+      <div class="strip-main">
+        <div class="strip-head">尿流改道术式 尚未记录</div>
+        <div class="strip-note">三种术式<b>各自独立</b>：回肠造口 / 原位新膀胱 / 输尿管皮肤造口。
+          选定后改动会留痕，不覆盖旧值。</div>
+      </div>
+      <div class="strip-actions">
+        <button type="button" class="btn btn-primary" data-goto="diversion">三术式对照</button>
+        <button type="button" class="btn" data-goto="treatment">肾功能门槛</button>
+      </div>
+    </div>`;
+
+  const entries = nmibc ? [
+    { ico: '◍', t: '膀胱灌注', d: '诱导 3/6 次 · 上次取消 · 下次 10-30', go: 'instillation' },
+    { ico: '◉', t: '下次膀胱镜', d: '2026-12-16 · 尿细胞学同次送检', go: 'followup' },
+    { ico: '◈', t: '病理待澄清', d: '「未见肌层」= 分期可能不完整', go: 'staging' },
   ] : [
-    { t: '尿流改道术式', m: '尚未记录', s: '三种术式各自独立页签，零倾向对照', chips: ['不可逆事实'] },
-    { t: '肾功能门槛', m: 'eGFR 66', s: '顺铂门槛：CrCl<60 或 eGFR≤60', chips: ['决定治疗分叉'] },
-    { t: '造口日记', m: '按批录入', s: '最近一批 2026-10-20 · 渗漏 1 次', chips: ['耗材来自目录'] },
-    { t: '代谢长期项', m: '暂无记录', s: 'B12 / 碳酸氢盐 / 电解质', chips: ['来源待补'] },
-    { t: '疼痛自评', m: '2 分', s: '2026-10-22 · 本人自评', chips: ['表达面'] },
-    { t: '病理待澄清', m: '「未见肌层」', s: '分期可能不完整，是需要问医生的点', chips: ['待核对'] },
+    { ico: '⬡', t: '尿流改道与造口', d: '三种术式对照 · 造口日记 · 耗材目录', go: 'diversion' },
+    { ico: '⇄', t: '肾功能门槛', d: 'eGFR 66 · 接近顺铂门槛 60', go: 'treatment' },
+    { ico: '⚑', t: '急症与安全', d: '无尿 + 腰痛 / 造口发黑 / 高热寒战', go: 'urgent' },
   ];
 
-  return H('看板', `当前分野：<b>${nmibc ? '非肌层浸润（Ta/T1/Tis）· 保膀胱线' : '肌层浸润（T2+）· 根治与改道线'}</b>。只显示这条线相关的内容。`)
-    + `<div class="dash-cards">` + cards.map((c) => `
-      <div class="card big-card">
-        <div class="bc-top"><h3>${esc(c.t)}</h3></div>
-        <div class="bc-main">${esc(c.m)}</div>
-        <div class="bc-sub">${esc(c.s)}</div>
-        <div class="bc-foot">${c.chips.map((x) => `<span class="chip">${esc(x)}</span>`).join('')}</div>
-      </div>`).join('') + `</div>`
-    + card('表达面与指标面（两列并置，不写因果，不写处置）', `
-      <table class="tbl">
-        <thead><tr><th>表达面（感受）</th><th>指标面</th><th>时间</th></tr></thead>
-        <tbody>
-          <tr><td>疼痛自评 2 分；排尿时有灼热感</td><td>血红蛋白 124 g/L（较上次 ↑）</td><td>2026-10-22</td></tr>
-          <tr><td>容易累</td><td>eGFR 66 mL/min/1.73m²（较上次 ↓）</td><td>2026-10-22</td></tr>
-        </tbody>
-      </table>
-      <p class="src" style="margin-top:10px">两侧都有的记录才并置；只有一侧时不弹提醒。这里不做因果解释。</p>`)
-    + card('急症入口（30 秒内可达）', `
-      <div class="btn-row">
-        ${URGENT.map((u) => `<button type="button" class="btn" data-goto="urgent">${esc(u.cat)}</button>`).join('')}
-      </div>`);
+  const todos = nmibc ? [
+    { d: '2026-10-30', t: '膀胱灌注 第 4 次（诱导）', m: '本人安排 · 未预约' },
+    { d: '2026-11-06', t: '血常规 + 肝肾功能复查', m: '医院安排 · 灌注前评估' },
+    { d: '2026-12-16', t: '膀胱镜复查 + 尿细胞学', m: '医院安排 · 时间以短信为准' },
+  ] : [
+    { d: '2026-10-28', t: '泌尿外科门诊：谈改道术式', m: '本人安排 · 已预约' },
+    { d: '2026-10-30', t: '分肾核素肾图（评估左肾功能）', m: '医院安排 · 待确认' },
+    { d: '2026-11-04', t: '把造口护理问题带去造口门诊', m: '本人安排 · 1 项待确认' },
+  ];
+
+  const questions = nmibc ? [
+    { q: '「未见肌层」是不是意味着分期不完整？需要再做一次电切吗？', s: '病理核对衍生 · 本人想问' },
+    { q: '这次因为肉眼血尿取消了灌注，后面需要补做吗？', s: '灌注记录衍生 · 本人想问' },
+    { q: '尿细胞学写「非典型」，这个结果要怎么理解？', s: '资料库衍生 · 本人想问' },
+  ] : [
+    { q: '我的肾功能还能不能用顺铂？如果不能用，替代方案是什么？', s: '肾功能门槛衍生 · 本人想问' },
+    { q: '三种改道方式里，哪一种更适合我现在的工作和作息？', s: '三术式对照衍生 · 本人想问' },
+    { q: '切除之后还需要复查上尿路吗？多久一次？', s: '复查与膀胱镜衍生 · 本人想问' },
+  ];
+
+  const dashCodes = nmibc ? 'hb,pain' : 'egfr,weight';
+  const growth = `<div class="chart-block" data-codes="${dashCodes}" data-win="all">
+      <div class="chart-wrap"><div class="chart-host"></div></div>
+      <div class="legend" data-legend></div>
+    </div>`;
+
+  return hero + strip
+    + `<div class="entry-grid">` + entries.map((e) => `
+        <button type="button" class="entry-card" data-goto="${e.go}">
+          <span class="entry-ico" aria-hidden="true">${e.ico}</span>
+          <span class="entry-txt"><span class="entry-t">${esc(e.t)}</span><span class="entry-d">${esc(e.d)}</span></span>
+          <span class="entry-arrow" aria-hidden="true">→</span>
+        </button>`).join('') + `</div>`
+    + `<div class="cols-2-wide">
+        ${card('最近的变化', growth + `<p class="src" style="margin-top:8px">同一份记录，同时出现在<b>一图秀</b>、<b>指标卡</b>和<b>复诊准备</b>里；每线按各自全期范围归一化，彼此不可比。</p>`,
+               `<button type="button" class="btn btn-sm" data-goto="chart">打开一图秀</button>`)}
+        <div class="card"><h3>接下来的安排</h3>
+          <div class="todo-list">` + todos.map((t) => `
+            <div class="todo-item">
+              <span class="todo-dot" aria-hidden="true"></span>
+              <span class="todo-txt"><span class="todo-date">${esc(t.d)}</span>
+                <span class="todo-t">${esc(t.t)}</span>
+                <span class="todo-m">${esc(t.m)}</span></span>
+            </div>`).join('') + `</div>
+        </div>
+      </div>`
+    + `<div class="cols-2" style="margin-top:16px">
+        ${card('就诊前，想问的事', `<div class="q-list">` + questions.map((x) => `
+            <div class="q-item"><span class="q-txt"><span class="q-q">${esc(x.q)}</span>
+              <span class="q-src">${esc(x.s)}</span></span></div>`).join('') + `</div>`,
+          `<button type="button" class="btn btn-sm" data-goto="visit">编辑</button>`)}
+        ${card('表达面与指标面（两列并置：不写因果，不写处置）', `
+          <table class="tbl">
+            <thead><tr><th>表达面（感受）</th><th>指标面</th><th>时间</th></tr></thead>
+            <tbody>
+              <tr><td>排尿时有灼热感；疼痛自评 2 分</td><td>血红蛋白 124 g/L（较上次 ↑）</td><td>2026-10-22</td></tr>
+              <tr><td>容易累，晚上起夜 2 次</td><td>eGFR 66 mL/min/1.73m²（较上次 ↓）</td><td>2026-10-22</td></tr>
+            </tbody>
+          </table>
+          <p class="src" style="margin-top:10px">只有两侧都有记录时才并置；只有一侧时不弹提醒。这里不做因果解释，也不给处置建议。</p>`)}
+      </div>`
+    + card('急症入口（不用先分野，30 秒内可达）', `
+        <div class="btn-row">
+          ${URGENT.map((u) => `<button type="button" class="btn btn-urgent" data-goto="urgent">${esc(u.cat)}</button>`).join('')}
+        </div>
+        <p class="src" style="margin-top:10px">四类判据的来源在原型阶段<b>尚未取得</b>（见「急症与安全」页），界面不给处置建议，只给联系路径。</p>`);
 }
 
 /* 首屏分野闸门（S01）：未选线时不显示任何一条线的专属内容 */
 function gateHTML() {
+  const undet = STATE.line === 'undetermined';
   return `
-  <div class="gate">
-    <h2>先确认一件事：你属于哪条线？</h2>
-    <p class="gate-lead">
-      膀胱癌按<b>有没有长进肌肉层</b>分成两条很不一样的路。<b>这一步决定你看到的内容</b>，
-      所以在你选之前，看板不会显示任何一条线的专属卡片。不确定也没关系，可以选最后一项。
-    </p>
-    <div class="gate-choices">
-      <button type="button" class="gate-choice" data-line="nmibc" aria-pressed="false">
-        <h3>非肌层浸润 · NMIBC</h3>
-        <p>病理写着 <b>Ta / T1 / Tis</b>，或写着<b>没有侵犯肌层</b>。<br>
-           这条线的主线是：把肿瘤切掉 + 膀胱灌注 + 长期复查，目标是<b>尽量保住膀胱</b>。</p>
-        <span class="chip chip-brand gc-tag">保膀胱线</span>
-      </button>
-      <button type="button" class="gate-choice" data-line="mibc" aria-pressed="false">
-        <h3>肌层浸润 · MIBC</h3>
-        <p>病理写着 <b>T2 或更深</b>，也就是<b>已经长进肌肉层</b>。<br>
-           这条线的主线是：根治性膀胱切除 + 尿流改道，或三联保膀胱；要面对<b>膀胱去留</b>。</p>
-        <span class="chip chip-brand gc-tag">根治与改道线</span>
-      </button>
-      <button type="button" class="gate-choice" data-line="undetermined" aria-pressed="false">
-        <h3>我还不确定</h3>
-        <p>报告看不懂、还没拿到，或者医生没说清楚。<br>
-           选这个不会替你归类，也不会显示任何一条线的专属内容。</p>
-        <span class="chip chip-neutral gc-tag">保持未定</span>
-      </button>
+  <div class="gate gate-page">
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <div class="hero-eyebrow">UroPal · 第一步</div>
+        <h1 class="hero-title">${undet ? '先保持未定。这一步不着急。' : '第一步不是记录，是先弄清楚你属于哪条线。'}</h1>
+        <p class="hero-sub">膀胱癌按<b>有没有长进肌肉层</b>分成两条很不一样的路。
+          <b>这一步决定你看到的内容</b>，所以在你选定之前，看板不会显示任何一条线的专属卡片。
+          不确定也可以选最后一项，随时能改，改动会留痕。</p>
+      </div>
+      <span class="chip chip-neutral">当前阶段：${undet ? '分野未定' : '未分野'}</span>
     </div>
-    <p class="gate-note">
-      这一项随时可以改，改动会留痕。工作台<b>不对「保膀胱还是切除」表达倾向</b>。
-    </p>
+  </div>
+
+  <div class="gate-choices">
+    <button type="button" class="gate-choice" data-line="nmibc" aria-pressed="false">
+      <h3>非肌层浸润 · NMIBC</h3>
+      <p>病理写着 <b>Ta / T1 / Tis</b>，或写着<b>没有侵犯肌层</b>。<br>
+         这条线的主线是：把肿瘤切掉 + 膀胱灌注 + 长期复查，目标是<b>尽量保住膀胱</b>。</p>
+      <ul class="gc-list">
+        <li>灌注周期与每次记录（含取消与原因）</li>
+        <li>膀胱镜复查排程、疼痛与心情</li>
+        <li>尿细胞学四态、上尿路监测、肾功能</li>
+      </ul>
+      <span class="chip chip-brand gc-tag">保膀胱线</span>
+    </button>
+    <button type="button" class="gate-choice" data-line="mibc" aria-pressed="false">
+      <h3>肌层浸润 · MIBC</h3>
+      <p>病理写着 <b>T2 或更深</b>，也就是<b>已经长进肌肉层</b>。<br>
+         这条线的主线是：根治性膀胱切除 + 尿流改道，或三联保膀胱；要面对<b>膀胱去留</b>。</p>
+      <ul class="gc-list">
+        <li>三种改道术式的零倾向对照</li>
+        <li>造口日记、耗材目录、代谢长期项</li>
+        <li>顺铂门槛（eGFR / 分肾核素）</li>
+      </ul>
+      <span class="chip chip-brand gc-tag">根治与改道线</span>
+    </button>
+    <button type="button" class="gate-choice" data-line="undetermined" aria-pressed="false">
+      <h3>我还不确定</h3>
+      <p>报告看不懂、还没拿到，或者医生没说清楚。<br>
+         选这个<b>不会替你归类</b>，也不会显示任何一条线的专属内容。</p>
+      <ul class="gc-list">
+        <li>先把资料整理进来，原样抄录、逐项核对</li>
+        <li>看「我的分型与分期」里的原文与待澄清项</li>
+        <li>带着「未见肌层」这类词去问医生</li>
+      </ul>
+      <span class="chip chip-neutral gc-tag">保持未定</span>
+    </button>
+  </div>
+
+  <p class="gate-note">
+    工作台<b>不对「保膀胱还是切除」表达倾向</b>；两条线的内容不做对照排名，也不会因为选了某条线就隐藏另一条。
+  </p>
+  </div>
+
+  <div class="cols-2" style="margin-top:16px">
+    ${card(undet ? '保持未定也能用的两件事' : '还不能分野时，先把这两件事做了', `
+      <div class="todo-list">
+        <div class="todo-item"><span class="todo-dot" aria-hidden="true"></span>
+          <span class="todo-txt"><span class="todo-t">把病理报告原样录进来</span>
+            <span class="todo-m">只抄写不判断；「未见肌层」「低级别」这类词会被标成待澄清项</span></span></div>
+        <div class="todo-item"><span class="todo-dot" aria-hidden="true"></span>
+          <span class="todo-txt"><span class="todo-t">记下这次想问医生的三个问题</span>
+            <span class="todo-m">问题清单不依赖分野，随时可增删</span></span></div>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button type="button" class="btn btn-primary" data-goto="records">去病情整理</button>
+        <button type="button" class="btn" data-goto="visit">去复诊准备</button>
+      </div>`)}
+    ${card('急症入口（不用先分野，30 秒内可达）', `
+      <div class="btn-row">
+        ${URGENT.map((u) => `<button type="button" class="btn btn-urgent" data-goto="urgent">${esc(u.cat)}</button>`).join('')}
+      </div>
+      <p class="src" style="margin-top:10px">四类判据的来源在原型阶段<b>尚未取得</b>，界面只给联系路径，不给处置建议。</p>`)}
   </div>`;
 }
 
@@ -377,7 +598,22 @@ function pageDiversion(tab) {
             <p style="font-size:var(--fs-md);color:var(--wb-muted);margin-bottom:8px">${esc(d.daily)}</p>
             <ul>${d.fields.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
           </div>`).join('')}
-      </div>`);
+      </div>`)
+      + card('术式讨论记录（零倾向）', `
+        <div class="notice notice-info">这里只记「医生和你讨论过哪几种术式、你当时问了什么」，<b>不记「你倾向哪一种」</b>，也不打分。</div>
+        <table class="tbl" style="margin-top:14px">
+          <thead><tr><th>术式</th><th>门诊讨论过</th><th>当时的问题</th><th>日期</th></tr></thead>
+          <tbody>
+            ${DIVERSION.map((d, i) => `<tr>
+              <td>${esc(d.kind)}</td>
+              <td><label class="chip chip-neutral" style="cursor:pointer">
+                <input type="checkbox" ${i === 0 ? 'checked' : ''} aria-label="${esc(d.kind)} 是否讨论过">讨论过</label></td>
+              <td>${i === 0 ? '造口以后还能不能回去上班、要不要一直带着袋子？' : '<span style="color:var(--wb-ghost)">还没有写下问题</span>'}</td>
+              <td>${i === 0 ? '2026-10-15' : '—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <p class="src" style="margin-top:10px">来源：本人的门诊经过 · 未核对。术式一旦记成「我的术式」按<b>不可逆事实</b>处理，之后改动只追加版本、不覆盖（见 docs/SCHEMA.md ADR-03）。</p>`);
   } else if (tab === '造口日记') {
     body = card('造口日记（一次录一批）', `
       <div class="notice notice-info">按<b>一批</b>记录，不需要每天打卡。耗材型号从目录里选，不用每次重打。</div>
@@ -401,7 +637,10 @@ function pageDiversion(tab) {
   } else if (perKind) {
     body = card(`${tab} · 字段集`, `
       <div class="notice notice-info">选择不同术式后，这里记录的字段<b>会跟着变</b>（新膀胱出现控尿与残余尿；造口出现底盘与渗漏）。</div>
-      <ul style="margin-top:12px;font-size:var(--fs-md)">${perKind.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+      <table class="tbl" style="margin-top:12px">
+        <thead><tr><th>要记的字段</th><th>现在</th></tr></thead>
+        <tbody>${perKind.map((f) => `<tr><td>${esc(f)}</td><td><span class="chip chip-neutral">还没有记录</span></td></tr>`).join('')}</tbody>
+      </table>
       <div class="btn-row" style="margin-top:14px">
         <button class="btn btn-primary" data-act="setDiversion">记录为我的术式（不可逆，改动留痕）</button>
       </div>
@@ -547,6 +786,41 @@ function pageMetrics(tab) {
     + tabsHTML('metrics') + body;
 }
 
+/* 参考范围尺：只标「最近值落在哪」，不做好坏着色、不做判断 */
+/* 参考范围说明另起一行。原先夹在上下限中间，窄屏读起来像一句话
+   （「90 浅色区 = … —」）。单侧范围也不再用「—」冒充上限。 */
+function rulerNote(m, last) {
+  const v = `竖线 = 最近值 ${CHART.fmt(last)}${m.unit ? ' ' + m.unit : ''}`;
+  if (m.refLow != null && m.refHigh != null) {
+    return `浅色区 = 报告给出的参考范围（不做好坏判断）；${v}`;
+  }
+  if (m.refLow != null) return `浅色区 = 报告只给了下限（≥ ${CHART.fmt(m.refLow)}），未给上限；${v}`;
+  return `浅色区 = 报告只给了上限（≤ ${CHART.fmt(m.refHigh)}），未给下限；${v}`;
+}
+
+function rulerHTML(m) {
+  if (m.refLow == null && m.refHigh == null) return '';
+  const vs = m.points.map((p) => p.v);
+  const lo = Math.min(...vs, m.refLow != null ? m.refLow : Infinity);
+  const hi = Math.max(...vs, m.refHigh != null ? m.refHigh : -Infinity);
+  if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return '';
+  const pos = (v) => Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
+  const last = vs[vs.length - 1];
+  const a = m.refLow != null ? pos(m.refLow) : 0;
+  const b = m.refHigh != null ? pos(m.refHigh) : 100;
+  return `<div class="m-ruler">
+    <div class="m-ruler-bar">
+      <div class="m-ruler-in" style="left:${a.toFixed(1)}%;right:${(100 - b).toFixed(1)}%"></div>
+      <div class="m-ruler-mark" style="left:${pos(last).toFixed(1)}%" title="最近值 ${CHART.fmt(last)} ${m.unit}"></div>
+    </div>
+    <div class="m-ruler-cap">
+      <span>${m.refLow != null ? CHART.fmt(m.refLow) : ''}</span>
+      <span>${m.refHigh != null ? CHART.fmt(m.refHigh) : ''}</span>
+    </div>
+    <p class="m-ruler-note">${rulerNote(m, last)}</p>
+  </div>`;
+}
+
 function metricCardHTML(m, i) {
   const last = m.points[m.points.length - 1];
   const prev = m.points[m.points.length - 2];
@@ -561,13 +835,17 @@ function metricCardHTML(m, i) {
         <div class="mc-value">${CHART.fmt(last.v)}<span class="mc-unit">${esc(m.unit)}</span></div>
         <div class="mc-delta" data-dir="${dir}">
           ${delta == null ? '<span class="src">仅一次记录，无法比较</span>'
-            : `${CHART.fmt(Math.abs(delta))} ${esc(m.unit)} 与上次比（${prev.d} → ${last.d}）`}
+            : `${CHART.fmt(Math.abs(delta))} ${esc(m.unit)} · 上次 ${CHART.fmt(prev.v)}（${prev.d}）`}
         </div>
+        ${rulerHTML(m)}
         ${m.ctcae ? `<span class="chip chip-warn mc-badge">${esc(m.ctcae.text)}</span>` : ''}
         <div class="mc-meta">
           <span>共 ${m.points.length} 次记录 · 最近 ${esc(last.d)}</span>
           <span>来源：${esc(m.src)}${m.lab ? ' · ' + esc(m.lab) : ''}</span>
-          <span>${m.refLow != null || m.refHigh != null ? `参考范围 ${m.refLow ?? '—'} ~ ${m.refHigh ?? '—'} ${esc(m.unit)}` : '参考范围：未取得'}</span>
+          <span>${m.refLow != null && m.refHigh != null ? `参考范围 ${CHART.fmt(m.refLow)} ~ ${CHART.fmt(m.refHigh)} ${esc(m.unit)}`
+            : m.refLow != null ? `参考范围 ≥ ${CHART.fmt(m.refLow)} ${esc(m.unit)}（报告未给上限）`
+            : m.refHigh != null ? `参考范围 ≤ ${CHART.fmt(m.refHigh)} ${esc(m.unit)}（报告未给下限）`
+            : '参考范围：未取得'}</span>
         </div>
         <span class="mc-flip-hint">翻转看趋势 ⟳</span>
       </div>
@@ -595,14 +873,10 @@ function pageChart() {
     </label>`).join('');
 
   const wins = [['3', '近 3 个月'], ['6', '近 6 个月'], ['12', '近 12 个月'], ['all', '全部']];
-  const r = CHART.render(state.codes, state.win);
-
-  const plotHTML = r.empty
-    ? `<div class="chart-inner"><div class="treat-lane"></div><div class="plot"><div class="plot-empty">该时间窗内没有记录（空态）</div></div></div>`
-    : `<div class="chart-inner">
-         <div class="treat-lane">${r.treatLane}</div>
-         <div class="plot">${r.svg}</div>
-       </div>`;
+  const plotBlock = `<div class="chart-block" data-codes="${state.codes.join(',')}" data-win="${state.win}">
+      <div class="chart-wrap"><div class="chart-host"></div></div>
+      <div class="legend" data-legend></div>
+    </div>`;
 
   return H('病情一图秀', '每条线按该指标<b>全期</b> min/max 归一化，所以不同线之间<b>不可比</b>；治疗条单独一层。')
     + card('选择指标（最多 6 条）', `<div class="btn-row">${opts}</div>
@@ -612,8 +886,7 @@ function pageChart() {
         ${wins.map(([v, t]) => `<button class="btn btn-sm ${state.win === v ? 'btn-primary' : ''}" data-win="${v}">${t}</button>`).join('')}
         <span class="src" style="margin-left:auto">治疗事件：${CHART.TREATMENTS.length} 个</span>
       </div>
-      <div class="chart-wrap">${plotHTML}</div>
-      <div class="legend">${r.legend || ''}</div>
+      ${plotBlock}
       <p class="legend-note">
         单点不连线；空窗口给空态；末点每序列只标一次。点数据点可看到日期、值、机构与方法。
       </p>
@@ -639,7 +912,35 @@ function pageUrgent() {
           <div class="uc-contact">联系入口：<b>你的主诊医生 / 医院总机</b>（原型占位，未接通）</div>
         </div>`).join('') + `</div>`
     + card('为什么这里没有「怎么办」', `
-      <p>工作台不判断病情，也不给处置建议。它只做两件事：帮你把情况说清楚，帮你更快找到人。</p>`);
+      <p>工作台不判断病情，也不给处置建议。它只做两件事：帮你把情况说清楚，帮你更快找到人。</p>`)
+    + `<div class="cols-2" style="margin-top:16px">
+        ${card('我的联系入口', `
+          <div class="notice notice-info">急的时候不该再去翻通讯录。把号码写在这里一次，之后不用再找。</div>
+          <table class="tbl" style="margin-top:12px">
+            <thead><tr><th>要联系谁</th><th>号码 / 地点</th><th>什么时候打</th></tr></thead>
+            <tbody>
+              <tr><td>主诊医生 · 泌尿外科门诊</td><td><input type="text" placeholder="还没有填" aria-label="主诊医生电话"></td><td>灌注后发热、血尿加重</td></tr>
+              <tr><td>造口治疗师（ET 护士）</td><td><input type="text" placeholder="还没有填" aria-label="造口治疗师电话"></td><td>造口颜色、渗漏、皮肤问题</td></tr>
+              <tr><td>医院总机 / 急诊</td><td><input type="text" placeholder="还没有填" aria-label="医院急诊电话"></td><td>说不清该找谁时</td></tr>
+              <tr><td>就近可去的急诊</td><td><input type="text" placeholder="还没有填" aria-label="就近急诊"></td><td>夜间、外地、来不及回原医院</td></tr>
+            </tbody>
+          </table>
+          <div class="private-zone" style="margin-top:12px">
+            <span class="pz-tag">默认私密（fail-closed）：这四条只存本机，不进导出、不进 AI 草稿，除非你这次勾选带入。</span>
+          </div>`)}
+        ${card('这次出现过什么', `
+          <div class="notice notice-info">只记<b>发生过的事实</b>，不判断严重程度，也不写「后来怎么好的」——那是医生的记录。</div>
+          <table class="tbl" style="margin-top:12px">
+            <thead><tr><th>出现过</th><th>发生时间</th><th>当时有没有联系</th></tr></thead>
+            <tbody>
+              <tr><td>灌注后发热寒战</td><td>2026-10-09</td><td>已联系门诊 · 当日回复</td></tr>
+              <tr><td>排出血块</td><td>2026-10-23</td><td>已联系门诊 · 取消当次灌注</td></tr>
+              <tr><td>造口颜色变化</td><td>还没有</td><td>—</td></tr>
+              <tr><td>尿量明显减少</td><td>还没有</td><td>—</td></tr>
+            </tbody>
+          </table>
+          <p class="src" style="margin-top:10px">来源：本人的记录 · 未核对。不含因果判断，也不含处置建议。</p>`)}
+      </div>`;
 }
 
 /* ================= 12. 生活与照护 ================= */
@@ -902,6 +1203,7 @@ function renderAgent() {
       <ul>${d.excluded.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
     <p class="src">「已确认」只表示转录核对，<b>不等于医学审核</b>。</p>`;
   sp.setAttribute('aria-valuenow', String(STATE.agentWidth));
+  scheduleCharts();
 }
 
 /* 拖动分隔器（按容器 rect 夹取） */
@@ -913,11 +1215,11 @@ function initSplitter() {
     const bodyW = $('.wb-body').getBoundingClientRect().width;
     const pct = ((e.clientX - $('.wb-body').getBoundingClientRect().left) / bodyW) * 100;
     STATE.agentWidth = clampAgentWidth(100 - pct);   // 面板在右
-    applyPrefs();
+    applyPrefs(); scheduleCharts();
   };
   sp.addEventListener('pointerdown', (e) => { dragging = true; sp.setPointerCapture(e.pointerId); });
   sp.addEventListener('pointermove', onMove);
-  sp.addEventListener('pointerup', () => { dragging = false; saveState(); });
+  sp.addEventListener('pointerup', () => { dragging = false; saveState(); scheduleCharts(); });
   sp.addEventListener('keydown', (e) => {
     const step = 2;
     if (e.key === 'ArrowLeft')  { STATE.agentWidth = clampAgentWidth(STATE.agentWidth + step); }
@@ -925,7 +1227,8 @@ function initSplitter() {
     else if (e.key === 'Home') { STATE.agentWidth = 25; }
     else if (e.key === 'End')  { STATE.agentWidth = 45; }
     else return;
-    e.preventDefault(); applyPrefs(); sp.setAttribute('aria-valuenow', String(STATE.agentWidth)); saveState();
+    e.preventDefault(); applyPrefs(); sp.setAttribute('aria-valuenow', String(STATE.agentWidth));
+    saveState(); scheduleCharts();
   });
 }
 
@@ -963,11 +1266,7 @@ function bindPage() {
     $$('[data-line]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
     b.setAttribute('aria-pressed', 'true');
     const v = b.dataset.line;
-    if (STATE.line && STATE.line !== v) {
-      STATE.lineHistory.unshift(`${STATE.line} → ${v}（留痕）`);
-    }
-    STATE.line = v;
-    saveState(); renderNav(); renderPage();
+    setLine(v);
     toast(v === 'undetermined' ? '保持未定：不显示任何一条线的专属内容' : '已选定分野，看板已切换');
   }));
 
@@ -1016,6 +1315,7 @@ function bindPage() {
     const a = b.dataset.act;
     if (a === 'settings') openSettings();
     else if (a === 'changeLine') {
+      /* 回到分野闸门（setLine(null) 会把路由切到 dashboard） */
       /* 坑：只清 line 而不改路由，页面还停在「我的分型与分期」，闸门永远不出现 */
       STATE.line = null; STATE.route = 'dashboard'; location.hash = '#/dashboard';
       saveState(); renderNav(); renderPage(); toast('已回到分野选择，可以重新选');
@@ -1070,13 +1370,40 @@ const STATUS_TEXT = {
   trials: `临床试验 · 2026 登记数据 ${TRIALS_STATS.total} 条 · 抓取于 ${TRIALS_STATS.fetchedAt}`,
 };
 
+/* ================= 图表宿主：按容器真实宽度 1:1 渲染 =================
+   勿改回「固定 viewBox 再让 CSS 拉满」：那会 letterbox，
+   绘图区被缩窄而治疗条是满宽 HTML 层，两者必然对不齐。 */
+function paintCharts() {
+  $$('.chart-block').forEach((block) => {
+    const host = block.querySelector('.chart-host');
+    if (!host) return;
+    const leg = block.querySelector('[data-legend]');
+    const codes = (block.getAttribute('data-codes') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const win = block.getAttribute('data-win') || 'all';
+    const w = Math.max(360, Math.round(host.clientWidth));
+    const r = CHART.render(codes, win, w);
+    host.innerHTML = r.empty
+      ? `<div class="treat-lane"></div><div class="plot"><div class="plot-empty">${esc(r.reason || '所选时间窗内没有记录')}</div></div>`
+      : `<div class="treat-lane" style="height:${r.laneH || 30}px">${r.treatLane}</div><div class="plot">${r.svg}</div>`;
+    if (leg) leg.innerHTML = r.legend || '';
+  });
+}
+/* 面板宽度、字号、窗口变化都会改宿主宽度 —— 都要重绘，否则图表停在旧宽度 */
+let chartTimer = null;
+function scheduleCharts() {
+  clearTimeout(chartTimer);
+  chartTimer = setTimeout(paintCharts, 90);
+}
+
 function renderPage() {
   const { current } = tabsFor(STATE.route);
   const fn = PAGE_FN[STATE.route] || (() => '<div class="empty"><strong>页面不存在</strong></div>');
   $('#wbPage').innerHTML = fn(current);
+  renderCrumb();
   $('#tbStatus').textContent = STATUS_TEXT[STATE.route] || `小泉宝 UroPal · ${NAV.find((n) => n.id === STATE.route)?.text || ''} · 原型模式`;
   bindTabs(STATE.route);
   bindPage();
+  paintCharts();
   renderAgent();
 }
 
@@ -1107,8 +1434,28 @@ function boot() {
   });
   $('#btnCopyDraft').addEventListener('click', copyDraft);
   $('#btnWording').addEventListener('click', wordingCheck);
+  const btnTs = $('#btnTextSize');
+  const cycle = { normal: 'large', large: 'xlarge', xlarge: 'normal' };
+  const syncTs = () => {
+    const big = STATE.textsize !== 'normal';
+    btnTs.setAttribute('aria-pressed', String(big));
+    btnTs.title = big ? `当前：${STATE.textsize === 'xlarge' ? '巨大字' : '大字'}，点击切换` : '切换大字模式';
+  };
+  btnTs.addEventListener('click', () => {
+    STATE.textsize = cycle[STATE.textsize] || 'normal';
+    applyPrefs(); syncTs(); saveState();
+    toast(`字号：${{ normal: '标准', large: '大字', xlarge: '巨大字' }[STATE.textsize]}`);
+  });
+  syncTs();
 
   window.addEventListener('hashchange', () => { routeFromHash(); renderNav(); renderPage(); });
+  /* 换行/字号变化都会改顶栏高度，抽屉与 sticky 偏移必须跟着重算 */
+  window.addEventListener('resize', () => { syncChromeHeight(); scheduleCharts(); });
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => syncChromeHeight());
+    ro.observe(document.querySelector('.wb-topbar'));
+    ro.observe(document.querySelector('.wb-demo-bar'));
+  }
 }
 
 document.addEventListener('DOMContentLoaded', boot);

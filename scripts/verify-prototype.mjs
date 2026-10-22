@@ -101,13 +101,58 @@ async function main() {
   assert('S01 首屏是分野引导卡，不是看板', !!gate);
   const gateText = gate ? await gate.innerText() : '';
   assert('闸门含三个选项', (await page.$$('.gate-choice')).length === 3, `${(await page.$$('.gate-choice')).length} 个`);
-  assert('尚未选线时看板卡片为 0（不得先长出专属内容）', (await page.$$('.big-card')).length === 0);
+  /* 原先查的是 .big-card —— 那是只有 CSS、没有标记的死类名，断言永远为真。
+     换成首屏真实使用的容器类名：未选线时这些必须一个都不存在。 */
+  const gateLeftovers = await page.evaluate(() => {
+    /* 只查「只有选了线才会出现」的容器。
+       闸门页本身有一张不分野也能做的两件事卡（含 .todo-item），那是有意保留的。 */
+    const sel = ['.entry-card', '.strip', '.todo-item', '.q-item', '.chart-host', '.metric-card'];
+    sel.splice(2, 1);
+    const hit = {};
+    sel.forEach((x) => { const n = document.querySelectorAll(x).length; if (n) hit[x] = n; });
+    return hit;
+  });
+  assert('尚未选线时看板专属内容为 0（不得先长出专属内容）',
+    Object.keys(gateLeftovers).length === 0, JSON.stringify(gateLeftovers));
+  assert('闸门页保留的待办卡明确标注「不依赖分野」', /不依赖分野/.test(await page.textContent('#wbPage')));
   assert('闸门里有 Ta/T1/Tis 白话解释', /Ta\s*\/\s*T1\s*\/\s*Tis/.test(gateText));
   assert('闸门里有「我还不确定」', /我还不确定/.test(gateText));
   assert('闸门声明不对保膀胱/切除表达倾向', /不.*表达倾向|不对.*倾向/.test(gateText));
   const chipV = await page.textContent('#versionChip');
   assert('顶栏版本 chip 首屏可见', /^v\d+\.\d+\.\d+$/.test((chipV || '').trim()), chipV);
   await shot('01-首屏-分野闸门');
+
+  /* --- 外壳：原型横幅 / 品牌 / 演示档案卡 / 面包屑 / 状态灯 --- */
+  console.log('\n【外壳 · 横幅 / 品牌 / 档案卡 / 面包屑】');
+  const shell = await page.evaluate(() => {
+    const bar = document.querySelector('.wb-demo-bar');
+    const crumb = document.querySelector('#wbCrumb');
+    const want = ['dashboard','records','staging','surgery','instillation','diversion','treatment',
+                  'followup','metrics','chart','urgent','life','visit','trials'];
+    return {
+      bar: bar ? bar.innerText : '',
+      brandName: (document.querySelector('.nav-brand-name') || {}).innerText || '',
+      profile: !!document.querySelector('.nav-profile'),
+      profileSel: !!document.querySelector('#selDemo'),
+      sections: Array.from(document.querySelectorAll('.nav-sec')).map((x) => x.innerText.trim()),
+      navCount: document.querySelectorAll('#wbNav .nav-item[data-route]').length,
+      missing: want.filter((id) => !document.querySelector(`#wbNav .nav-item[data-route="${id}"]`)),
+      settingsItem: !!document.querySelector('#wbNav .nav-item[data-act="settings"]'),
+      crumb: crumb ? crumb.innerText : '',
+      pills: Array.from(document.querySelectorAll('.tb-pill')).map((p) => ({ t: p.innerText.trim(), s: p.dataset.state })),
+    };
+  });
+  assert('原型横幅声明「全部为模拟资料」', /模拟资料/.test(shell.bar), shell.bar);
+  assert('原型横幅声明未接入 DSH / AI', /未接入/.test(shell.bar));
+  assert('导航有品牌块与名称', /小泉宝/.test(shell.brandName), shell.brandName);
+  assert('导航有演示档案卡（可切换分野）', shell.profile && shell.profileSel);
+  assert('导航分组标题存在', shell.sections.length >= 3, shell.sections.join(' / '));
+  assert('NAV 每一项都渲染（无静默丢失）', shell.missing.length === 0, shell.missing.join(','));
+  assert('导航 14 个一级页 + 设置项', shell.navCount === 14 && shell.settingsItem, `${shell.navCount} 路由 + 设置=${shell.settingsItem}`);
+  assert('面包屑显示当前位置', /小泉宝工作台/.test(shell.crumb), shell.crumb.replace(/\n/g, ' '));
+  assert('两枚状态灯如实回显「未接入」',
+    shell.pills.length === 2 && shell.pills.every((x) => x.s === 'off' && /未接入/.test(x.t)),
+    JSON.stringify(shell.pills));
 
   /* --- 选 NMIBC → 看板 --- */
   console.log('\n【NMIBC 线 · 看板】');
@@ -119,6 +164,22 @@ async function main() {
   assert('NMIBC 看板含「下次膀胱镜」', /下次膀胱镜/.test(nmibcText));
   assert('表达面/指标面两列并置', /表达面/.test(nmibcText) && /指标面/.test(nmibcText));
   assert('看板声明不写因果', /不.*因果/.test(nmibcText));
+  const dashShape = await page.evaluate(() => ({
+    hero: document.querySelector('.hero-title') ? document.querySelector('.hero-title').innerText : '',
+    strip: !!document.querySelector('.strip'),
+    entries: document.querySelectorAll('.entry-card').length,
+    todos: document.querySelectorAll('.todo-item').length,
+    questions: document.querySelectorAll('.q-item').length,
+    chart: !!document.querySelector('.chart-wrap svg'),
+    urgent: document.querySelectorAll('.btn-urgent').length,
+  }));
+  assert('看板有 hero 主张句（不是卡片堆）', /把肿瘤控住|保住膀胱|重点/.test(dashShape.hero), dashShape.hero);
+  assert('看板有「眼前一件事」主行动条', dashShape.strip);
+  assert('看板有 3 张入口卡', dashShape.entries === 3, `${dashShape.entries} 张`);
+  assert('看板有「接下来的安排」待办', dashShape.todos >= 2, `${dashShape.todos} 条`);
+  assert('看板有「就诊前想问的事」', dashShape.questions >= 2, `${dashShape.questions} 条`);
+  assert('看板有迷你趋势图（与一图秀同源）', dashShape.chart);
+  assert('看板有急症入口按钮', dashShape.urgent >= 4, `${dashShape.urgent} 个`);
   await shot('02-看板-NMIBC');
 
   /* --- 膀胱灌注 --- */
@@ -199,6 +260,55 @@ async function main() {
   const gridCols = await page.evaluate(() => getComputedStyle(document.querySelector('.metric-grid')).gridTemplateColumns.split(' ').length);
   assert('≥700px 两列', gridCols === 2, `${gridCols} 列`);
 
+  /* 正面参考范围尺：中性标位置，不按好坏着色 */
+  const ruler = await page.evaluate(() => {
+    const el = document.querySelector('.metric-card[data-metric="hb"] .m-ruler');
+    if (!el) return null;
+    const mk = el.querySelector('.m-ruler-mark');
+    const c = getComputedStyle(mk).backgroundColor.match(/\d+/g).map(Number);
+    return { text: el.innerText.replace(/\n/g, ' | '), left: mk.style.left, spread: Math.max(...c.slice(0, 3)) - Math.min(...c.slice(0, 3)) };
+  });
+  assert('指标卡正面有参考范围尺', !!ruler);
+  assert('参考范围尺不做好坏判断（无偏高/偏低/异常等词）',
+    !!ruler && !/偏高|偏低|异常|危险|过高|过低|正常/.test(ruler.text), ruler ? ruler.text : '');
+  assert('参考范围尺用中性灰标注（不按好坏着色）', !!ruler && ruler.spread < 60, ruler ? `channel spread ${ruler.spread}` : '');
+
+  /* 顶栏大字按钮：三档循环，3D 卡正反一起升到 340px */
+  const ts1 = await page.evaluate(() => document.documentElement.dataset.textsize);
+  await page.click('#btnTextSize');
+  await page.waitForTimeout(150);
+  const ts2 = await page.evaluate(() => ({
+    size: document.documentElement.dataset.textsize,
+    card: document.querySelector('.metric-card').offsetHeight,
+    pressed: document.querySelector('#btnTextSize').getAttribute('aria-pressed'),
+  }));
+  assert('顶栏大字按钮可切换字号档', ts1 === 'normal' && ts2.size === 'large' && ts2.pressed === 'true', `${ts1} → ${ts2.size}`);
+  assert('大字档 3D 卡升到 340px（正反一起升）', ts2.card === 340, `${ts2.card}px`);
+  await page.click('#btnTextSize'); await page.waitForTimeout(80);
+  await page.click('#btnTextSize'); await page.waitForTimeout(150);
+  const ts3 = await page.evaluate(() => ({ size: document.documentElement.dataset.textsize, card: document.querySelector('.metric-card').offsetHeight }));
+  assert('三档循环回到标准档（276px）', ts3.size === 'normal' && ts3.card === 276, `${ts3.size} ${ts3.card}px`);
+
+  /* 固定高度必须真的装得下正反两面：装不下会被 overflow 裁掉，用户看不到 */
+  const fitOf = () => page.evaluate(() => {
+    const bad = [];
+    document.querySelectorAll('.metric-card').forEach((c) => {
+      ['front', 'back'].forEach((f) => {
+        const el = c.querySelector(`.metric-${f}`);
+        if (!el) return;
+        if (el.scrollHeight > el.clientHeight + 1) bad.push(`${c.dataset.metric || '?'}/${f} ${el.scrollHeight}>${el.clientHeight}`);
+      });
+    });
+    return bad;
+  });
+  const fitNormal = await fitOf();
+  assert('3D 卡：标准档正反两面内容都在固定高度内（无裁切）', fitNormal.length === 0, fitNormal.join(' ') || 'ok');
+  await page.click('#btnTextSize'); await page.waitForTimeout(240);
+  const fitBig = await fitOf();
+  assert('3D 卡：大字/巨大字档正反两面内容仍装得下', fitBig.length === 0, fitBig.join(' ') || 'ok');
+  await page.click('#btnTextSize'); await page.waitForTimeout(90);
+  await page.click('#btnTextSize'); await page.waitForTimeout(240);
+
   /* --- 一图秀 --- */
   console.log('\n【病情一图秀】');
   await nav('病情一图秀');
@@ -212,6 +322,75 @@ async function main() {
   assert('末点每序列只标一次（.end-label）', lastLabels === 2, `${lastLabels} 个末点标签（2 条序列）`);
   const treat = (await page.$$('.treat-lane > *')).length;
   assert('治疗条与数据区分层（独立泳道）', treat >= 1, `${treat} 个事件标记`);
+
+  /* 图表几何：宿主 1:1 渲染 + 治疗条与数据点同 x 对齐
+     早期版本 viewBox 固定 700 宽再 CSS 拉满 -> letterbox，
+     绘图区被缩窄而治疗条满宽，两者对不齐。这里必须用真实几何验证。 */
+  const geom = await page.evaluate(() => {
+    const host = document.querySelector('.chart-host');
+    const svg = host && host.querySelector('svg');
+    const plot = host && host.querySelector('.plot');
+    if (!host || !svg) return null;
+    const hw = host.getBoundingClientRect().width;
+    const sw = svg.getBoundingClientRect().width;
+    const labels = [...svg.querySelectorAll('.end-label')].map((t) => {
+      const b = t.getBoundingClientRect();
+      return { x: b.x, y: b.y, w: b.width, h: b.height, anchor: t.getAttribute('text-anchor'), text: t.textContent };
+    });
+    // 每个末点标签必须紧邻它所属序列的最后一个点（同色）
+    const dots = [...svg.querySelectorAll('.series-dot')].map((c) => {
+      const b = c.getBoundingClientRect();
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2, fill: c.getAttribute('fill'), title: c.querySelector('title')?.textContent || '' };
+    });
+    const marks = [...document.querySelectorAll('.treat-mark')].map((m) => {
+      const b = m.querySelector('.tm-diamond').getBoundingClientRect();
+      return { cx: b.x + b.width / 2, ev: m.dataset.ev };
+    });
+    // 该事件日期在图上应有一个同日期数据点（hb 2026-09-18）
+    const dated = dots.filter((d) => d.title.includes('2026-09-18'));
+    return {
+      hostW: hw, svgW: sw, labels, dots, marks,
+      sep18DotX: dated.length ? dated[0].x : null,
+      turbtX: (marks.find((m) => m.ev === 'ev-turbt') || {}).cx ?? null,
+      markCount: marks.length,
+    };
+  });
+  assert('一图秀：SVG 与宿主同宽（1:1，无 letterbox）',
+    geom && Math.abs(geom.hostW - geom.svgW) <= 1, geom ? `host=${geom.hostW.toFixed(1)} svg=${geom.svgW.toFixed(1)}` : 'no geom');
+  assert('一图秀：治疗条刻度与同日期数据点同 x（≤2px）',
+    geom && geom.sep18DotX != null && geom.turbtX != null && Math.abs(geom.sep18DotX - geom.turbtX) <= 2,
+    geom ? `TURBT mark x=${geom.turbtX?.toFixed(1)} vs 2026-09-18 dot x=${geom.sep18DotX?.toFixed(1)}` : 'no geom');
+  assert('一图秀：末点标签贴着各自序列末点（≤14px），不飘在空白处',
+    geom && geom.labels.length > 0 && geom.labels.every((l) => geom.dots.some((d) => Math.abs(d.y + 4 - (l.y + l.h / 2)) <= 14 && Math.abs(d.x - (l.anchor === 'end' ? l.x + l.w : l.x)) <= 14)),
+    geom ? geom.labels.map((l) => `${l.text}@${l.x.toFixed(0)},${l.y.toFixed(0)}`).join(' ') : 'no geom');
+  assert('一图秀：三个治疗事件在窗内（全部）', geom && geom.markCount === 3, geom ? `${geom.markCount} 个` : 'no geom');
+  /* 事件密集时标签会挤成一串（曾出现「TURBTBCG 诱导开始灌注取消」）。
+     分行后任意两个标签矩形不得相交。 */
+  const lb = await page.evaluate(() => [...document.querySelectorAll('.treat-mark .tm-label')]
+    .map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, t: e.textContent }; }));
+  const collide = [];
+  for (let i = 0; i < lb.length; i++) {
+    for (let j = i + 1; j < lb.length; j++) {
+      const a = lb[i], b = lb[j];
+      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) collide.push(`${a.t}×${b.t}`);
+    }
+  }
+  assert('一图秀：治疗事件标签互不重叠（密集时已分行）', lb.length >= 3 && collide.length === 0,
+    `${lb.length} 个标签，重叠：${collide.join(' ') || '无'}`);
+  /* 回归：轴标签曾用 toISOString() 格式化，东八区零点退到前一天，整整差一天。
+     正确口径 = 窗口两端恰好是「数据点 ∪ 治疗事件」的最早/最晚本地日期。 */
+  const axis = await page.evaluate(() => {
+    const svg = document.querySelector('.chart-host svg');
+    const ax = [...svg.querySelectorAll('.axis-label')].map((t) => t.textContent);
+    const dotDates = [...svg.querySelectorAll('.series-dot title')]
+      .map((t) => (t.textContent.match(/\d{4}-\d{2}-\d{2}/) || [])[0]).filter(Boolean);
+    const evDates = CHART.TREATMENTS.map((t) => t.d);
+    const all = dotDates.concat(evDates).sort();
+    return { ax, first: all[0], last: all[all.length - 1] };
+  });
+  assert('一图秀：轴标签是本地日期且与窗口两端一致（不得差一天）',
+    axis.ax.length === 2 && axis.ax[0] === axis.first && axis.ax[1] === axis.last,
+    `${axis.ax.join(' ~ ')} vs ${axis.first} ~ ${axis.last}`);
   const dashed = await page.evaluate(() => document.querySelectorAll('.series-line').length);
   assert('曲线用 pathLength 动画元素', dashed >= 1, `${dashed} 条`);
   await shot('11-一图秀');
@@ -313,6 +492,19 @@ async function main() {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(320);
 
+  /* 抽屉不能盖住顶栏，否则「打开/收起 AI 对话」按钮在手机上点不到 */
+  const hit = await page.evaluate(() => {
+    const b = document.querySelector('#btnAgent');
+    const r = b.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return {
+      ok: el === b || b.contains(el),
+      tag: el ? `${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]}` : 'null',
+      chrome: getComputedStyle(document.documentElement).getPropertyValue('--chrome-h').trim(),
+    };
+  });
+  assert('390px 抽屉打开时顶栏按钮仍可点（抽屉不盖顶栏）', hit.ok, `${hit.tag} · chrome-h=${hit.chrome}`);
+
   /* 契约 5：<760px 时面板改覆盖式抽屉 ≤420px，业务区不让位，分隔器不出现 */
   const drawer = await page.evaluate(() => {
     const p = document.querySelector('#agentPane');
@@ -337,6 +529,15 @@ async function main() {
 
   const m = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
   assert('390px 下 documentElement.scrollWidth === 390（不横向溢出）', m.sw === 390, `scrollWidth=${m.sw} clientWidth=${m.cw}`);
+
+  /* 分组标题曾竖排成「病/情」「安/全/与/生/活」——窄轨里必须塌成一条线 */
+  const navGroups = await page.evaluate(() => [...document.querySelectorAll('.nav-sec')].map((e) => {
+    const b = e.getBoundingClientRect();
+    return { t: e.textContent, w: Math.round(b.width), h: Math.round(b.height), fs: getComputedStyle(e).fontSize };
+  }));
+  assert('390px 导航分组标题塌成分隔线（不再竖排文字）',
+    navGroups.length >= 3 && navGroups.every((g) => g.h <= 4),
+    navGroups.map((g) => `${g.t}:${g.w}x${g.h}@${g.fs}`).join(' '));
   await nav('检查与指标');
   await page.click('.tab:has-text("分类指标卡")');
   await page.waitForTimeout(260);
