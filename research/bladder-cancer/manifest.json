@@ -1,0 +1,122 @@
+{
+  "disease": "bladder-cancer",
+  "year": 2026,
+  "generated_at": "2026-10-22T16:36:36.992Z",
+  "total_records": 295,
+  "raw_studies": 511,
+  "by_registry": {
+    "ClinicalTrials.gov": 212,
+    "ChiCTR": 83
+  },
+  "by_study_type": {
+    "observational": 89,
+    "interventional": 195,
+    "other": 10,
+    "expanded-access": 1
+  },
+  "by_status": {
+    "RECRUITING": 121,
+    "NOT_YET_RECRUITING": 141,
+    "ACTIVE_NOT_RECRUITING": 6,
+    "COMPLETED": 18,
+    "AVAILABLE": 1,
+    "WITHDRAWN": 5,
+    "ENROLLING_BY_INVITATION": 3
+  },
+  "by_category": {
+    "disease-specific": 290,
+    "basket": 5
+  },
+  "by_scope": {
+    "bladder": 217,
+    "urothelial-unspecified": 55,
+    "utuc": 23
+  },
+  "by_setting": {
+    "unspecified": 105,
+    "nmibc-or-intravesical": 79,
+    "advanced-or-metastatic": 57,
+    "mibc-or-perioperative": 54
+  },
+  "china_sites": 158,
+  "bladder_interventional": 180,
+  "sources": {
+    "ClinicalTrials": {
+      "included": true,
+      "count": 212,
+      "method": "ClinicalTrials.gov API v2, query.cond 三组并集（bladder cancer / urothelial carcinoma / transitional cell carcinoma）, AREA[StudyFirstPostDate]RANGE[2026-01-01,MAX], 本地疾病术语过滤",
+      "raw_by_query": {
+        "bladder cancer": 164,
+        "urothelial carcinoma": 105,
+        "transitional cell carcinoma": 103
+      }
+    },
+    "ChiCTR": {
+      "included": true,
+      "count": 83,
+      "method": "ChiCTR 本机 sidecar 只读 HTTP（/search?title=&createyear=2026 → /detail），检索词 膀胱 / 尿路上皮癌，中文部位+肿瘤术语过滤",
+      "raw_by_query": {
+        "膀胱": 107,
+        "尿路上皮癌": 32
+      },
+      "sidecar": "http://127.0.0.1:8848",
+      "note": "详情页 PII 字段已在写盘前剥除"
+    },
+    "ChinaDrugTrials": {
+      "included": false,
+      "count": 0,
+      "note": "本轮未采集（需人工 Cookie 的受控通道），覆盖未知"
+    }
+  },
+  "views": {
+    "v_bladder_only": "排除 scope=utuc（上尿路尿路上皮癌，非膀胱癌）",
+    "v_interventional": "只要研究类型=干预性",
+    "v_bladder_interventional": "膀胱癌视角 × 干预性，患者最关心的那批",
+    "v_china": "含中国中心或中国注册"
+  },
+  "pii_stripped_fields": [
+    "申请注册联系人",
+    "研究负责人",
+    "申请注册联系人电话",
+    "研究负责人电话",
+    "申请注册联系人电子邮件",
+    "研究负责人电子邮件",
+    "申请注册联系人通讯地址",
+    "研究负责人通讯地址",
+    "伦理委员会批件附件",
+    "伦理委员会联系人",
+    "伦理委员会联系地址",
+    "伦理委员会联系人电话",
+    "具体地址",
+    "试验完成后的统计结果（上传文件）",
+    "注册人",
+    "伦理委员会联系人邮箱",
+    "申请注册联系人邮政编码"
+  ],
+  "files": {
+    "trials-2026.jsonl": {
+      "lines": 295,
+      "bytes": 1351040,
+      "sha256": "1e289d5f87a640fdf5a55f5cf67e25231749c16ce243e063bcbbdedac829a535"
+    },
+    "bladder_cancer_trials_2026.sqlite": {
+      "bytes": 2088960,
+      "sha256": "d0ee8a476cbdc49ffe81ba95e83256e798c020bdb0617ab6d1a51a4d32d246bc"
+    },
+    "manifest.json": {
+      "note": "本文件自身不入 sha256（写入后才定稿）"
+    }
+  },
+  "limitations": [
+    "年份口径不一致：CT.gov 按\"首次公示在 2026 年\"，ChiCTR 按 createyear=2026（注册年）；两者不是同一口径",
+    "ChiCTR 存在\"补注册\"（先开展后补登记），其研究实施时间常早于注册时间，registration_note 字段标注",
+    "本包同时收干预性与观察性研究；只要干预性请查 v_interventional 视图",
+    "scope=utuc 的记录是上尿路尿路上皮癌，不属于膀胱癌，查询请用 v_bladder_only 视图",
+    "scope=urothelial-unspecified 多为转移性尿路上皮癌，通常含膀胱来源但未逐条核对",
+    "setting 是按标题/病名文本推断的线索字段，不代表入组资格；纳排标准须回原登记页核对",
+    "ChiCTR 详情页的研究者/伦理联系人 PII 已在写盘前剥除，故本包不含联系人信息",
+    "ClinicalTrials.gov 覆盖仅限所记录查询词、日期与术语过滤；ChiCTR 仅限所记录检索词",
+    "ChinaDrugTrials（CDE）未采集，未命中不能解释为不存在",
+    "登记状态不是入组资格；不构成方案推荐"
+  ]
+}

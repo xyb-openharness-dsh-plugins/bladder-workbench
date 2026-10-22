@@ -1,0 +1,60 @@
+# 互动设计记录 · 小泉宝 UroPal
+
+状态：**设计者对已完成七项决策对齐；下一项未决关键问题见文末。**
+当前阶段/范围：`designer-alignment` → research → scenarios → specification → independent-review → prototype → implementation。
+本轮范围：**严格停在 phase1**（调研 → SPEC → schema 草案 → HTML demo → 文件体系），**不写业务代码**。`[用户要求]`
+设计提示词：`docs/DESIGN-PROMPT.md`；癌种提示词：`prompts/NEW-CANCER-WORKBENCH.md`；Agent 面板合同：`prompts/DSH-AGENT-PANE-INTEGRATION.md`；设计者章程：`docs/DESIGNER-BRIEF.md`；独立审查：`docs/DESIGN-REVIEW.md`。
+权威内容：`docs/BRIEF.md`、`docs/SPEC.md`（待写）。
+
+## 已确认决策
+
+| 决策 ID | 待解决的问题 | 用户已确认内容/来源 | Agent 建议及原因 | 待确认项 | 确认人/日期 | 影响功能 ID |
+| --- | --- | --- | --- | --- | --- | --- |
+| DESIGN-01 | 泌尿族路线：等前列腺癌 T0 家族基线，还是先行？ | **膀胱癌当泌尿族实际先行者**，不等待；共享件按"待回填"标注（会话 m00145） | 建议先行：膀胱癌的造口/灌注/膀胱镜维度比前列腺更具体，更适合当家族样板；等待会让本项目停摆 | 回填时机与对齐清单 | 用户 / 2026-10-23 | 全部；F-泌尿共享件 |
+| DESIGN-02 | NMIBC 与 MIBC 覆盖范围 | **两条线都做，MIBC 做厚**；NMIBC 做全但页签略薄（灌注+膀胱镜+复发恐惧+细胞学）（m00145） | 建议同选：分野是本癌种最大结构特点，缺一条就退化成普通工作台 | 两条线的页数配比 | 用户 / 2026-10-23 | F-分野、F-灌注、F-膀胱镜、F-改道 |
+| DESIGN-03 | 尿流改道深度 | **三种术式都做，各自独立页签**（回肠造口 / 原位新膀胱 / 输尿管皮肤造口）（m00145） | 建议同选：三种是三种不同的生活，合成一个"造口"页会被患者认为"分类细节几乎一样" | 新膀胱与输尿管皮肤造口的字段深度 | 用户 / 2026-10-23 | F-改道、F-造口日常 |
+| DESIGN-04 | 品牌 | **小泉宝 · UroPal**（m00145） | 提议 小泉宝/UroPal：取尿路意象、不与"尿"字撞、英文直指泌尿 | logo 占位与主色 | 用户 / 2026-10-23 | 品牌、tokens、顶栏 |
+| DESIGN-05 | 项目根目录 | 原选"用户改名后 init"；**实际因沙箱禁止写 `Downloads/`、且改名会使会话工作区失效，改为就地 init 于 `/Users/qinxiaoqiang/Downloads/Bladder-workbench`**，文件夹可日后自行 `mv`（137 个生成文件随目录整体移动，无需改路径） | 建议就地 init：`dsh-wb-cli init` 目标即 cwd，文件夹名不参与任何生成物；身份来自 `packageName`/`slug`/`repository` 三字段 | 是否最终改名为 `bladder-cancer-workbench` | Agent 说明 / 2026-10-23 | 工程，无业务影响 |
+| DESIGN-06 | 2026 临床试验数据口径 | **2026 全年 + CT.gov API v2 主通道 + 中国通道，目标 300–500 条**（m00145） | 对标：ATTR 434 / 胃癌 236 / 结直肠 480 / 肛管 224 条 | CDE 中国通道 Cookie 可得性 | 用户 / 2026-10-23 | F-临床试验、M4 临床库 |
+| DESIGN-07 | 本轮止点 | **严格停在 phase1**；MinerU 本轮只留接口与设置页骨架，不跑真实解析（m00145） | 建议同选：符合 ZERO-TO-DEV 阶段 3.1，HTML 是唯一视觉基准 | MinerU Token 何时给 | 用户 / 2026-10-23 | 全部；F-设置、F-报告导入 |
+| DESIGN-08 | 两条线并列时的首屏默认面孔 | **先问一次分野，再进看板**：首屏一张「你在哪条线」引导卡（Ta/T1/Tis 与是否浸润肌层的白话解释 + 「我还不确定」选项），选定后才长出专属看板（m00282） | 建议同选：分野不清则一切不清；双栏并列会让两块都做浅，且新患者被不属于自己的内容干扰 | 引导卡的措辞与「还不确定」分支的落点 | 用户 / 2026-10-23 | F-分野、F-看板、导航默认展开组 |
+| DESIGN-09 | 一期的记录精力预算与代记主体 | **按照护者批量录入设计**：录入按"一次录一批"（造口耗材、灌注周期、化验单批量），患者端只做只读 + 打勾 + 急症（m00282） | 建议同选：与 MIBC 做厚一致；膀胱镜/灌注/造口都是多字段模块，按"每天 1–2 分钟随手记"会被压扁 | 批量录入的载体（表单 vs 粘贴解析 vs 导入） | 用户 / 2026-10-23 | F-全部录入模块、F-资料库、F-报告导入 |
+| DESIGN-10 | 真实患者证据可得性 | **有资料目录可提供**（无真实访谈、暂无临床核对人）（m00282） | Agent 已扫到三处可用资料：① `采集/14哥/指南与共识/` 膀胱癌灌注/保膀胱/HER2/质控中文共识 ② `采集/wudejiedu_clean/` 2025–2026 FDA 批准与 III 期新闻（EV+P 围术期、度伐利尤单抗+BCG、丝裂霉素灌注溶液、KEYNOTE-905/EV-303）③ `肿瘤QA CACA科普/caca_scraper/md/caca_膀胱癌_qa.md` 科普 QA | 是否还有患者侧叙述/病历/出院小结 | 用户 / 2026-10-23 | USER-RESEARCH 证据分层上限 |
+
+| DESIGN-11 | 资料根目录集合 | **就用 Agent 扫到的三处**（`采集/14哥/指南与共识/`、`采集/wudejiedu_clean/`、`肿瘤QA CACA科普/caca_scraper/md/caca_膀胱癌_qa.md`，另加 `01小胰宝材料汇总指南/04_患者科普/知识库/尿路上皮癌抗体偶联药物临床应用安全共识（第1版）.pdf`）（m00309） | 三处都是中文一手来源；共识给字段与术语，FDA/III 期新闻给 2026 治疗格局，CACA QA 给患者问法 | 无 | 用户 / 2026-10-23 | USER-RESEARCH、SOURCES、临床试验库 |
+| DESIGN-12 | 患者侧材料边界 | **都没有，只做桌面研究**：无病友群叙述、无真实病历、无可访谈对象（m00309） | 这是硬约束：`USER-RESEARCH.md` 每条困难排序必须标「来源=公开资料/Agent 推导」，**全文不得出现「访谈」「病友反馈」「已验证」**；HVT 审核的五层落地若依赖真实患者证据，只能给 W/U 级，不得给「已核实」 | 后续获得患者侧的时机 | 用户 / 2026-10-23 | USER-RESEARCH 证据分层、HVT-REVIEW 分级上限 |
+
+### 继承自 `project.config.json`（init 素材，非独立确认）
+
+- 包名 `@xyb-community/bladder-cancer-workbench`，slug `bladder-cancer-workbench`，`layoutMode: business-first`，`businessWidth: 0.72`（对齐前列腺癌 T0 模板）。
+- 目标用户：患者本人 + 代记照护者，两条主线并列。场景：因无痛肉眼血尿做 TURBT、拿到"高级别尿路上皮癌，Ta/T1，未见肌层"看不懂 / 正在 BCG 灌注 / 刚带造口回家。
+- 六步核心流程与 completion 见 `project.config.json`。
+
+## 发现事实（非决策，供后续引用）
+
+- 组织侧：病种工作台**一律 private**；`.github` 与 `xyb-workbench-starter` 是 public。认领 = `.github` 提 Issue + 评论 `/claim`，机器人自动指派打标；**建仓与权限人工执行，且"认领 ≠ 建仓，G1 通过才建仓"**。
+- 认领已完成：**Issue #11** `[认领] 膀胱癌（NCCN Bladder Cancer）`，labels `claim claimed triage`，assignee `samqin123`。（注：CLI 建 Issue 不带模板标签，需先补 `claim` 标签机器人才能识别。）
+- 组织路线图：膀胱癌 = NCCN 线 T1、W3 泌尿族，原样板为前列腺癌 T0（2026-10-22 认领、私有仓刚开工、家族基线未定）。
+- 临床库实测：`corpora/chictr_pancreatic.db` 468 条中"膀胱"命中 **0**、"尿路" 0；该库**无 HTTP API，只有 MCP stdio 传输**。
+- 脚手架：`dsh-wb-cli 1.4.3`（revision `7ebb193792c8fc08cf65636ed57f33feb9e7e54c`，dirty），`dsh-wb-cli doctor` 全绿，`dsh-wb-cli check .` `staticPass: true`，生成 137 个文件。
+- HVT 内置术语包无膀胱癌，必须现场推导 `--terms` JSON。
+
+## 本轮已写入的章节
+
+- `docs/DESIGNER-BRIEF.md`：完整设计者章程（12 节），含两条线人群、潜在冲突、证据分层与缺口、医学边界、取舍原则、独立 review 待完成状态。
+- `docs/DESIGN-SESSION.md`：本文件。
+- `project.config.json`、`docs/BRIEF.md`：由 init 依配置生成。
+
+## 下一轮最关键的问题（1–3 个紧密相关）
+
+1. **首屏默认面孔**：两条线并列时，新用户第一次打开工作台（还没标注自己属于 NMIBC 还是 MIBC）应该看到什么？
+2. **记录精力预算与代记主体**：一期默认按"患者每天愿意花几分钟"设计，还是按"照护者一次录一批"设计？
+3. **真实患者证据可得性**：是否有可访谈的患者/家属/医生，或可提供的资料目录？——它决定 `USER-RESEARCH.md` 的证据分层上限能到"真实访谈"还是只能停在"公开资料 + 设计假设"。
+
+## HTML 原型关口
+
+路径/版本/hash、实际预览证据、用户确认范围/原话/日期：**未开始**（`docs/PROTOTYPE-REVIEW.md` 待写）。
+数据演进关口：SCHEMA 变化矩阵、领域/流程/读模型边界、兼容与迁移未决项：**未开始**（`docs/SCHEMA.md` 待写）。
+
+确认时展示的原型版本/hash、实际预览方式：暂无。
+变更：暂无（首次记录）。

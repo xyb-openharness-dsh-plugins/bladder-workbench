@@ -1,0 +1,3 @@
+- insert:
+    - id: bladder-cancer-workbench-main
+      name: "@xyb-community/bladder-cancer-workbench"

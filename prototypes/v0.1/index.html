@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小泉宝 UroPal · 膀胱癌工作台（原型 v0.1）</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+
+<!-- ============ customFrame 顶栏（三段式）============ -->
+<header class="wb-topbar" role="banner">
+  <!-- 左：品牌 + 版本 chip（版本号首屏可见 = 发布可见性 P1） -->
+  <div class="tb-brand">
+    <span class="tb-mark" aria-hidden="true"></span>
+    <span class="tb-name">小泉宝 UroPal</span>
+    <span class="tb-version" id="versionChip" title="与 package.json / VERSION / workbench.json 同源">v0.1.0</span>
+  </div>
+
+  <!-- 中：一句状态说明（随页面变化） -->
+  <p class="tb-status" id="tbStatus">原型模式 · 资料未接入 · 无真实患者数据</p>
+
+  <!-- 右：主操作按钮组（紧贴右缘） -->
+  <div class="tb-actions">
+    <button type="button" class="tb-btn tb-btn-ghost" id="btnWording" title="文案红线自检（本页扫描）">文案自检</button>
+    <button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane">打开 AI 对话</button>
+  </div>
+</header>
+
+<div class="wb-body">
+
+  <!-- ============ 左侧导航 ============ -->
+  <nav class="wb-nav" id="wbNav" aria-label="主导航"></nav>
+
+  <!-- ============ 业务主区 ============ -->
+  <main class="wb-main" id="wbMain" tabindex="-1">
+    <div class="wb-page" id="wbPage"><!-- 由 app.js 渲染 --></div>
+    <footer class="wb-footer">
+      <span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">0.1.0</b></span>
+      <span class="wb-foot-note">本页为设计原型，数据为演示用；<b>不构成诊断或治疗建议</b></span>
+    </footer>
+  </main>
+
+  <!-- ============ 分隔器 + 右侧原生 Agent 面板 ============ -->
+  <div class="wb-splitter" id="splitter" role="separator" aria-orientation="vertical"
+       aria-label="调整 AI 对话面板宽度" aria-valuemin="25" aria-valuemax="45" aria-valuenow="35" tabindex="0" hidden></div>
+
+  <aside class="wb-agent" id="agentPane" aria-label="AI 对话（原生面板）" hidden>
+    <div class="ag-head">
+      <span class="ag-title">AI 对话</span>
+      <span class="ag-state" id="agState" data-state="idle">未连接</span>
+      <button type="button" class="ag-close" id="btnAgentClose" aria-label="收起 AI 对话">×</button>
+    </div>
+    <div class="ag-body">
+      <div class="ag-note">
+        此处是 <b>DSH 原生会话面板</b>的占位。真实接入后由宿主提供会话内容；
+        原型阶段只演示<b>上下文草稿</b>与「复制草稿」退化路径。
+      </div>
+      <div class="ag-draft" id="agDraft"><!-- 由 app.js 渲染 --></div>
+      <div class="ag-actions">
+        <button type="button" class="tb-btn" id="btnDraftScope">切换草稿范围</button>
+        <button type="button" class="tb-btn tb-btn-primary" id="btnCopyDraft">复制草稿</button>
+      </div>
+      <p class="ag-foot">
+        只调 <code>setDraft</code>，不代为发送。草稿<b>不含本机资料目录路径与用户名</b>。
+      </p>
+    </div>
+  </aside>
+
+</div>
+
+<div class="wb-toast" id="wbToast" role="status" aria-live="polite" hidden></div>
+
+<script src="data.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

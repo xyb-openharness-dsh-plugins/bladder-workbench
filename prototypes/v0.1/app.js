@@ -1,0 +1,1114 @@
+/* ============================================================
+   小泉宝 UroPal · 原型应用 v0.1
+   路由 / 12 个一级页 / 分野闸门 / 一图秀 / 3D 卡 / Agent 面板 / 设置
+   ⚠️ 原型：数据为演示用；不含真实患者信息；不构成诊断或治疗建议。
+   ============================================================ */
+'use strict';
+
+const APP_VERSION = '0.1.0';
+
+/* ---------------- 工具 ---------------- */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function toast(msg) {
+  const el = $('#wbToast');
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.hidden = true; }, 2200);
+}
+
+/** 用带来源标注的字段 */
+const src = (t) => `<span class="src">${esc(t)}</span>`;
+const verify = (t) => `<span class="verify-tag">${esc(t)}</span>`;
+const chipCat = (v) => `<span class="chip chip-cat" data-state="${esc(v)}">${esc(v)}</span>`;
+
+/* ---------------- 设置持久化 ---------------- */
+const LS_KEY = 'uropal.prototype.v0.1';
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    Object.assign(STATE, {
+      line: s.line ?? null,
+      lineHistory: Array.isArray(s.lineHistory) ? s.lineHistory : [],
+      textsize: s.textsize || 'normal',
+      motion: s.motion || 'auto',
+      agentWidth: typeof s.agentWidth === 'number' ? s.agentWidth : 35,
+      agentOpen: !!s.agentOpen,
+      draftScope: s.draftScope || 'visit',
+    });
+  } catch { /* 坏数据不覆盖，用默认 */ }
+}
+function saveState() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      line: STATE.line, lineHistory: STATE.lineHistory, textsize: STATE.textsize,
+      motion: STATE.motion, agentWidth: STATE.agentWidth, agentOpen: STATE.agentOpen,
+      draftScope: STATE.draftScope,
+    }));
+  } catch { /* 忽略 */ }
+}
+
+/* 面板宽度 clamp（唯一来源；真实项目里与 lib/layout.js 同源） */
+const clampAgentWidth = (p) => Math.min(45, Math.max(25, Math.round(p)));
+
+function applyPrefs() {
+  document.documentElement.dataset.textsize = STATE.textsize;
+  document.documentElement.dataset.motion = STATE.motion === 'reduce' ? 'reduce' : 'auto';
+  document.documentElement.style.setProperty('--agent-w', `${STATE.agentWidth}%`);
+  $('#versionChip').textContent = `v${APP_VERSION}`;
+  $('#footVersion').textContent = APP_VERSION;
+}
+
+/* ---------------- 左侧导航 ---------------- */
+function renderNav() {
+  const nav = $('#wbNav');
+  nav.innerHTML = NAV.map((n) => `
+    <button type="button" class="nav-item" data-route="${n.id}"
+            ${STATE.route === n.id ? 'aria-current="page"' : ''}>
+      <span class="nav-ico" aria-hidden="true">${n.ico}</span>
+      <span class="nav-text">${esc(n.text)}</span>
+      ${(n.id === 'instillation' && STATE.line === 'nmibc') ? '<span class="nav-dot">4/7</span>' : ''}
+      ${(n.id === 'urgent') ? '<span class="nav-dot">急</span>' : ''}
+    </button>
+  `).join('') + `
+    <div class="nav-group-label">其他</div>
+    <button type="button" class="nav-item" data-act="settings">
+      <span class="nav-ico" aria-hidden="true">⚙</span><span class="nav-text">设置</span>
+    </button>
+  `;
+  $$('.nav-item', nav).forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.act === 'settings') return openSettings();
+    STATE.route = b.dataset.route;
+    location.hash = `#/${STATE.route}`;
+    renderNav();
+    renderPage();
+  }));
+}
+
+/* ---------------- 复用的页面片段 ---------------- */
+function tabsFor(route) {
+  const def = NAV.find((n) => n.id === route);
+  if (!def || !def.tabs) return { tabs: [], current: null };
+  const cur = STATE.tab[route] || def.tabs[0];
+  return { tabs: def.tabs, current: cur };
+}
+
+function tabsHTML(route) {
+  const { tabs, current } = tabsFor(route);
+  if (!tabs.length) return '';
+  return `<div class="tabs" role="tablist">` + tabs.map((t) => `
+    <button type="button" class="tab" role="tab" data-tab="${esc(t)}"
+            aria-selected="${t === current}">${esc(t)}${t.includes('危险度') || t.includes('B12') || t.includes('性功能') ? ' <span class="verify-tag">来源待补</span>' : ''}</button>
+  `).join('') + `</div>`;
+}
+
+function bindTabs(route) {
+  $$('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+    STATE.tab[route] = b.dataset.tab;
+    renderPage();
+  }));
+}
+
+const H = (title, lead) => `
+  <div class="page-head"><h1>${esc(title)}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div>`;
+
+function card(title, body, extra = '') {
+  return `<div class="card">${title ? `<div class="card-title"><h3>${title}</h3>${extra}</div>` : ''}${body}</div>`;
+}
+
+/* ================= 1. 看板 ================= */
+function pageDashboard() {
+  if (!STATE.line) return gateHTML();
+
+  const nmibc = STATE.line === 'nmibc';
+  const cards = nmibc ? [
+    { t: '膀胱灌注', m: '诱导 3 / 6 次已完成', s: '2026-10-23 因肉眼血尿取消 · 下次 10-30', chips: ['BCG 120 mg', '禁忌保护'] },
+    { t: '下次膀胱镜', m: '2026-12-16', s: '2022 保膀胱共识口径：每 3 个月', chips: ['尿细胞学同次'] },
+    { t: '尿细胞学', m: '非典型', s: '2026-09-18 · 膀胱冲洗标本', chips: ['四态之一'] },
+    { t: '肾功能', m: 'eGFR 66', s: '2026-10-22 · CKD-EPI', chips: ['接近顺铂门槛 60'] },
+    { t: '疼痛自评', m: '2 分', s: '2026-10-22 · 本人自评', chips: ['表达面'] },
+    { t: '病理待澄清', m: '「未见肌层」', s: '分期可能不完整，是需要问医生的点', chips: ['待核对'] },
+  ] : [
+    { t: '尿流改道术式', m: '尚未记录', s: '三种术式各自独立页签，零倾向对照', chips: ['不可逆事实'] },
+    { t: '肾功能门槛', m: 'eGFR 66', s: '顺铂门槛：CrCl<60 或 eGFR≤60', chips: ['决定治疗分叉'] },
+    { t: '造口日记', m: '按批录入', s: '最近一批 2026-10-20 · 渗漏 1 次', chips: ['耗材来自目录'] },
+    { t: '代谢长期项', m: '暂无记录', s: 'B12 / 碳酸氢盐 / 电解质', chips: ['来源待补'] },
+    { t: '疼痛自评', m: '2 分', s: '2026-10-22 · 本人自评', chips: ['表达面'] },
+    { t: '病理待澄清', m: '「未见肌层」', s: '分期可能不完整，是需要问医生的点', chips: ['待核对'] },
+  ];
+
+  return H('看板', `当前分野：<b>${nmibc ? '非肌层浸润（Ta/T1/Tis）· 保膀胱线' : '肌层浸润（T2+）· 根治与改道线'}</b>。只显示这条线相关的内容。`)
+    + `<div class="dash-cards">` + cards.map((c) => `
+      <div class="card big-card">
+        <div class="bc-top"><h3>${esc(c.t)}</h3></div>
+        <div class="bc-main">${esc(c.m)}</div>
+        <div class="bc-sub">${esc(c.s)}</div>
+        <div class="bc-foot">${c.chips.map((x) => `<span class="chip">${esc(x)}</span>`).join('')}</div>
+      </div>`).join('') + `</div>`
+    + card('表达面与指标面（两列并置，不写因果，不写处置）', `
+      <table class="tbl">
+        <thead><tr><th>表达面（感受）</th><th>指标面</th><th>时间</th></tr></thead>
+        <tbody>
+          <tr><td>疼痛自评 2 分；排尿时有灼热感</td><td>血红蛋白 124 g/L（较上次 ↑）</td><td>2026-10-22</td></tr>
+          <tr><td>容易累</td><td>eGFR 66 mL/min/1.73m²（较上次 ↓）</td><td>2026-10-22</td></tr>
+        </tbody>
+      </table>
+      <p class="src" style="margin-top:10px">两侧都有的记录才并置；只有一侧时不弹提醒。这里不做因果解释。</p>`)
+    + card('急症入口（30 秒内可达）', `
+      <div class="btn-row">
+        ${URGENT.map((u) => `<button type="button" class="btn" data-goto="urgent">${esc(u.cat)}</button>`).join('')}
+      </div>`);
+}
+
+/* 首屏分野闸门（S01）：未选线时不显示任何一条线的专属内容 */
+function gateHTML() {
+  return `
+  <div class="gate">
+    <h2>先确认一件事：你属于哪条线？</h2>
+    <p class="gate-lead">
+      膀胱癌按<b>有没有长进肌肉层</b>分成两条很不一样的路。<b>这一步决定你看到的内容</b>，
+      所以在你选之前，看板不会显示任何一条线的专属卡片。不确定也没关系，可以选最后一项。
+    </p>
+    <div class="gate-choices">
+      <button type="button" class="gate-choice" data-line="nmibc" aria-pressed="false">
+        <h3>非肌层浸润 · NMIBC</h3>
+        <p>病理写着 <b>Ta / T1 / Tis</b>，或写着<b>没有侵犯肌层</b>。<br>
+           这条线的主线是：把肿瘤切掉 + 膀胱灌注 + 长期复查，目标是<b>尽量保住膀胱</b>。</p>
+        <span class="chip chip-brand gc-tag">保膀胱线</span>
+      </button>
+      <button type="button" class="gate-choice" data-line="mibc" aria-pressed="false">
+        <h3>肌层浸润 · MIBC</h3>
+        <p>病理写着 <b>T2 或更深</b>，也就是<b>已经长进肌肉层</b>。<br>
+           这条线的主线是：根治性膀胱切除 + 尿流改道，或三联保膀胱；要面对<b>膀胱去留</b>。</p>
+        <span class="chip chip-brand gc-tag">根治与改道线</span>
+      </button>
+      <button type="button" class="gate-choice" data-line="undetermined" aria-pressed="false">
+        <h3>我还不确定</h3>
+        <p>报告看不懂、还没拿到，或者医生没说清楚。<br>
+           选这个不会替你归类，也不会显示任何一条线的专属内容。</p>
+        <span class="chip chip-neutral gc-tag">保持未定</span>
+      </button>
+    </div>
+    <p class="gate-note">
+      这一项随时可以改，改动会留痕。工作台<b>不对「保膀胱还是切除」表达倾向</b>。
+    </p>
+  </div>`;
+}
+
+/* ================= 2. 病情整理 ================= */
+function pageRecords(tab) {
+  const body = {
+    '资料库': () => card('已导入资料', `
+      <table class="tbl"><thead><tr><th>文件</th><th>类型</th><th>导入日期</th><th>状态</th></tr></thead><tbody>
+        <tr><td>病理报告（演示）</td><td>病理</td><td>2026-09-18</td><td><span class="chip chip-ok">已核对</span></td></tr>
+        <tr><td>血生化（演示）</td><td>化验</td><td>2026-10-22</td><td><span class="chip chip-ok">已核对</span></td></tr>
+        <tr><td>尿细胞学（演示）</td><td>化验</td><td>2026-09-18</td><td><span class="chip chip-warn">待核对</span></td></tr>
+      </tbody></table>`),
+    '待核对草稿': () => card('草稿（<b>未经核对，不算事实</b>）', `
+      <div class="notice notice-warn">草稿区的条目还没有逐项确认，<b>不会</b>进入病情档案，也<b>不会</b>进入 AI 草稿的「已确认事实」。</div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>候选字段</th><th>抽取值</th><th>原文片段</th><th>操作</th></tr></thead><tbody>
+        <tr><td>尿细胞学结果</td><td>${chipCat('非典型')}</td><td>「查见非典型尿路上皮细胞。」</td>
+            <td><div class="btn-row"><button class="btn btn-sm btn-primary" data-confirm>确认</button><button class="btn btn-sm">忽略</button></div></td></tr>
+        <tr><td>标本类型</td><td>膀胱冲洗</td><td>「标本：膀胱冲洗液」</td>
+            <td><div class="btn-row"><button class="btn btn-sm btn-primary" data-confirm>确认</button><button class="btn btn-sm">忽略</button></div></td></tr>
+      </tbody></table>`),
+    '病情档案': () => card('已确认事实', `
+      <dl class="kv">
+        <dt>病理结论</dt><dd>${esc(PATHOLOGY.raw)} ${src(PATHOLOGY.source)}</dd>
+        <dt>分级（原文）</dt><dd>${esc(PATHOLOGY.gradeRaw)} <span class="src">报告未写分级体系名；不换算</span></dd>
+        <dt>有无肌层组织</dt><dd>${esc(PATHOLOGY.musclePresent)} <span class="chip chip-warn">分期可能不完整</span></dd>
+        <dt>核对状态</dt><dd><span class="chip chip-warn">${esc(PATHOLOGY.reviewState)}</span></dd>
+      </dl>`),
+    '指标检测': () => metricsTable(),
+    '病情汇总': () => card('汇总', `
+      <dl class="kv">
+        <dt>记录条数</dt><dd class="num">38</dd>
+        <dt>时间范围</dt><dd>2026-03-10 ～ 2026-10-22</dd>
+        <dt>待核对</dt><dd class="num">2</dd>
+        <dt>来源分布</dt><dd>医生记录 21 · 本人自述 9 · 待核对草稿 2 · 演示数据 6</dd>
+      </dl>`),
+  }[tab] || (() => '<div class="empty"><strong>该页签还没有内容</strong></div>');
+  return H('病情整理', '事实与草稿分区；草稿不算事实。') + tabsHTML('records') + body();
+}
+
+function metricsTable() {
+  return card('指标记录', `
+    <table class="tbl"><thead><tr><th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>方法</th><th>来源</th></tr></thead><tbody>
+      ${METRICS.map((m) => {
+        const last = m.points[m.points.length - 1];
+        return `<tr><td>${esc(m.name)}</td><td class="num">${CHART.fmt(last.v)}</td><td>${esc(m.unit)}</td>
+          <td>${esc(last.d)}</td><td>${esc(m.method || '—')}</td><td>${esc(m.src)}</td></tr>`;
+      }).join('')}
+    </tbody></table>
+    <p class="src" style="margin-top:10px">方法或机构不同的点不会连成一条线。</p>`);
+}
+
+/* ================= 3. 我的分型与分期 ================= */
+function pageStaging(tab) {
+  const p = PATHOLOGY;
+  const body = {
+    '分野与分型': () => card('当前分野', `
+      <dl class="kv">
+        <dt>派生分野</dt><dd><b>${STATE.line === 'nmibc' ? '非肌层浸润（NMIBC）' : STATE.line === 'mibc' ? '肌层浸润（MIBC）' : '未定'}</b>
+          <span class="src">派生值；原文缺失就回到「未定」</span></dd>
+        <dt>原始依据</dt><dd>${esc(p.raw)}</dd>
+        <dt>改动留痕</dt><dd>${STATE.lineHistory.length ? STATE.lineHistory.map((h) => `<span class="chip">${esc(h)}</span>`).join(' ') : '<span class="src">暂无改动</span>'}</dd>
+      </dl>
+      ${/未见肌层|未见肌肉/.test(p.raw) ? `<div class="notice notice-warn">
+        <b>报告里写了「未见肌层」。</b>这表示这次取材<b>没有取到肌肉层</b>，于是无法判断到底是 T1 还是 T2——
+        也就是<b>分期可能不完整</b>。它不是「没有浸润」的意思，也不是好消息。
+        是否要再做一次电切（二次电切）把肌肉层取到，<b>需要问医生</b>。
+        <span class="verify-tag">来源待补</span></div>` : ''}
+      <div class="btn-row" style="margin-top:12px"><button class="btn" data-act="changeLine">重新选择分野</button></div>`),
+    '病理与分级': () => card('病理原文与两套分级', `
+      <div class="notice notice-info">报告上可能同时出现「G2」这样的写法与「高级别」这样的写法。
+        <b>本工作台只并列保存原文，不做换算，也不判断两者是否等价。</b>
+        <span class="src">依据：已精读的 11 份中文共识中未出现 G1/G2/G3，只有「低级别/高级别」</span></div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>项目</th><th>原文值</th><th>体系</th></tr></thead><tbody>
+        <tr><td>分级</td><td><b>${esc(p.gradeRaw)}</b></td><td>${p.gradeSchemeRaw ? esc(p.gradeSchemeRaw) : '<span class="src">报告未写</span>'}</td></tr>
+        <tr><td>另一套写法</td><td>${p.otherGradeRaw ? esc(p.otherGradeRaw) : '<span class="src">报告未出现</span>'}</td><td>—</td></tr>
+      </tbody></table>`),
+    '分期断言': () => card('分期（多条并列，不覆盖）', `
+      <table class="tbl"><thead><tr><th>类型</th><th>原文</th><th>日期</th><th>状态</th></tr></thead><tbody>
+        <tr><td>病理分期</td><td>浸润固有层（T1）</td><td>2026-09-18</td><td><span class="chip chip-ok">现行</span></td></tr>
+        <tr><td>临床分期</td><td><span class="src">还没有记录</span></td><td>—</td><td>—</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">同一患者可能同时存在临床分期与病理分期，两者并列保存。</p>`),
+    '危险度': () => card('危险度分组', `
+      <div class="notice notice-warn">
+        危险度分组的<b>各条判据原文是图片</b>，本次未能取得文字。
+        因此这里<b>不做任何分层判断</b>，只保留位置。${
+          '<span class="verify-tag">来源待补</span>'}
+      </div>
+      <p class="src" style="margin-top:10px">待补来源：2021 灌注共识表1、2024 保膀胱共识表5/表6。</p>`),
+  }[tab] || (() => '');
+  return H('我的分型与分期', '原文优先；分级并列不换算；「未见肌层」不是好消息。')
+    + tabsHTML('staging') + body();
+}
+
+/* ================= 4. 手术与 TURBT ================= */
+function pageSurgery(tab) {
+  const body = {
+    'TURBT 序列': () => card('TURBT（经尿道膀胱肿瘤切除术）', `
+      <div class="notice notice-info">TURBT 是<b>切除</b>肿瘤，不是「取一点组织去化验」。同一手术线上的多次操作记成一条序列。</div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>次序</th><th>日期</th><th>完全切除</th><th>标本含肌层</th><th>穿孔</th></tr></thead><tbody>
+        <tr><td>第 1 次</td><td>2026-09-18</td><td>完全</td><td><span class="chip chip-warn">无</span></td><td>无</td></tr>
+        <tr><td>第 2 次（二次电切）</td><td><span class="src">计划中</span></td><td>—</td><td>—</td><td>—</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">「标本含肌层：无」意味着这一次取材没有取到肌肉，<b>分期可能不完整</b>。</p>`),
+    '二次电切': () => card('为什么要再电切一次', `
+      <p>第一次手术的标本里没有肌肉层，医生可能会安排再做一次，目的是把切得更深、拿到肌肉层，从而判断到底有没有浸润。</p>
+      <p class="src" style="margin-top:10px">这是「同一手术线的下一事件」，不会新建一份患者档案。</p>`),
+    '根治性切除': () => card('根治性膀胱切除', `
+      <div class="empty"><strong>还没有记录</strong>如果你走到这一步，这里会记录切除范围、淋巴结、切缘，以及尿流改道术式（不可逆，改动会留痕）。</div>`),
+  }[tab] || (() => '');
+  return H('手术与 TURBT', 'TURBT 是切除不是活检；二次电切是同一手术线的下一事件。')
+    + tabsHTML('surgery') + body();
+}
+
+/* ================= 5. 膀胱灌注 ================= */
+function pageInstillation(tab) {
+  const segRows = INSTILLATION.phasePlan.map((p) => {
+    const evs = INSTILLATION.events.filter((e) => e.phase === p.phase);
+    return `<div class="seg-row">
+      <span class="seg-name">${esc(p.phase)}</span>
+      <span class="dots">${evs.map((e) => `<span class="dot" data-st="${e.st}" title="${esc(e.phase)} 第 ${e.idx} 次 · 计划 ${esc(e.planned)}${e.cancelReason ? ' · 取消原因：' + esc(e.cancelReason) : ''}">${e.idx}</span>`).join('')}
+        ${Array.from({ length: Math.max(0, p.total - evs.length) }, (_, i) => `<span class="dot" data-st="todo" title="尚未排程">${evs.length + i + 1}</span>`).join('')}</span>
+      <span class="src">${esc(p.note)}</span>
+    </div>`;
+  }).join('');
+
+  const body = {
+    '周期总览': () => card(`${INSTILLATION.agent} · 两段结构`, `
+      <div class="course-seg">${segRows}</div>
+      <div class="kv" style="margin-top:14px">
+        <dt>剂量（原文）</dt><dd>${esc(INSTILLATION.doseRaw)} ${src('2021 灌注共识')}</dd>
+        <dt>两次灌注间隔</dt><dd>${INSTILLATION.retentionMinutes ?? '<span class="verify-tag">来源待补</span>'}
+          <span class="src">灌注后膀胱内保留时间：原文为图片，未取得，不给建议值</span></dd>
+        <dt>BCG 供货</dt><dd>${INSTILLATION.supplyNote ? esc(INSTILLATION.supplyNote) : '<span class="src">本期无断供记录</span>'}</dd>
+      </div>`),
+    '本次记录': () => card('最近一次：2026-10-23（取消）', `
+      <div class="notice notice-info">
+        <b>这次没做，是禁忌在保护你，不是病情变坏了。</b>
+        记录到的原因：<b>肉眼血尿</b>。
+      </div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>计划日</th><th>实际日</th><th>结果</th><th>取消原因</th></tr></thead><tbody>
+        <tr><td>2026-10-23</td><td>—</td><td><span class="chip chip-warn">取消</span></td><td>肉眼血尿</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">漏做一次之后<b>怎么补</b>，原始资料没有统一口径，因此这里不给任何建议。</p>`),
+    '禁忌与中断': () => card('禁忌（原文条目）', `
+      <table class="tbl"><thead><tr><th>条目</th><th>适用范围</th></tr></thead><tbody>
+        ${CONTRA.map((c) => `<tr><td>${esc(c.kind)}</td><td><span class="chip ${c.group === '仅 BCG' ? 'chip-brand' : 'chip-neutral'}">${esc(c.group)}</span></td></tr>`).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:10px">${src('2021 非肌层浸润性膀胱癌膀胱灌注治疗专家共识')}。BCG 比化疗药多两条。</p>`),
+    '副作用': () => card('灌注后不适（自述）', `
+      <table class="tbl"><thead><tr><th>日期</th><th>感受</th><th>强度（自评）</th></tr></thead><tbody>
+        <tr><td>2026-10-16</td><td>尿频、尿急，排尿时灼热</td><td class="num">4 / 10</td></tr>
+        <tr><td>2026-10-09</td><td>当天乏力，第二天好转</td><td class="num">2 / 10</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">分级判据原文为图片未取得，此处<b>不做分级</b>，只记自评强度。<span class="verify-tag">来源待补</span></p>`),
+  }[tab] || (() => '');
+  return H('膀胱灌注', '两段结构（即刻 → 诱导 → 维持）；取消＝禁忌保护；漏做不给建议。')
+    + tabsHTML('instillation') + body();
+}
+
+/* ================= 6. 尿流改道与造口 ================= */
+function pageDiversion(tab) {
+  const perKind = {
+    '回肠造口': ['底盘型号与更换周期', '造口周围皮肤并发症', '渗漏次数', '气味管理', '夜间集尿器', '耗材目录'],
+    '原位新膀胱': ['控尿训练进度', '间歇导尿次数', '残余尿量', '排尿方式', '夜间尿垫'],
+    '输尿管皮肤造口': ['支架管护理与更换', '吻合口观察', '造口周围皮肤', '集尿装置更换周期'],
+  }[tab];
+
+  let body;
+  if (tab === '三术式对照') {
+    body = card('三种术式对照', `
+      <div class="notice notice-info"><b>这里不排序、不推荐、不用倾向色，也不预选任何一项。</b>哪一种更适合，需要你和医生按具体情况讨论。</div>
+      <div class="compare" style="margin-top:14px">
+        ${DIVERSION.map((d) => `
+          <div class="compare-col">
+            <div class="cc-head"><h3>${esc(d.kind)}</h3><span class="chip chip-neutral">${esc(d.aka)}</span></div>
+            <p style="font-size:var(--fs-md);color:var(--wb-muted);margin-bottom:8px">${esc(d.daily)}</p>
+            <ul>${d.fields.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+          </div>`).join('')}
+      </div>`);
+  } else if (tab === '造口日记') {
+    body = card('造口日记（一次录一批）', `
+      <div class="notice notice-info">按<b>一批</b>记录，不需要每天打卡。耗材型号从目录里选，不用每次重打。</div>
+      <div class="batch-row" style="margin-top:14px">
+        <input type="date" value="2026-10-23" aria-label="批次日期">
+        <select aria-label="耗材">${STOMA_SUPPLY.map((s) => `<option>${esc(s.kind)} · ${esc(s.brand)}</option>`).join('')}</select>
+        <input type="number" value="2" min="0" aria-label="更换次数">
+        <input type="number" value="1" min="0" aria-label="渗漏次数">
+        <select aria-label="皮肤状态"><option>无</option><option selected>红</option><option>破溃</option><option>其他</option></select>
+        <button class="btn btn-primary" data-act="batchAdd">加入本批</button>
+      </div>
+      <table class="tbl" style="margin-top:14px"><thead><tr><th>批次</th><th>耗材</th><th class="num">更换</th><th class="num">渗漏</th><th>皮肤</th></tr></thead><tbody>
+        ${STOMA_LOG.map((l) => `<tr><td>${esc(l.batchOn)}</td><td>${esc(l.supplyId === 's1' ? '底盘 · 演示A' : l.supplyId)}</td>
+          <td class="num">${l.changes}</td><td class="num">${l.leaks}</td><td>${esc(l.skin)}</td></tr>`).join('')}
+      </tbody></table>`);
+  } else if (tab === '耗材目录') {
+    body = card('可复用耗材目录', `
+      <table class="tbl"><thead><tr><th>类别</th><th>品牌 / 型号</th><th>规格</th><th class="num">建议更换周期（天）</th></tr></thead><tbody>
+        ${STOMA_SUPPLY.map((s) => `<tr><td>${esc(s.kind)}</td><td>${esc(s.brand)}</td><td>${esc(s.size)}</td><td class="num">${s.interval}</td></tr>`).join('')}
+      </tbody></table>`);
+  } else if (perKind) {
+    body = card(`${tab} · 字段集`, `
+      <div class="notice notice-info">选择不同术式后，这里记录的字段<b>会跟着变</b>（新膀胱出现控尿与残余尿；造口出现底盘与渗漏）。</div>
+      <ul style="margin-top:12px;font-size:var(--fs-md)">${perKind.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-primary" data-act="setDiversion">记录为我的术式（不可逆，改动留痕）</button>
+      </div>
+      <p class="src" style="margin-top:10px">来源：中国膀胱癌规范诊疗质量控制指标（2022 版）BT-16-01/02/03。</p>`);
+  } else {
+    body = '<div class="empty"><strong>该页签还没有内容</strong></div>';
+  }
+
+  const priv = (tab === '造口日记' || tab === '回肠造口')
+    ? `<div class="private-zone" style="margin-top:16px">
+         <span class="pz-tag">默认私密（fail-closed）：身体形象相关记录默认不进导出、不进 AI 草稿。</span>
+       </div>` : '';
+
+  return H('尿流改道与造口', '三术式各自独立；不可逆事实改动留痕；对照页零倾向。')
+    + tabsHTML('diversion') + body + priv;
+}
+
+/* ================= 7. 治疗历程 ================= */
+function pageTreatment(tab) {
+  const body = {
+    '治疗线': () => card('治疗线（容器，不是属性）', `
+      <table class="tbl"><thead><tr><th>线次</th><th>方案</th><th>开始</th><th>状态</th><th>挂载</th></tr></thead><tbody>
+        <tr><td>一线</td><td>BCG 膀胱灌注</td><td>2026-10-02</td><td><span class="chip chip-brand">进行中</span></td>
+            <td>周期 4 · 疗效 1 · 不良事件 2</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">周期、疗效、不良事件都挂在治疗线上；切到下一线时上一线数据整体保留。</p>`),
+    '用药与周期': () => card('用药与周期', `
+      <table class="tbl"><thead><tr><th>药物</th><th>单次剂量</th><th>计划周期</th><th>已完成</th></tr></thead><tbody>
+        <tr><td>BCG（卡介苗）</td><td>120 mg</td><td>诱导 6 次 + 维持</td><td class="num">3 / 6</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">剂量口径来源：2021 灌注共识（国产 BCG 每次 120 mg，1 年共 19 次）。</p>`),
+    '疗效评估': () => card('疗效评估', `
+      <div class="empty"><strong>还没有评估记录</strong>复查后按医生给的结论原文记录，不做推算。</div>`),
+    '肾功能门槛': () => card('肾功能与顺铂门槛', `
+      <table class="tbl"><thead><tr><th>日期</th><th class="num">eGFR</th><th class="num">肌酐</th><th>方法</th></tr></thead><tbody>
+        ${RENAL.points.map((p, i) => `<tr><td>${esc(p.date)}</td><td class="num">${p.egfr}</td><td class="num">${p.creatinine}</td><td>${esc(p.method)}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="notice notice-warn" style="margin-top:12px">
+        门槛：<b>${esc(RENAL.threshold.text)}</b> ${src(RENAL.threshold.source)}
+        <div style="margin-top:6px" class="src">这里只显示门槛与出处，<b>不判断你应该用或不应该用哪个方案</b>。</div>
+      </div>`),
+  }[tab] || (() => '');
+  return H('治疗历程', '治疗线是容器；肾功能是决定治疗分叉的硬门槛。') + tabsHTML('treatment') + body();
+}
+
+/* ================= 8. 复查与膀胱镜 ================= */
+function pageFollowup(tab) {
+  const f = FOLLOWUP;
+  const body = {
+    '复查排程': () => card('复查排程', `
+      <table class="tbl"><thead><tr><th>项目</th><th>计划日期</th><th>间隔口径（带版本）</th></tr></thead><tbody>
+        ${f.schedule.map((s) => `<tr><td>${esc(s.kind)}</td><td>${esc(s.planned)}</td><td>${esc(s.intervalSource)}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="notice notice-info" style="margin-top:12px">
+        间隔数字来自 <b>2022 版</b>共识；<b>2024 版不再复述</b>具体间隔。本工作台<b>不写「终身」</b>——
+        已精读的 11 份中文共识中未出现该表述。
+      </div>`),
+    '本次记录': () => card('最近一次膀胱镜：2026-09-18', `
+      <dl class="kv">
+        <dt>发现（原文）</dt><dd>${esc(f.lastExam.findingRaw)}</dd>
+        <dt>结论（原文）</dt><dd>${esc(f.lastExam.conclusionRaw)}</dd>
+        <dt>是否取活检</dt><dd>${esc(f.lastExam.biopsyTaken)}</dd>
+        <dt>下次计划</dt><dd>${esc(f.lastExam.nextPlannedOn)}</dd>
+      </dl>`),
+    '方式与麻醉': () => card('方式与麻醉', `
+      <dl class="kv">
+        <dt>镜体</dt><dd>硬性膀胱镜</dd>
+        <dt>麻醉</dt><dd>腰麻</dd>
+        <dt>日期</dt><dd>${esc(f.lastExam.performedOn)}</dd>
+      </dl>
+      <p class="src" style="margin-top:10px">可选记录：柔性 / 硬性 / 荧光 / 麻醉方式（来源：常规随访项目）。</p>`),
+    '疼痛与心情': () => card('疼痛与心情（与临床结论分区）', `
+      <div class="notice notice-info">这一块是<b>你的感受</b>，和临床结论分开存放，不会混进结论区。</div>
+      <div class="kv" style="margin-top:12px">
+        <dt>疼痛自评</dt><dd class="num">${f.experience.painScore} / 10</dd>
+        <dt>心情记录</dt><dd>${esc(f.experience.moodNote)}</dd>
+      </div>
+      <div class="private-zone" style="margin-top:14px"><span class="pz-tag">默认私密：本块默认不带入导出与 AI 草稿。</span></div>`),
+    '尿细胞学': () => card('尿细胞学（四态四个值）', `
+      <div class="notice notice-info">
+        <b>阴性 / 非典型 / 可疑 / 阳性</b> 是四个不同的值。<b>「非典型」既不等于阳性，也不等于阴性。</b>
+        这四态都不带「好/坏」颜色。
+      </div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>日期</th><th>标本类型</th><th>结果</th><th>报告原文</th><th>方法</th></tr></thead><tbody>
+        ${f.cytology.map((c) => `<tr><td>${esc(c.date)}</td><td>${esc(c.specimen)}</td><td>${chipCat(c.state)}</td>
+          <td>${esc(c.raw)}</td><td>${esc(c.method)}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:10px">标本类型（自然尿 / 膀胱冲洗）不同时，结果不直接可比。
+        四态的权威分级口径<b>尚未取得</b>。<span class="verify-tag">来源待补</span></p>`),
+    '上尿路监测': () => card('上尿路监测（第二原发监测）', `
+      <div class="notice notice-info">这是对<b>另一个器官</b>的长期监测，不是「转移」。两者分开呈现。</div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>日期</th><th>方式</th><th>发现（原文）</th><th>肾积水</th></tr></thead><tbody>
+        ${f.upperTract.map((u) => `<tr><td>${esc(u.date)}</td><td>${esc(u.modality)}</td><td>${esc(u.findingRaw)}</td><td>${esc(u.hydronephrosis)}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:10px">我国尿路上皮癌来自肾盂及输尿管的比例可达 20%～30%。
+        ${src('中国尿路上皮癌 HER2 检测临床病理专家共识（2021 版）')}</p>`),
+  }[tab] || (() => '');
+  return H('复查与膀胱镜', '检查即心理事件；尿细胞学四态；上尿路是第二原发监测。')
+    + tabsHTML('followup') + body();
+}
+
+/* ================= 9. 检查与指标 ================= */
+function pageMetrics(tab) {
+  let body;
+  if (tab === '分类指标卡') {
+    body = `<div class="metric-grid" data-metric-grid>${METRICS.map((m, i) => metricCardHTML(m, i)).join('')}</div>
+      <p class="src" style="margin-top:12px">卡背面是<b>固定高度 3D 翻转</b>，不是向下展开。
+        点卡片或按回车/空格翻转；≥700px 两列，窄屏一列，不做三列以上。</p>`;
+  } else if (tab === '电解质与 B12') {
+    body = card('电解质与代谢（长期）', `
+      <div class="notice notice-warn">
+        B12、碳酸氢盐、氯、尿路感染与结石这几项，在已精读的 11 份中文共识里<b>查不到原文出处</b>。
+        字段位置先留出来，但<b>不填数字、不做解释</b>。<span class="verify-tag">来源待补</span>
+      </div>
+      <div class="empty" style="margin-top:12px"><strong>还没有记录</strong>来源补齐后再开放</div>`);
+  } else if (tab === '肾功能') {
+    body = card('肾功能', `
+      <table class="tbl"><thead><tr><th>日期</th><th class="num">eGFR</th><th class="num">肌酐</th><th>方法</th><th>机构</th></tr></thead><tbody>
+        ${RENAL.points.map((p) => `<tr><td>${esc(p.date)}</td><td class="num">${p.egfr}</td><td class="num">${p.creatinine}</td><td>${esc(p.method)}</td><td>${esc(p.lab)}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="kv" style="margin-top:14px">
+        <dt>分肾功能</dt><dd><span class="src">还没有记录（核素肾图等）</span></dd>
+        <dt>肾积水与引流</dt><dd>${esc(RENAL.drainage.kind)}</dd>
+        <dt>顺铂门槛</dt><dd>${esc(RENAL.threshold.text)} ${src(RENAL.threshold.source)}</dd>
+      </div>`);
+  } else {
+    body = card('指标总览（与一图秀同源）', `
+      <table class="tbl"><thead><tr><th>分组</th><th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>分级</th></tr></thead><tbody>
+        ${METRICS.map((m) => {
+          const last = m.points[m.points.length - 1];
+          return `<tr><td><span class="chip chip-cat">${esc(m.cat)}</span></td><td>${esc(m.name)}</td>
+            <td class="num">${CHART.fmt(last.v)}</td><td>${esc(m.unit)}</td><td>${esc(last.d)}</td>
+            <td>${m.ctcae ? `<span class="chip chip-warn">${esc(m.ctcae.text)}</span>` : '<span class="src">未启用</span>'}</td></tr>`;
+        }).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:10px">
+        分级只对 CTCAE v5.0 中有<b>绝对数值界限</b>的项启用；「×ULN」型未拿到结构化参考上限前不启用、不近似。
+        分级是<b>对照不是诊断</b>，读取时计算，不落库。原文见 assets/reference/ctcae/。
+      </p>
+      <p class="src" style="margin-top:6px">分类指标（${CATEGORICAL.map((c) => esc(c.name)).join('、')}）不进折线图。</p>`);
+  }
+  return H('检查与指标', '同一指标目录供指标页与一图秀共用；分组顺序两页一致。')
+    + tabsHTML('metrics') + body;
+}
+
+function metricCardHTML(m, i) {
+  const last = m.points[m.points.length - 1];
+  const prev = m.points[m.points.length - 2];
+  const delta = prev ? last.v - prev.v : null;
+  const dir = delta == null ? '' : delta > 0 ? 'up' : delta < 0 ? 'down' : '';
+  return `
+  <div class="metric-card" data-flipped="false" data-metric="${esc(m.code)}" role="group" tabindex="0"
+       aria-label="${esc(m.name)} 最近值 ${CHART.fmt(last.v)} ${esc(m.unit)}，按回车翻转查看趋势">
+    <div class="metric-inner">
+      <div class="metric-face metric-front">
+        <div class="mc-head"><span class="mc-name">${esc(m.name)}</span><span class="mc-cat">${esc(m.cat)}</span></div>
+        <div class="mc-value">${CHART.fmt(last.v)}<span class="mc-unit">${esc(m.unit)}</span></div>
+        <div class="mc-delta" data-dir="${dir}">
+          ${delta == null ? '<span class="src">仅一次记录，无法比较</span>'
+            : `${CHART.fmt(Math.abs(delta))} ${esc(m.unit)} 与上次比（${prev.d} → ${last.d}）`}
+        </div>
+        ${m.ctcae ? `<span class="chip chip-warn mc-badge">${esc(m.ctcae.text)}</span>` : ''}
+        <div class="mc-meta">
+          <span>共 ${m.points.length} 次记录 · 最近 ${esc(last.d)}</span>
+          <span>来源：${esc(m.src)}${m.lab ? ' · ' + esc(m.lab) : ''}</span>
+          <span>${m.refLow != null || m.refHigh != null ? `参考范围 ${m.refLow ?? '—'} ~ ${m.refHigh ?? '—'} ${esc(m.unit)}` : '参考范围：未取得'}</span>
+        </div>
+        <span class="mc-flip-hint">翻转看趋势 ⟳</span>
+      </div>
+      <div class="metric-face metric-back" aria-hidden="true" inert>
+        <div class="mc-back-title">${esc(m.name)} · 趋势</div>
+        <div class="mb-chart">${CHART.sparkline(m)}</div>
+        <div class="mc-meta">
+          <span>全期范围 ${CHART.fmt(m.min ?? Math.min(...m.points.map(p => p.v)))} ～ ${CHART.fmt(m.max ?? Math.max(...m.points.map(p => p.v)))} ${esc(m.unit)}</span>
+          <span>${m.lab ? `机构 ${esc(m.lab)}` : '自测'} · 方法 ${esc(m.method || '—')}</span>
+          ${m.ctcae ? `<span>${esc(m.ctcae.range || '')}｜来源：CTCAE v5.0</span>` : '<span>未启用分级对照</span>'}
+        </div>
+        <span class="mc-flip-hint">翻回正面 ⟳</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ================= 10. 病情一图秀 ================= */
+function pageChart() {
+  const state = APP.$chart = APP.$chart || { codes: ['egfr', 'hb'], win: 'all' };
+  const opts = METRICS.map((m) => `
+    <label class="chip" style="cursor:pointer">
+      <input type="checkbox" data-code="${esc(m.code)}" ${state.codes.includes(m.code) ? 'checked' : ''}>
+      ${esc(m.name)}
+    </label>`).join('');
+
+  const wins = [['3', '近 3 个月'], ['6', '近 6 个月'], ['12', '近 12 个月'], ['all', '全部']];
+  const r = CHART.render(state.codes, state.win);
+
+  const plotHTML = r.empty
+    ? `<div class="chart-inner"><div class="treat-lane"></div><div class="plot"><div class="plot-empty">该时间窗内没有记录（空态）</div></div></div>`
+    : `<div class="chart-inner">
+         <div class="treat-lane">${r.treatLane}</div>
+         <div class="plot">${r.svg}</div>
+       </div>`;
+
+  return H('病情一图秀', '每条线按该指标<b>全期</b> min/max 归一化，所以不同线之间<b>不可比</b>；治疗条单独一层。')
+    + card('选择指标（最多 6 条）', `<div class="btn-row">${opts}</div>
+        <p class="src" style="margin-top:10px">分类变量（${CATEGORICAL.map((c) => esc(c.name)).join('、')}）不进折线图。</p>`)
+    + card('时间轴', `
+      <div class="chart-toolbar">
+        ${wins.map(([v, t]) => `<button class="btn btn-sm ${state.win === v ? 'btn-primary' : ''}" data-win="${v}">${t}</button>`).join('')}
+        <span class="src" style="margin-left:auto">治疗事件：${CHART.TREATMENTS.length} 个</span>
+      </div>
+      <div class="chart-wrap">${plotHTML}</div>
+      <div class="legend">${r.legend || ''}</div>
+      <p class="legend-note">
+        单点不连线；空窗口给空态；末点每序列只标一次。点数据点可看到日期、值、机构与方法。
+      </p>
+      <p class="legend-note">动画：<code>pathLength=1</code> + <code>stroke-dashoffset</code>，点按 45ms 递增延迟；减少动效时直接给终态。</p>`)
+    + card('治疗事件（与节点同 ID 联动）', `
+      <table class="tbl"><thead><tr><th>日期</th><th>事件</th><th>ID</th></tr></thead><tbody>
+        ${CHART.TREATMENTS.map((t) => `<tr><td>${esc(t.d)}</td><td>${esc(t.label)}</td><td><code>${esc(t.id)}</code></td></tr>`).join('')}
+      </tbody></table>`);
+}
+
+/* ================= 11. 急症与安全 ================= */
+function pageUrgent() {
+  return H('急症与安全', '四类情况各自有入口。<b>这里不解释原因，也不告诉你怎么处理</b>——请联系你的医疗团队。')
+    + `<div class="notice notice-stop" style="margin-bottom:16px">
+         出现下面任何一类情况，请<b>尽快联系你的医疗团队或就近急诊</b>。本页只帮你判断「这算不算需要马上处理」。
+       </div>`
+    + `<div class="urgent-grid">` + URGENT.map((u) => `
+        <div class="urgent-card" data-src="${u.src}">
+          <h3>${esc(u.cat)}</h3>
+          <ul>${u.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
+          ${u.src === 'missing' ? `<span class="verify-tag">判据来源待补</span>
+            <p class="src" style="margin-top:6px">原文分级表为图片，本次未取得，以上为保守表述。</p>` : ''}
+          <div class="uc-contact">联系入口：<b>你的主诊医生 / 医院总机</b>（原型占位，未接通）</div>
+        </div>`).join('') + `</div>`
+    + card('为什么这里没有「怎么办」', `
+      <p>工作台不判断病情，也不给处置建议。它只做两件事：帮你把情况说清楚，帮你更快找到人。</p>`);
+}
+
+/* ================= 12. 生活与照护 ================= */
+function pageLife(tab) {
+  let body;
+  if (tab === '性功能与亲密') {
+    body = card('性功能与亲密（默认私密）', `
+      <div class="private-zone">
+        <p><b>这一页默认私密。</b>不勾选就不会进入导出，也不会进入 AI 草稿。</p>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn" data-act="toggleShare">本次已勾选带入 ▢</button>
+        </div>
+        <p class="src" style="margin-top:10px">
+          可记录：勃起功能变化、射精变化、阴道前壁切除后的不适、卵巢切除后更年期症状。
+          只记事实与要问的问题，<b>不给处置建议</b>。<span class="verify-tag">来源待补</span>
+        </p>
+      </div>`);
+  } else if (tab === '照护者交接') {
+    body = card('照护者交接', `
+      <div class="notice notice-ok">
+        <b>换一个人来照顾，不问患者也能接手：</b>
+        <ul style="margin:8px 0 0;padding-left:20px">
+          <li>当前灌注：BCG 诱导第 4 次（2026-10-23 因肉眼血尿取消）</li>
+          <li>下次灌注：2026-10-30</li>
+          <li>下次膀胱镜：2026-12-16</li>
+          <li>在用耗材：底盘 · 演示A · 45 mm（约 3 天换一次）</li>
+        </ul>
+      </div>
+      <h3 style="margin-top:16px">记录人与被记录人分开</h3>
+      <table class="tbl" style="margin-top:8px"><thead><tr><th>记录</th><th>谁记的</th><th>记的是谁</th></tr></thead><tbody>
+        <tr><td>灌注取消（肉眼血尿）</td><td>配偶</td><td>患者本人</td></tr>
+        <tr><td>疼痛自评 2 分</td><td>患者本人</td><td>患者本人</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">患者端可以只读 + 打勾 + 看急症页。</p>`);
+  } else {
+    const table = {
+      '饮水与饮食': [['少量多次饮水', '自述'], ['避免一次大量饮水', '待核验']],
+      '造口与社交': [['游泳、洗澡是否可行', '待核验'], ['穿衣选择', '自述']],
+      '工作与出行': [['出差带足耗材', '自述'], ['安检说明', '待核验']],
+    }[tab] || [];
+    body = card(`${tab}`, table.length ? `
+      <table class="tbl"><thead><tr><th>条目</th><th>来源</th></tr></thead><tbody>
+        ${table.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${b === '待核验' ? '<span class="verify-tag">待核验</span>' : `<span class="src">${esc(b)}</span>`}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:10px">本页不提供具体摄入量或禁忌清单；缺出处的条目一律标「待核验」。</p>`
+      : '<div class="empty"><strong>还没有内容</strong></div>');
+  }
+  return H('生活与照护', '照护者是并列的记录主体；身体形象相关默认私密。') + tabsHTML('life') + body;
+}
+
+/* ================= 13. 复诊准备 ================= */
+function pageVisit(tab) {
+  const qs = APP.$qs = APP.$qs || [
+    '「未见肌层」是不是意味着分期不完整？',
+    '这次因血尿取消，要不要补做？',
+    'eGFR 降到 66，会不会影响后续方案？',
+  ];
+  let body;
+  if (tab === '问题清单') {
+    body = card('要问医生的问题', `
+      <div class="notice notice-info">只收问题，不给答案。可以拖动排序、删除。</div>
+      <ol style="margin-top:12px;font-size:var(--fs-md)">
+        ${qs.map((q, i) => `<li style="margin-bottom:6px">${esc(q)}
+          <button class="btn btn-sm" data-delq="${i}" aria-label="删除">删除</button></li>`).join('')}
+      </ol>
+      <div class="field" style="margin-top:12px">
+        <label for="newq">新增一个问题</label>
+        <input type="text" id="newq" placeholder="例如：这次复查要提前做什么准备？">
+      </div>
+      <div class="btn-row"><button class="btn btn-primary" data-addq>加入清单</button></div>`);
+  } else if (tab === '复诊摘要') {
+    body = card('复诊摘要（只抄记录）', `
+      <div class="notice notice-info">
+        摘要<b>只抄已经记录的内容</b>；没有记录的写「没有」，不补、不推测。
+        <b>摘要里不含本机资料目录路径与用户名。</b>
+      </div>
+      <div style="margin-top:14px">
+        ${DRAFT_SCOPES.visit.blocks.map((b) => `
+          <div class="ag-block" style="margin-bottom:10px">
+            <h4>${esc(b.label)}</h4><ul>${b.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+          </div>`).join('')}
+        <div class="ag-block ag-gap"><h4>缺项（如实写「没有」）</h4>
+          <ul>${DRAFT_SCOPES.visit.gaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
+        <div class="ag-block ag-excl"><h4>本次未带入</h4>
+          <ul>${DRAFT_SCOPES.visit.excluded.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-primary" data-act="copyDraft">复制摘要</button>
+        <button class="btn" data-act="settings">导出为文件 ▸ 设置里选格式</button>
+      </div>`);
+  } else {
+    body = card('就诊准备', `
+      <table class="tbl"><thead><tr><th>带什么</th><th>状态</th></tr></thead><tbody>
+        <tr><td>问题清单（${qs.length} 条）</td><td><span class="chip chip-ok">已就绪</span></td></tr>
+        <tr><td>最近化验单</td><td><span class="chip chip-warn">2 张待核对</span></td></tr>
+        <tr><td>用药与灌注记录</td><td><span class="chip chip-ok">已就绪</span></td></tr>
+        <tr><td>造口耗材清单（如已改道）</td><td><span class="chip chip-neutral">不适用</span></td></tr>
+      </tbody></table>`);
+  }
+  return H('复诊准备', '摘要只抄记录；私密项默认不带入。') + tabsHTML('visit') + body;
+}
+
+/* ================= 14. 临床试验 ================= */
+function pageTrials(tab) {
+  let body;
+  if (tab === '线索') {
+    body = card(`2026 年登记数据：共 ${TRIALS_STATS.total} 条（抓取于 ${TRIALS_STATS.fetchedAt}）`, `
+      <div class="grid grid-4" style="margin-bottom:14px">
+        <div><div class="src">总记录</div><div class="bc-main num">${TRIALS_STATS.total}</div></div>
+        <div><div class="src">ClinicalTrials.gov</div><div class="bc-main num">${TRIALS_STATS.ct}</div></div>
+        <div><div class="src">ChiCTR</div><div class="bc-main num">${TRIALS_STATS.chictr}</div></div>
+        <div><div class="src">含中国中心/注册</div><div class="bc-main num">${TRIALS_STATS.china}</div></div>
+      </div>
+      <div class="notice notice-warn">
+        <b>登记状态不等于入组资格。</b>能否参加要以研究方案与医生判断为准。
+        本页<b>不构成方案推荐</b>。
+      </div>
+      <table class="tbl" style="margin-top:14px"><thead><tr><th>登记号</th><th>标题（原文）</th><th>状态</th><th>处境</th></tr></thead><tbody>
+        ${TRIALS.map((t) => `<tr>
+          <td><code>${esc(t.reg)}</code></td>
+          <td><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
+              <div class="src">${esc(t.sponsor)}</div></td>
+          <td><span class="chip chip-neutral">${esc(t.status)}</span></td>
+          <td><span class="chip chip-cat">${esc(t.setting)}</span></td>
+        </tr>`).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:12px">
+        视图计数：膀胱癌视角 ${TRIALS_STATS.views.v_bladder_only} · 干预性 ${TRIALS_STATS.views.v_interventional}
+        · 膀胱癌×干预性 ${TRIALS_STATS.views.v_bladder_interventional} · 含中国 ${TRIALS_STATS.views.v_china}。
+        <code>utuc</code>（上尿路尿路上皮癌）与 <code>urothelial-unspecified</code>（尿路上皮癌未特指）是不同口径，已单独标注。
+        ChinaDrugTrials（CDE）本轮<b>未采集</b>，未命中不能解释为不存在。
+      </p>`);
+  } else if (tab === '已收藏') {
+    body = card('已收藏', `<div class="empty"><strong>还没有收藏</strong>在「线索」里点选后可收藏，并转成入组问题。</div>`);
+  } else {
+    body = card('入组问题', `
+      <ul style="font-size:var(--fs-md)">
+        <li>这个研究在招的是不是我这一类（NMIBC / MIBC / 晚期）？</li>
+        <li>我之前做过 BCG 并且失败，算不算符合条件？</li>
+        <li>eGFR 66 会不会影响入组？</li>
+      </ul>
+      <p class="src" style="margin-top:10px">问题的答案由研究团队判断，工作台不判断资格。</p>`);
+  }
+  return H('临床试验', '2026 年真实登记数据；登记状态 ≠ 入组资格；不构成推荐。')
+    + tabsHTML('trials') + body;
+}
+
+/* ================= 弹窗助手 =================
+   统一三件事：同一时刻只允许一个弹窗；点遮罩或 [data-close] 关闭；
+   document 级 Esc 关闭（焦点在哪都能退出，不依赖弹窗内聚焦）。
+   长内容弹窗用固定外壳：标题与关闭常显，只有内容区滚动。 */
+function openModal(html) {
+  $$('.modal-mask').forEach((m) => m.remove());
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = html;
+  document.body.appendChild(mask);
+
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  function close() { mask.remove(); document.removeEventListener('keydown', onKey); }
+  mask.addEventListener('click', (e) => { if (e.target === mask || e.target.closest('[data-close]')) close(); });
+  document.addEventListener('keydown', onKey);
+
+  const box = mask.querySelector('.modal');
+  if (box) { box.setAttribute('tabindex', '-1'); box.focus(); }
+  return { mask, close };
+}
+
+/* ================= 设置（弹窗） ================= */
+function openSettings() {
+  const { mask, close } = openModal(`
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+      <div class="modal-head"><h3 id="setTitle">设置</h3>
+        <button class="ag-close" data-close aria-label="关闭设置">×</button></div>
+      <div class="modal-body">
+        <h4 style="margin-bottom:8px">患者资料目录</h4>
+        <div class="notice notice-warn">
+          未接入。真实接入后这里显示：<code>~/Documents/UroPal</code> 与就绪状态；
+          切换目录会使旧快照失效。<b>卸载不删除业务数据。</b>
+        </div>
+
+        <h4 style="margin:16px 0 8px">文档解析（PDF 报告导入）</h4>
+        <dl class="kv">
+          <dt>状态</dt><dd><span class="chip chip-neutral">未配置</span></dd>
+          <dt>令牌来源</dt><dd>无（优先级：显式 &gt; 文件 &gt; 环境变量）</dd>
+          <dt>密钥文件</dt><dd><code>~/.uropal/secrets/mineru.json</code>（<span class="src">当前不存在</span>）</dd>
+        </dl>
+        <div class="field" style="margin-top:12px">
+          <label for="mToken">MinerU 令牌</label>
+          <input type="password" id="mToken" autocomplete="new-password" placeholder="粘贴令牌后点保存">
+          <span class="hint">令牌只写入本机密钥文件（权限 600）；界面与日志只显示掩码，永不回显原文。</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" data-act="saveToken">保存</button>
+          <button class="btn" data-act="clearToken">清除</button>
+          <a class="btn" href="https://mineru.net" target="_blank" rel="noopener">申请地址</a>
+        </div>
+        <p class="src" style="margin-top:8px">本原型<b>不联网</b>，以上为接口与界面骨架。</p>
+
+        <h4 style="margin:16px 0 8px">字号</h4>
+        <div class="btn-row">
+          ${[['normal', '标准'], ['large', '大字'], ['xlarge', '特大']].map(([v, t]) =>
+            `<button class="btn btn-sm ${STATE.textsize === v ? 'btn-primary' : ''}" data-ts="${v}">${t}</button>`).join('')}
+        </div>
+        <p class="src" style="margin-top:6px">大字模式下 3D 指标卡正面与背面一起升到 340px（保持一致）。</p>
+
+        <h4 style="margin:16px 0 8px">动效</h4>
+        <div class="btn-row">
+          <button class="btn btn-sm ${STATE.motion === 'auto' ? 'btn-primary' : ''}" data-mo="auto">跟随系统</button>
+          <button class="btn btn-sm ${STATE.motion === 'reduce' ? 'btn-primary' : ''}" data-mo="reduce">减少动效</button>
+        </div>
+
+        <h4 style="margin:16px 0 8px">指南与数据包来源</h4>
+        <table class="tbl"><tbody>
+          <tr><td>2026 临床试验快照</td><td>CT.gov + ChiCTR · ${TRIALS_STATS.total} 条 · ${TRIALS_STATS.fetchedAt}</td></tr>
+          <tr><td>中文共识事实</td><td>11 份 · 见 docs/research/</td></tr>
+          <tr><td>CTCAE</td><td>v5.0 · 随包分发</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:16px 0 8px">关于</h4>
+        <dl class="kv">
+          <dt>版本</dt><dd><b>v${APP_VERSION}</b>（与 package.json / VERSION / workbench.json 同源）</dd>
+          <dt>性质</dt><dd>设计原型，数据为演示用；<b>不构成诊断或治疗建议</b></dd>
+          <dt>Agent 面板</dt><dd>未接入 DSH（未验证）</dd>
+        </dl>
+      </div>
+      <div class="modal-foot"><button class="btn" data-close>关闭</button></div>
+    </div>`);
+  $$('[data-ts]', mask).forEach((b) => b.addEventListener('click', () => {
+    STATE.textsize = b.dataset.ts; applyPrefs(); saveState(); close(); openSettings();
+  }));
+  $$('[data-mo]', mask).forEach((b) => b.addEventListener('click', () => {
+    STATE.motion = b.dataset.mo; applyPrefs(); saveState(); close(); openSettings();
+  }));
+  $$('[data-act]', mask).forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.act === 'saveToken') { toast('原型不联网：令牌未写入（此处会写本机密钥文件）'); $('#mToken').value = ''; }
+    if (b.dataset.act === 'clearToken') toast('已模拟清除：只删 token 键，不动环境变量');
+  }));
+}
+
+/* ================= Agent 面板 ================= */
+function renderAgent() {
+  const pane = $('#agentPane'), sp = $('#splitter'), btn = $('#btnAgent');
+  pane.hidden = !STATE.agentOpen;
+  sp.hidden = !STATE.agentOpen;
+  btn.setAttribute('aria-expanded', String(STATE.agentOpen));
+  btn.textContent = STATE.agentOpen ? '收起 AI 对话' : '打开 AI 对话';
+  $('#agState').dataset.state = STATE.agentOpen ? 'ready' : 'idle';
+  $('#agState').textContent = STATE.agentOpen ? '已连接（原型）' : '未连接';
+  if (!STATE.agentOpen) return;
+
+  const d = DRAFT_SCOPES[STATE.draftScope];
+  $('#agDraft').innerHTML = `
+    <div class="ag-block"><h4>范围：${esc(d.label)}</h4></div>
+    ${d.blocks.map((b) => `<div class="ag-block"><h4>${esc(b.label)}</h4>
+      <ul>${b.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('')}
+    <div class="ag-block ag-gap"><h4>缺项（写「没有」，不补不推测）</h4>
+      <ul>${d.gaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
+    <div class="ag-block ag-excl"><h4>已排除</h4>
+      <ul>${d.excluded.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
+    <p class="src">「已确认」只表示转录核对，<b>不等于医学审核</b>。</p>`;
+  sp.setAttribute('aria-valuenow', String(STATE.agentWidth));
+}
+
+/* 拖动分隔器（按容器 rect 夹取） */
+function initSplitter() {
+  const sp = $('#splitter');
+  let dragging = false;
+  const onMove = (e) => {
+    if (!dragging) return;
+    const bodyW = $('.wb-body').getBoundingClientRect().width;
+    const pct = ((e.clientX - $('.wb-body').getBoundingClientRect().left) / bodyW) * 100;
+    STATE.agentWidth = clampAgentWidth(100 - pct);   // 面板在右
+    applyPrefs();
+  };
+  sp.addEventListener('pointerdown', (e) => { dragging = true; sp.setPointerCapture(e.pointerId); });
+  sp.addEventListener('pointermove', onMove);
+  sp.addEventListener('pointerup', () => { dragging = false; saveState(); });
+  sp.addEventListener('keydown', (e) => {
+    const step = 2;
+    if (e.key === 'ArrowLeft')  { STATE.agentWidth = clampAgentWidth(STATE.agentWidth + step); }
+    else if (e.key === 'ArrowRight') { STATE.agentWidth = clampAgentWidth(STATE.agentWidth - step); }
+    else if (e.key === 'Home') { STATE.agentWidth = 25; }
+    else if (e.key === 'End')  { STATE.agentWidth = 45; }
+    else return;
+    e.preventDefault(); applyPrefs(); sp.setAttribute('aria-valuenow', String(STATE.agentWidth)); saveState();
+  });
+}
+
+/* ================= 文案红线自检 ================= */
+function wordingCheck() {
+  const text = $('#wbPage').innerText + ' ' + ($('#agentPane').hidden ? '' : $('#agentPane').innerText);
+  const hits = WORDING_REDLINES.filter((w) => text.includes(w));
+  openModal(`
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="wdTitle">
+      <div class="modal-head"><h3 id="wdTitle">文案红线自检（当前页）</h3>
+        <button class="ag-close" data-close aria-label="关闭">×</button></div>
+      <div class="modal-body">
+        <p>检查词表：${WORDING_REDLINES.map((w) => `<code>${esc(w)}</code>`).join(' ')}</p>
+        ${hits.length
+          ? `<div class="notice notice-stop" style="margin-top:12px">命中 ${hits.length} 处：<b>${hits.map(esc).join('、')}</b></div>
+             <ul class="wording-list" style="margin-top:10px">${hits.map((h) => `<li class="hit">${esc(h)}</li>`).join('')}</ul>`
+          : `<div class="notice notice-ok" style="margin-top:12px">当前页零命中 ✅</div>`}
+        <p class="src" style="margin-top:12px">正式项目由 <code>scripts/check-wording.mjs</code> 在 CI 检查。</p>
+      </div>
+      <div class="modal-foot"><button class="btn" data-close>关闭</button></div>
+    </div>`);
+}
+
+/* ================= 事件绑定 ================= */
+const APP = {};
+
+function bindPage() {
+  /* 只绑定页面内容区的元素。
+     坑：不能写成 $$('[data-act]')——左侧导航的「设置」按钮也带 data-act，
+     会和 renderNav 里的处理器重复触发，导致弹两个设置窗。 */
+  const scope = $('#wbPage');
+
+  // 分野闸门
+  $$('[data-line]', scope).forEach((b) => b.addEventListener('click', () => {
+    $$('[data-line]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    const v = b.dataset.line;
+    if (STATE.line && STATE.line !== v) {
+      STATE.lineHistory.unshift(`${STATE.line} → ${v}（留痕）`);
+    }
+    STATE.line = v;
+    saveState(); renderNav(); renderPage();
+    toast(v === 'undetermined' ? '保持未定：不显示任何一条线的专属内容' : '已选定分野，看板已切换');
+  }));
+
+  // 3D 卡翻转（点击 + 键盘）
+  $$('.metric-card', scope).forEach((c) => {
+    const flip = () => {
+      const on = c.dataset.flipped !== 'true';
+      c.dataset.flipped = String(on);
+      const back = $('.metric-back', c), front = $('.metric-front', c);
+      back.setAttribute('aria-hidden', String(!on));
+      front.setAttribute('aria-hidden', String(on));
+      if (on) { back.removeAttribute('inert'); front.setAttribute('inert', ''); }
+      else { front.removeAttribute('inert'); back.setAttribute('inert', ''); }
+    };
+    c.addEventListener('click', flip);
+    c.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); }
+    });
+  });
+
+  // 一图秀：指标选择与时间窗
+  $$('[data-code]', scope).forEach((cb) => cb.addEventListener('change', () => {
+    const cur = new Set(APP.$chart.codes);
+    if (cb.checked) { if (cur.size >= 6) { cb.checked = false; toast('最多选 6 条线'); return; } cur.add(cb.dataset.code); }
+    else cur.delete(cb.dataset.code);
+    APP.$chart.codes = [...cur];
+    renderPage();
+  }));
+  $$('[data-win]', scope).forEach((b) => b.addEventListener('click', () => {
+    APP.$chart.win = b.dataset.win; renderPage();
+  }));
+
+  // 问题清单
+  $$('[data-delq]', scope).forEach((b) => b.addEventListener('click', () => {
+    APP.$qs.splice(Number(b.dataset.delq), 1); renderPage();
+  }));
+  const addq = $('[data-addq]', scope);
+  if (addq) addq.addEventListener('click', () => {
+    const v = $('#newq').value.trim();
+    if (!v) return toast('先写一个问题');
+    APP.$qs.push(v); renderPage(); toast('已加入清单');
+  });
+
+  // 通用动作
+  $$('[data-act]', scope).forEach((b) => b.addEventListener('click', () => {
+    const a = b.dataset.act;
+    if (a === 'settings') openSettings();
+    else if (a === 'changeLine') {
+      /* 坑：只清 line 而不改路由，页面还停在「我的分型与分期」，闸门永远不出现 */
+      STATE.line = null; STATE.route = 'dashboard'; location.hash = '#/dashboard';
+      saveState(); renderNav(); renderPage(); toast('已回到分野选择，可以重新选');
+    }
+    else if (a === 'batchAdd') toast('已加入本批（原型不写入）');
+    else if (a === 'setDiversion') toast('术式是不可逆事实：改动会留痕，不覆盖旧值');
+    else if (a === 'copyDraft') copyDraft();
+    else if (a === 'toggleShare') {
+      b.dataset.on = b.dataset.on === '1' ? '0' : '1';
+      b.textContent = b.dataset.on === '1' ? '本次已勾选带入 ☑' : '本次已勾选带入 ▢';
+    }
+  }));
+  $$('[data-confirm]', scope).forEach((b) => b.addEventListener('click', () => toast('已确认（候选才进入事实层）')));
+  $$('[data-goto]', scope).forEach((b) => b.addEventListener('click', () => {
+    STATE.route = 'urgent'; location.hash = '#/urgent'; renderNav(); renderPage();
+  }));
+}
+
+function copyDraft() {
+  const d = DRAFT_SCOPES[STATE.draftScope];
+  const text = [`范围：${d.label}`,
+    ...d.blocks.map((b) => `${b.label}\n` + b.lines.map((l) => `- ${l}`).join('\n')),
+    `缺项\n` + d.gaps.map((g) => `- ${g}`).join('\n'),
+    `已排除\n` + d.excluded.map((g) => `- ${g}`).join('\n')].join('\n\n');
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('草稿已复制'), () => toast('复制失败，可手动选择文本'));
+  else toast('此环境不支持自动复制');
+}
+
+/* ================= 路由与渲染 ================= */
+const PAGE_FN = {
+  dashboard: () => pageDashboard(),
+  records: (t) => pageRecords(t),
+  staging: (t) => pageStaging(t),
+  surgery: (t) => pageSurgery(t),
+  instillation: (t) => pageInstillation(t),
+  diversion: (t) => pageDiversion(t),
+  treatment: (t) => pageTreatment(t),
+  followup: (t) => pageFollowup(t),
+  metrics: (t) => pageMetrics(t),
+  chart: () => pageChart(),
+  urgent: () => pageUrgent(),
+  life: (t) => pageLife(t),
+  visit: (t) => pageVisit(t),
+  trials: (t) => pageTrials(t),
+};
+
+const STATUS_TEXT = {
+  dashboard: '看板 · 原型模式 · 数据为演示用',
+  instillation: '膀胱灌注 · 周期与禁忌',
+  followup: '复查与膀胱镜 · 检查即心理事件',
+  urgent: '急症与安全 · 不判断病情，不给处置建议',
+  trials: `临床试验 · 2026 登记数据 ${TRIALS_STATS.total} 条 · 抓取于 ${TRIALS_STATS.fetchedAt}`,
+};
+
+function renderPage() {
+  const { current } = tabsFor(STATE.route);
+  const fn = PAGE_FN[STATE.route] || (() => '<div class="empty"><strong>页面不存在</strong></div>');
+  $('#wbPage').innerHTML = fn(current);
+  $('#tbStatus').textContent = STATUS_TEXT[STATE.route] || `小泉宝 UroPal · ${NAV.find((n) => n.id === STATE.route)?.text || ''} · 原型模式`;
+  bindTabs(STATE.route);
+  bindPage();
+  renderAgent();
+}
+
+function routeFromHash() {
+  const r = (location.hash || '').replace(/^#\/?/, '').split('/')[0];
+  STATE.route = PAGE_FN[r] ? r : 'dashboard';
+}
+
+/* ================= 启动 ================= */
+function boot() {
+  loadState();
+  applyPrefs();
+  routeFromHash();
+  renderNav();
+  renderPage();
+  initSplitter();
+
+  $('#btnAgent').addEventListener('click', () => {
+    STATE.agentOpen = !STATE.agentOpen; saveState(); renderAgent();
+  });
+  $('#btnAgentClose').addEventListener('click', () => {
+    STATE.agentOpen = false; saveState(); renderAgent();
+  });
+  $('#btnDraftScope').addEventListener('click', () => {
+    const keys = Object.keys(DRAFT_SCOPES);
+    STATE.draftScope = keys[(keys.indexOf(STATE.draftScope) + 1) % keys.length];
+    saveState(); renderAgent();
+  });
+  $('#btnCopyDraft').addEventListener('click', copyDraft);
+  $('#btnWording').addEventListener('click', wordingCheck);
+
+  window.addEventListener('hashchange', () => { routeFromHash(); renderNav(); renderPage(); });
+}
+
+document.addEventListener('DOMContentLoaded', boot);
