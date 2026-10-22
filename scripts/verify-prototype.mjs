@@ -213,6 +213,24 @@ async function main() {
   await page.click('.tab:has-text("造口日记")');
   await page.waitForTimeout(180);
   assert('造口日记为批量录入', !!(await page.$('.batch-row')));
+  /* 光有 placeholder/aria-label，用户看不出「2」是换了几次还是漏了几次 —— 必须有可见标签 */
+  const batchFields = await page.evaluate(() => [...document.querySelectorAll('.batch-row input, .batch-row select')].map((el) => {
+    const lb = el.closest('label');
+    const txt = lb ? lb.querySelector('span')?.textContent.trim() : '';
+    return { t: el.type || el.tagName.toLowerCase(), label: txt || '' };
+  }));
+  assert('批量录入每个字段都有可见标签（不靠 placeholder 猜）',
+    batchFields.length >= 5 && batchFields.every((f) => f.label.length > 0),
+    batchFields.map((f) => `${f.t}:${f.label || '（无）'}`).join(' '));
+  const lifeCard = await page.textContent('#wbPage');
+  assert('造口日记含最近 30 天小结与生活影响', /最近 30 天小结/.test(lifeCard) && /造口对生活的影响/.test(lifeCard));
+  /* 前缀曾写在 .src 上，把「总记录」「这是计数，不是评价」也冠成「来源：」。只允许 .src-line 带前缀。 */
+  const srcPrefix = await page.evaluate(() => {
+    const el = document.querySelector('.src:not(.src-line)');
+    return el ? getComputedStyle(el, '::before').content : '__none__';
+  });
+  assert('普通说明不冒充「来源：」（前缀只加在 .src-line 上）',
+    /^(none|normal|""|__none__)$/.test(String(srcPrefix)), String(srcPrefix));
   await shot('06-尿流改道-造口日记批量');
 
   /* --- 复查与膀胱镜 --- */

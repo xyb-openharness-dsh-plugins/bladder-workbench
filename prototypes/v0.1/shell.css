@@ -249,7 +249,7 @@
 
 /* —— 来源标注 —— */
 .src { font-size: var(--fs-xs); color: var(--wb-ghost); }
-.src::before { content: "来源："; }
+.src-line::before { content: "来源："; }
 .crumb-note { font-size: var(--fs-xs); color: var(--wb-ghost); font-weight: 400; }
 .verify-tag {
   font-size: var(--fs-xs); color: var(--wb-warn);
@@ -503,9 +503,13 @@ table.tbl td.num { text-align: right; }
 .dot[data-st="miss"]    { border-style: dashed; }
 
 /* 造口批量录入 */
-.batch-row { display: grid; grid-template-columns: 1.2fr .7fr .7fr .9fr 1fr auto; gap: 8px; align-items: center; }
+.batch-row { display: grid; grid-template-columns: 1.1fr 1.1fr .7fr .7fr .9fr auto; gap: 8px; align-items: end; }
 @media (max-width: 900px) { .batch-row { grid-template-columns: 1fr 1fr; } }
-.batch-row input, .batch-row select { border: 1px solid var(--wb-line); border-radius: var(--r-sm); padding: 5px 8px; min-height: 30px; }
+/* 每个输入都要有可见标签：光靠 placeholder/aria-label，用户看不出「2」是换了几次还是漏了几次 */
+.bf { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bf > span { font-size: 11px; color: var(--wb-muted); }
+.batch-row input, .batch-row select { border: 1px solid var(--wb-line); border-radius: var(--r-sm); padding: 5px 8px; min-height: 30px; min-width: 0; width: 100%; }
+.batch-row .btn { align-self: end; }
 
 /* 急症四入口 */
 .urgent-grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }

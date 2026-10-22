@@ -22,7 +22,9 @@ function toast(msg) {
 }
 
 /** 用带来源标注的字段 */
-const src = (t) => `<span class="src">${esc(t)}</span>`;
+/* 只有真的在标来源时才加「来源：」前缀。原先前缀写在 .src 上，
+   结果「总记录」「这是计数，不是评价」这类说明也被冠上「来源：」。 */
+const src = (t) => `<span class="src src-line">${esc(t)}</span>`;
 const verify = (t) => `<span class="verify-tag">${esc(t)}</span>`;
 const chipCat = (v) => `<span class="chip chip-cat" data-state="${esc(v)}">${esc(v)}</span>`;
 
@@ -618,17 +620,41 @@ function pageDiversion(tab) {
     body = card('造口日记（一次录一批）', `
       <div class="notice notice-info">按<b>一批</b>记录，不需要每天打卡。耗材型号从目录里选，不用每次重打。</div>
       <div class="batch-row" style="margin-top:14px">
-        <input type="date" value="2026-10-23" aria-label="批次日期">
-        <select aria-label="耗材">${STOMA_SUPPLY.map((s) => `<option>${esc(s.kind)} · ${esc(s.brand)}</option>`).join('')}</select>
-        <input type="number" value="2" min="0" aria-label="更换次数">
-        <input type="number" value="1" min="0" aria-label="渗漏次数">
-        <select aria-label="皮肤状态"><option>无</option><option selected>红</option><option>破溃</option><option>其他</option></select>
+        <label class="bf"><span>批次日期</span><input type="date" value="2026-10-23"></label>
+        <label class="bf"><span>耗材</span><select>${STOMA_SUPPLY.map((s) => `<option>${esc(s.kind)} · ${esc(s.brand)}</option>`).join('')}</select></label>
+        <label class="bf"><span>更换次数</span><input type="number" value="2" min="0"></label>
+        <label class="bf"><span>渗漏次数</span><input type="number" value="1" min="0"></label>
+        <label class="bf"><span>皮肤状态</span><select><option>无</option><option selected>红</option><option>破溃</option><option>其他</option></select></label>
         <button class="btn btn-primary" data-act="batchAdd">加入本批</button>
       </div>
       <table class="tbl" style="margin-top:14px"><thead><tr><th>批次</th><th>耗材</th><th class="num">更换</th><th class="num">渗漏</th><th>皮肤</th></tr></thead><tbody>
         ${STOMA_LOG.map((l) => `<tr><td>${esc(l.batchOn)}</td><td>${esc(l.supplyId === 's1' ? '底盘 · 演示A' : l.supplyId)}</td>
           <td class="num">${l.changes}</td><td class="num">${l.leaks}</td><td>${esc(l.skin)}</td></tr>`).join('')}
-      </tbody></table>`);
+      </tbody></table>`)
+    + `<div class="cols-2" style="margin-top:16px">
+        ${card('最近 30 天小结（只数次数，不判断好坏）', `
+          <table class="tbl">
+            <thead><tr><th>项目</th><th class="num">次数</th><th>怎么来的</th></tr></thead>
+            <tbody>
+              <tr><td>更换底盘</td><td class="num">${STOMA_LOG.reduce((a, l) => a + l.changes, 0)}</td><td>把上面每一批的次数加总</td></tr>
+              <tr><td>发生渗漏</td><td class="num">${STOMA_LOG.reduce((a, l) => a + l.leaks, 0)}</td><td>同上；渗漏<b>次数</b>不等于严重程度</td></tr>
+              <tr><td>皮肤发红</td><td class="num">${STOMA_LOG.filter((l) => l.skin === '红').length}</td><td>按批次数到「红」的批数</td></tr>
+            </tbody>
+          </table>
+          <p class="src" style="margin-top:10px">这是<b>计数</b>，不是评价。什么算「多」要问造口治疗师，工作台不设阈值。</p>`)}
+        ${card('造口对生活的影响（只记事实）', `
+          <table class="tbl">
+            <thead><tr><th>场景</th><th>现在的情况</th><th>下次想问 / 想解决</th></tr></thead>
+            <tbody>
+              <tr><td>洗澡</td><td>可以直接冲，底盘不揭</td><td><input type="text" placeholder="还没有写" aria-label="洗澡想解决的问题"></td></tr>
+              <tr><td>穿衣</td><td>宽松上衣看不出来</td><td><input type="text" placeholder="还没有写" aria-label="穿衣想解决的问题"></td></tr>
+              <tr><td>出门 / 过安检</td><td>还没有试过</td><td><input type="text" placeholder="还没有写" aria-label="出门想解决的问题"></td></tr>
+              <tr><td>夜间集尿</td><td>起夜 2 次</td><td><input type="text" placeholder="还没有写" aria-label="夜间集尿想解决的问题"></td></tr>
+              <tr><td>气味</td><td>换袋后基本没有</td><td><input type="text" placeholder="还没有写" aria-label="气味想解决的问题"></td></tr>
+            </tbody>
+          </table>
+          <p class="src" style="margin-top:10px">来源：本人的记录 · 未核对。饮食与气味的具体忌口<b>原文未取得</b>，本页不写。</p>`)}
+      </div>`;
   } else if (tab === '耗材目录') {
     body = card('可复用耗材目录', `
       <table class="tbl"><thead><tr><th>类别</th><th>品牌 / 型号</th><th>规格</th><th class="num">建议更换周期（天）</th></tr></thead><tbody>
