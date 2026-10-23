@@ -73,6 +73,40 @@ const probes = [
   { name: '灌注取消必须能记原因（取消状态合法）', expect: 'ok',
     sql: `INSERT INTO instillation_events(id,course_id,phase,status,cancel_reason,created_at)
           VALUES('ie4','ic1','诱导','cancelled','因肉眼血尿取消','2026-10-23')` },
+  /* 反向探针：只验「带原因的取消能写」是恒真的 —— 它根本没碰约束。
+     必须再验「不带原因写不进去」，否则这条 CHECK 等于没加。 */
+  { name: '取消但不写原因必须被拒（反向探针）', expect: 'error',
+    sql: `INSERT INTO instillation_events(id,course_id,phase,status,created_at)
+          VALUES('ie5','ic1','诱导','cancelled','2026-10-23')` },
+  { name: '取消原因全是空白必须被拒（反向探针）', expect: 'error',
+    sql: `INSERT INTO instillation_events(id,course_id,phase,status,cancel_reason,created_at)
+          VALUES('ie6','ic1','诱导','cancelled','   ','2026-10-23')` },
+  { name: '非取消状态不必填原因（不能误伤正常记录）', expect: 'ok',
+    sql: `INSERT INTO instillation_events(id,course_id,phase,status,created_at)
+          VALUES('ie7','ic1','诱导','done','2026-10-02')` },
+
+  // —— 私密 fail-closed：默认必须是私密，而且只能 0/1 ——
+  { name: '造口日记默认私密（不写 is_private 时值为 1）', expect: 'value', want: '1',
+    sql: `INSERT INTO stoma_logs(id,subject_id,batch_date,created_at)
+          VALUES('sl1','s1','2026-10-20','2026-10-20');
+          SELECT is_private FROM stoma_logs WHERE id='sl1'` },
+  { name: '复查感受默认私密', expect: 'value', want: '1',
+    sql: `INSERT INTO cystoscopy_experiences(id,subject_id,recorded_at)
+          VALUES('cx1','s1','2026-10-22');
+          SELECT is_private FROM cystoscopy_experiences WHERE id='cx1'` },
+  { name: '症状自评默认私密', expect: 'value', want: '1',
+    sql: `INSERT INTO symptom_entries(id,subject_id,d,name,created_at)
+          VALUES('sy1','s1','2026-10-22','乏力','2026-10-22');
+          SELECT is_private FROM symptom_entries WHERE id='sy1'` },
+  { name: '控尿记录默认私密', expect: 'value', want: '1',
+    sql: `INSERT INTO continence_logs(id,subject_id,d,created_at)
+          VALUES('cl1','s1','2026-10-22','2026-10-22');
+          SELECT is_private FROM continence_logs WHERE id='cl1'` },
+  { name: '私密标记不许写 2（只能 0/1）', expect: 'error',
+    sql: `INSERT INTO stoma_logs(id,subject_id,batch_date,is_private,created_at)
+          VALUES('sl2','s1','2026-10-21',2,'2026-10-21')` },
+  { name: 'stoma_logs 不再有自由文本 actor 列（谁记的只有 records.actor_id 一层）', expect: 'value', want: '0',
+    sql: `SELECT count(*) FROM pragma_table_info('stoma_logs') WHERE name='actor'` },
 
   // —— 维度 8：三种改道三选一，不许合并成一个值 ——
   { name: '改道「原位新膀胱」可写', expect: 'ok',

@@ -954,10 +954,12 @@ function pageInstillation(tab) {
         <tr><td>2026-10-02</td><td>无明显不适</td><td class="num">0 / 10</td><td>—</td></tr>
       </tbody></table>
       <p class="src" style="margin-top:10px">分级判据原文为图片未取得，此处<b>不做分级</b>，只记自评强度。<span class="verify-tag">来源待补</span></p>`)
-      + card('这类不适，什么时候必须联系医生', `
+      + card('这类不适，什么时候需要找人', `
         <div class="notice notice-warn">
-          灌注后出现<b>发热寒战、并且持续不缓解</b>，或伴明显乏力、血压偏低 —— 属于需要立刻联系医疗团队的情况，
-          不要等到下次门诊。详见「急症与安全」页的 <b>BCG 全身感染</b>入口。
+          灌注后出现<b>发热寒战、并且持续不缓解</b>，或伴明显乏力、血压偏低 ——
+          下面这几条是共识列出的<b>固定情形</b>，不是工作台替你判断出来的。
+          工作台不给用药或自行处理的建议，只做转接：把这类情形指到「急症与安全」页的
+          <b>BCG 全身感染</b>入口，由那里给出联系路径。
           <span class="verify-tag">判据来源待补</span>
         </div>
         <p class="src" style="margin-top:10px">原型阶段只给联系路径，不判断你的具体情况，也不给处置建议。
@@ -1493,8 +1495,15 @@ function pageMetrics(tab) {
         </div>
         <div class="strip-actions"><button type="button" class="btn" data-goto="chart">打开一图秀</button></div>
       </div>
-      <div class="metric-grid" data-metric-grid>${METRICS.map((m, i) => metricCardHTML(m, i)).join('')}</div>
-      <p class="src" style="margin-top:12px">卡背面是<b>固定高度 3D 翻转</b>，不是向下展开。
+      ${cats.map((c) => {
+        const inCat = METRICS.filter((m) => m.cat === c);
+        return `<section class="metric-group" data-group="${esc(c)}">
+          <h3 class="mg-title">${esc(c)}<span class="mg-count">${inCat.length} 项</span></h3>
+          <div class="metric-grid" data-metric-grid>${inCat.map((m) => metricCardHTML(m, METRICS.indexOf(m))).join('')}</div>
+        </section>`;
+      }).join('')}
+      <p class="src" style="margin-top:12px">按类别分组，组顺序与「病情一图秀」同一来源。
+        卡背面是<b>固定高度 3D 翻转</b>，不是向下展开。
         点卡片或按回车/空格翻转；≥700px 两列，窄屏一列，不做三列以上。</p>`;
   };
 
@@ -1710,9 +1719,10 @@ function pageChart() {
 
 /* ================= 11. 急症与安全 ================= */
 function pageUrgent() {
-  return H('急症与安全', '四类情况各自有入口。<b>这里不解释原因，也不告诉你怎么处理</b>——请联系你的医疗团队。')
+  return H('急症与安全', '四类情况各自有入口。本页<b>不解释原因、不给用药或自行处理的建议</b>，只做一件事：把需要找人的情形指出来。')
     + `<div class="notice notice-stop" style="margin-bottom:16px">
-         出现下面任何一类情况，请<b>尽快联系你的医疗团队或就近急诊</b>。本页只帮你判断「这算不算需要马上处理」。
+         下面四类里的条目，是<b>共识原文列出的固定情形</b>，不是工作台按你的情况算出来的。
+         属于其中任何一类时，联系路径在每张卡的下方。本页不判断「你这算几级」，也不建议用什么药、能不能等。
        </div>`
     + `<div class="urgent-grid">` + URGENT.map((u) => `
         <div class="urgent-card" data-src="${u.src}">
@@ -1723,7 +1733,10 @@ function pageUrgent() {
           <div class="uc-contact">联系入口：<b>你的主诊医生 / 医院总机</b>（原型占位，未接通）</div>
         </div>`).join('') + `</div>`
     + card('为什么这里没有「怎么办」', `
-      <p>工作台不判断病情，也不给处置建议。它只做两件事：帮你把情况说清楚，帮你更快找到人。</p>`)
+      <p>工作台不判断病情，也不给处置建议 —— 不写用什么药、不写能不能等、不写要不要去医院。
+        它只做两件事：帮你把情况说清楚，帮你更快找到人。</p>
+      <p class="src" style="margin-top:10px">「帮你找到人」是转接，不是处置：转接告诉你去哪儿问，
+        处置会替医生回答。前者是工作台的职责，后者不是。</p>`)
     + `<div class="cols-2" style="margin-top:16px">
         ${card('我的联系入口', `
           <div class="notice notice-info">急的时候不该再去翻通讯录。把号码写在这里一次，之后不用再找。</div>
@@ -2298,7 +2311,19 @@ function bindPage() {
       if (on) { back.removeAttribute('inert'); front.setAttribute('inert', ''); }
       else { front.removeAttribute('inert'); back.setAttribute('inert', ''); }
     };
-    c.addEventListener('click', flip);
+    c.addEventListener('click', (ev) => {
+      /* 点迷你折线上的点 = 「看这个点的来源」，不是翻卡（docs/24 MT09）。
+         不拦住的话，一次点击会同时弹来源又把卡片翻回正面，两件事互相抵消：
+         用户点完发现卡回到正面了，却以为来源没打开。 */
+      const dot = ev.target.closest && ev.target.closest('.mb-chart svg circle');
+      if (dot) {
+        const tip = dot.querySelector('title')?.textContent || dot.getAttribute('data-tip') || '';
+        if (tip) toast(tip);
+        ev.stopPropagation();
+        return;
+      }
+      flip();
+    });
     c.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); }
     });

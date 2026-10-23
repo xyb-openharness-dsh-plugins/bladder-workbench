@@ -6,7 +6,10 @@
 -- 为什么放 draft/：docs/SCHEMA.md 与 docs/SPEC.md 都写明「HTML 确认后再复核落实生产
 -- schema/迁移」（docs/14-HTML-AND-DATA-CONTRACT.md）。原型期把模型先写成 SQL 是为了
 -- **用真实约束走查一遍**（三态分野、四态尿细胞学、双分级不换算、不可逆术式），
--- 而不是为了提前锁死。模拟数据不进库。
+-- 而不是为了提前锁死。
+-- 「模拟数据不进库」的准确意思是：**不把编造的患者病历写进事实表**。
+-- 演示档案本身要留一条可辨识的标记（见 §14 demo_meta），
+-- 否则真实数据与演示数据混在一起就再也分不开了 —— 两件事不矛盾。
 --
 -- 与泌尿族样板（前列腺癌 T0）的关系：DESIGN-01 定膀胱癌为泌尿族实际先行者，
 -- 家族基线未定，所以「肾功能与分肾核素」「尿流改道通用字段」「造口耗材目录」
@@ -213,7 +216,11 @@ CREATE TABLE instillation_events (
   retention_minutes INTEGER,               -- 灌注后憋尿时间。**默认空，不给建议值**
   urine_output_note TEXT,
   side_effect   TEXT,
-  created_at    TEXT NOT NULL
+  created_at    TEXT NOT NULL,
+  -- 「取消也要记原因」光写在文档里约束不住（AC-10）。写成表级 CHECK：
+  -- 不是要求把原因解释清楚，只要求不能空着 —— 空着的取消等于把一次
+  -- 治疗中断变成不可追问的空白。
+  CHECK (status <> 'cancelled' OR (cancel_reason IS NOT NULL AND length(trim(cancel_reason)) > 0))
 );
 CREATE INDEX idx_inst_event ON instillation_events(course_id, planned_on);
 
@@ -269,7 +276,11 @@ CREATE TABLE stoma_logs (
   skin_state    TEXT,                      -- 红 / 破皮 / 无 …
   odor_note     TEXT,
   night_bag     TEXT,
-  actor         TEXT,                      -- 谁记的（照护者接手场景）
+  -- 原来这里是 actor TEXT（自由文本）。它是 records.actor_id 的弱化副本：
+  -- 同一件事有两个来源，其中一个还不是外键，照护者代记反而查不准。
+  -- 「谁记的」统一走 records.actor_id 一层（见文件末「谁记的」小节）。
+  -- 身体形象相关默认私密（DESIGN-09 / SPEC M05）：默认 1，未显式勾选绝不出本机。
+  is_private    INTEGER NOT NULL DEFAULT 1 CHECK (is_private IN (0, 1)),
   created_at    TEXT NOT NULL
 );
 
@@ -282,6 +293,8 @@ CREATE TABLE continence_logs (
   residual_ml   INTEGER,
   catheterize_times INTEGER,
   note          TEXT,
+  -- 控尿/导尿/残余尿属于身体功能，默认私密（同上）
+  is_private    INTEGER NOT NULL DEFAULT 1 CHECK (is_private IN (0, 1)),
   created_at    TEXT NOT NULL
 );
 
@@ -337,6 +350,9 @@ CREATE TABLE cystoscopy_experiences (
   pain_score    INTEGER CHECK (pain_score BETWEEN 0 AND 10),
   mood_note     TEXT,
   worry_note    TEXT,                      -- 复发恐惧独立记录位（E4，见下）
+  -- 疼痛 / 心情 / 复发恐惧三项默认私密。复查感受是最容易被"顺手带进导出"的内容，
+  -- 所以默认值为 1（fail-closed），要带出去必须显式勾选（SPEC M09）。
+  is_private    INTEGER NOT NULL DEFAULT 1 CHECK (is_private IN (0, 1)),
   recorded_at   TEXT NOT NULL
 );
 
@@ -528,6 +544,8 @@ CREATE TABLE symptom_entries (
   score         INTEGER,
   score_max     INTEGER DEFAULT 10,
   note          TEXT,
+  -- 症状自评常含身体与情绪内容，默认私密
+  is_private    INTEGER NOT NULL DEFAULT 1 CHECK (is_private IN (0, 1)),
   created_at    TEXT NOT NULL
 );
 
@@ -666,6 +684,20 @@ CREATE TABLE high_risk_markers (
   created_at    TEXT NOT NULL
 );
 
+-- 谁记的（照护者代记，DESIGN-09 / SPEC M10）
+-- ---------------------------------------------------------------------------
+-- 本草案**只有一层**记录人：records.actor_id（外键 → subjects.id）。
+-- 刻意不在每张事实表上加 recorded_by —— 那样会有 44 份"谁记的"，
+-- 改一次规则要改 44 处，且必然有一半忘记更新。
+--
+-- 因此有两条应用层不变量（**数据库管不住，只能靠代码与探针守**）：
+--   1) 每条事实写入必须同时写一条 records 行（entity_table + entity_id + actor_id）；
+--   2) 照护者代记时，actor_id 是**照护者**，subjects 里另有被记录人 ——
+--      「记录人」与「当事人」是两个字段，不是一个字段的两种解释。
+-- 已清除的历史写法：stoma_logs.actor（自由文本，非外键，已删）。
+--
+-- 隐私同样只有一处口径：敏感事实表上的 is_private，默认 1（fail-closed）。
+-- 现有：viewpoints / stoma_logs / continence_logs / cystoscopy_experiences / symptom_entries。
 CREATE TABLE demo_meta (
   key           TEXT PRIMARY KEY,
   value         TEXT,

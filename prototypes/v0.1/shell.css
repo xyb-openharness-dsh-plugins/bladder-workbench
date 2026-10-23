@@ -402,6 +402,18 @@ table.tbl td.num { text-align: right; }
 @media (max-width: 700px) { .metric-grid { grid-template-columns: minmax(0, 1fr); } }
 /* 不做三列以上，即使超宽屏 */
 
+/* 按类别分组（docs/23 硬规则①）：组标题 + 组内网格。
+   组顺序来自 data.js 的 METRICS.cat 出现顺序，与「病情一图秀」同一来源。 */
+.metric-group { margin-bottom: 22px; }
+.metric-group:last-child { margin-bottom: 0; }
+.mg-title {
+  display: flex; align-items: baseline; gap: 8px;
+  margin: 0 0 10px; padding-bottom: 6px;
+  font-size: 15px; font-weight: 650; color: var(--wb-ink);
+  border-bottom: 1px solid var(--wb-line);
+}
+.mg-count { font-size: 11px; font-weight: 400; color: var(--wb-ghost); }
+
 .metric-card {
   height: 276px;                    /* 固定高度 */
   perspective: 1100px;              /* 透视在外卡 */

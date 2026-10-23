@@ -19,7 +19,7 @@
 | `instillation_courses` | `id` | subject_id | drug_kind / dose_raw / planned_cycles / maintenance_note / stop_reason | drug_kind ∈ {BCG, chemotherapy, other} | 灌注共识 2021 | 疗程层 |
 | `instillation_events` | `id` | course_id | seq / phase / planned_on / status / cancel_reason / retention_minutes | phase ∈ {即刻, 诱导, 维持}；`idx_inst_event` | 灌注共识 2021 | **取消也要记**；`retention_minutes` 默认空不给建议值 |
 | `contraindication_flags` | `id` | event_id | flag_code / applies_to | applies_to ∈ {chemo, bcg, both} | 共识原文 | 可拦，但解释成「保护」 |
-| `diversion_facts` | `id` | subject_id | kind | kind ∈ {ileal_conduit, orthotopic_neobladder, cutaneous_ureterostomy, other}；`is_current` | 质控 BT-16-01/02/03 | **不可逆事实**：改记录用 supersedes，不覆盖 |
+| `diversion_facts` | `id` | subject_id | kind | kind ∈ {ileal_conduit, orthotopic_neobladder, cutaneous_ureterostomy, other}；`is_current` | 质控 BT-16-01/02/03（**只支持"三种术式是三个独立类别"**，不含生活向内容） | **不可逆事实**：改记录用 supersedes，不覆盖 |
 | `stoma_supplies` | `id` | subject_id | category / brand / model / is_default | `retired_at` 软停用 | 患者自报 | 可复用目录，不用每次重打 |
 | `stoma_logs` | `id` | subject_id, supply_id | batch_date / changes_count / leak_count / skin_state / actor | — | 患者/照护者 | **按一次录一批**，不是每日打卡 |
 | `continence_logs` | `id` | subject_id | pad_count / residual_ml / catheterize_times | — | 原位新膀胱专属 | — |

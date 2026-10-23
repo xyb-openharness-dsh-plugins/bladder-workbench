@@ -16,12 +16,12 @@
 |---|---|
 | `index.html` | `cbcd779f4ae644bc815f8b15393988cf9f5495374d7bfc2eac187e63207ec095` |
 | `tokens.css` | `8b36dfac64f14e418ad9f6f84bd34bc0cd4fec8e6eb92ee273be1759a8b87d8d` |
-| `shell.css` | `8f7046919ae5f2950db979355f56502cfac4dae31308f49349e1636474e6a266` |
+| `shell.css` | `075da3fd4e66dfa43521e8dd391bb82d5ea3356a4e5e42a62bb8c4ef1016a0c5` |
 | `data.js` | `2307488c87747a15ec2bee5162fa3d519261c641e9402650d070b3092d2e3cad` |
 | `charts.js` | `d0af60e59a8ed0f3475497b980dd2f435826c7ea629125725e18c1892cee2982` |
-| `app.js` | `9635def9ee41b5fd49864a2c15342ec058059b2fe8d0048c816beab639b9d8b9` |
+| `app.js` | `dc204237017d3798c7140eecd674f82a052c99db3fe0d237acc426c4fdbea291` |
 
-六件顺序拼接总哈希：`3dff302d1c7c3304289a4244f42951d5c97efb641a1baad1a9f669b30885e18f`
+六件顺序拼接总哈希：`030c7bc61896f897debc6ccef97adfd138a64d7a288cf375343ba3010fb64b25`
 
 **当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S16）、`docs/SCHEMA.md`（**草案，未冻结**）
 

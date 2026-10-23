@@ -216,5 +216,7 @@ Agent 是否运行在目标 Desktop 内：...
 | **ACC-32** | 文案 | 全站文案红线零命中（界面面） | 界面面 6 份文件 0 违规 | `node scripts/check-wording.mjs` | 未验证 |
 | **ACC-33** | 原型 | 原型几何自检全通过 | 150 / 150 | `node scripts/verify-prototype.mjs` | 未验证 |
 | **ACC-34** | 原型 | 一图秀 C1–C12 全通过 | 12 / 12 | `node scripts/verify-one-chart.mjs` | 未验证 |
-| **ACC-35** | 数据 | 数据模型约束探针全通过 | 28 / 28 | `node scripts/check-schema-draft.mjs` | 未验证 |
+| **ACC-35** | 数据 | 数据模型约束探针全通过（含反向探针：取消不写原因必须被拒、is_private 默认必须为 1） | 37 / 37 | `node scripts/check-schema-draft.mjs` | 未验证 |
+| **ACC-36** | 指标趋势 | 指标趋势 MT01–MT15 实测全通过 | 15 / 15（另 2 条未实现，如实记为「未实现」不计入通过） | `node scripts/verify-metric-trend.mjs` | 未验证 |
+| **ACC-37** | 文案 | 文案红线双面零命中（界面面零容忍，文档面按规则陈述豁免） | 界面面 0 / 文档面 0 | `node scripts/check-wording.mjs` | 未验证 |
 | **ACC-36** | 包 | 脚手架自检通过 | `staticPass: true` | `dsh-wb-cli check .` | 未验证 |
