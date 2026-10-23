@@ -38,7 +38,7 @@
 | ADR | 候选 | 选择 | 理由 |
 |---|---|---|---|
 | **ADR-01 布局** | ①`business-first` 整页 customFrame ②`split` 分栏 | **business-first**，`businessWidth 0.72` | 与泌尿族 T0（前列腺癌 `business-first` / `0.72`）逐字段对齐；业务是主任务，对话在右侧 |
-| **ADR-02 分野实现** | ①单值字段 `stage_group` ②**多断言并列** `diagnosis_assertion` | **②多断言并列**（借卵巢癌） | 同一患者可能同时存在临床分期与病理分期；`G2` 与「高级别」须**并列不换算**；单值字段会强迫过早归一 |
+| **ADR-02 分野实现** | ①单值字段 `stage_group` ②**多断言并列**（三张表：`line_selections` / `staging_assertions` / `pathology_findings`） | **②多断言并列**（借卵巢癌） | 同一患者可能同时存在临床分期与病理分期；`G2` 与「高级别」须**并列不换算**；单值字段会强迫过早归一 |
 | **ADR-03 术式建模** | ①枚举字段 ②**不可逆事实 + 版本链** | **②** | 尿流改道不可逆；改记录必须留痕不覆盖（对照乳腺癌「点位方案换版 → 旧序列断线不拼接」） |
 | **ADR-04 灌注结构** | ①一条等距序列 ②**疗程 + 每次事件两层** | **②** | 原文是「即刻 24h 内 → 诱导每周 1 次×6～8 → 维持每 2～4 周 1 次」的**两段结构**，等距序列表达不了 |
 | **ADR-05 造口录入** | ①每日打卡 ②**按一次录一批 + 可复用耗材目录** | **②** | `DESIGN-09`：按主要录入者（照护者）的精力预算设计 |
@@ -92,7 +92,7 @@
 
 **实体清单（21 组）**：
 
-通用 `workspace` / `subject` / `document`(sha256) / `source_ref` / `record` / `viewpoint`(is_private 默认 1) / `question` / `task` / `saved_result` / `export_job` / `change_log`；导入 `import_file` / `parse_job` / `candidate`；**膀胱癌专属** `diagnosis_assertion` / `pathology_finding` / `staging_assertion` / `surgery_event` / `instillation_course`+`instillation_event`+`contraindication_flag` / **`bcg_response`（S17）** / **`high_risk_marker`（S17）** / `diversion_fact` / `stoma_supply`+`stoma_log`+`continence_log` / `followup_schedule`+`cystoscopy_record`+`cystoscopy_experience` / `urine_cytology` / `upper_tract_surveillance` / `renal_function`+`split_renal_function`+`drainage` / `urgent_symptom` / `private_note` / `treatment_line`+`regimen_drug`+`cycle`+`response`；指标 `metric_definition`(版本化 code+version) / `observation` / `measurement` / `symptom_entry`。
+通用 `workspace` / `subject` / `document`(sha256) / `source_ref` / `record` / `viewpoint`(is_private 默认 1) / `question` / `task` / `saved_result` / `export_job` / `change_log`；导入 `import_file` / `parse_job` / `candidate`；**膀胱癌专属** `line_selection`（分野，带版本链） / `pathology_report`+`pathology_finding` / `staging_assertion`（`clinical`/`pathological`/`post_neoadjuvant` 三态并列） / `surgery_event` / `instillation_course`+`instillation_event`+`contraindication_flag` / **`bcg_response`（S17）** / **`high_risk_marker`（S17）** / `diversion_fact` / `stoma_supply`+`stoma_log`+`continence_log` / `followup_schedule`+`cystoscopy_record`+`cystoscopy_experience` / `urine_cytology` / `upper_tract_surveillance` / `renal_function`+`split_renal_function`+`drainage` / `urgent_symptom` / `private_note` / `treatment_line`+`regimen_drug`+`cycle`+`response`；指标 `metric_definition`(版本化 code+version) / `observation` / `measurement` / `symptom_entry`。
 
 **事实与候选分离**：`candidate` **永远只是候选**，逐项确认才进事实层。接受 ≠ 审核；审核字段保持 NULL 直到人工确认。
 
@@ -259,7 +259,11 @@ HTML 路径/版本/hash：prototypes/v0.1/  —— hash 待补（G2 时记录）
 每条：**触发 / 字段 / 规则 / 验收**。差异矩阵全表见 `docs/DIFF-MATRIX.md`。
 
 ### M01 `F-分野`（S01）
-**触发** 首次进入或病理结论新增/修改。**字段** `diagnosis_assertion`：`assertion_id / kind（临床分期|病理分期|分级|危险度）/ raw_text（原文，必填）/ normalized（可空，派生）/ source_document_id / asserted_on / version_chain(is_current, supersedes_id)`；派生 `line ∈ {nmibc, mibc, undetermined}`（**原文缺失即回 undetermined**）。
+**触发** 首次进入或病理结论新增/修改。**字段** —— 刻意**拆成三张表**而不是一个 `diagnosis_assertion`：
+- `line_selections`：`line ∈ {nmibc, mibc, undetermined}` / `decided_at` / `reason`（「报告看不懂」也是合法理由）/ 版本链 `is_current` + `supersedes_id`
+- `staging_assertions`：`kind ∈ {clinical, pathological, post_neoadjuvant}` / `t_stage` / `n_stage` / `m_stage` / `source_ref_id` / 版本链
+- `pathology_findings`：分级与「有没有取到肌层」等**原文照录**字段（分级两套并列不换算）
+派生 `line`（**原文缺失即回 undetermined**）。拆开的原因：分野、分期、病理形态是三件不同的事，合并后「同一患者同时有临床分期与病理分期」就只能靠自由文本挤在一个字段里，AC-04 的版本链也无处落。
 **规则** 未选线不给任一线的专属内容；可改，改留痕。
 **验收** AC-01 未选线时看板**不出现**任何一线专属大卡；AC-02 选 NMIBC 出「灌注/膀胱镜复查/尿细胞学」卡、选 MIBC 出「改道/肾功能/造口日记」卡，**两者不并存**；AC-03「我还不确定」可选且不强行归类；AC-04 改线进版本链不覆盖。
 
