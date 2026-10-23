@@ -236,6 +236,13 @@ function card(title, body, extra = '') {
   return `<div class="card">${title ? `<div class="card-title"><h3>${title}</h3>${extra}</div>` : ''}${body}</div>`;
 }
 
+/* 顶部小结条：把「排到第几次 / 取消过几次 / 下次哪天」这类一眼要有的事实提上来，
+   不让患者去表格里数。 */
+function statStrip(items) {
+  return `<dl class="stat-strip">${items.map(([k, v, note]) =>
+    `<div class="stat-cell"><dt>${esc(k)}</dt><dd>${v}</dd>${note ? `<span class="src">${note}</span>` : ''}</div>`).join('')}</dl>`;
+}
+
 /* ================= 1. 看板 ================= */
 function pageDashboard() {
   /* 未分野时不再把整页让给闸门 —— 那样首页看着是空的，不像一个能用的产品。
@@ -498,12 +505,19 @@ function metricsTable() {
 /* ================= 3. 我的分型与分期 ================= */
 function pageStaging(tab) {
   const p = PATHOLOGY;
+  const lineName = STATE.line === 'nmibc' ? '非肌层浸润（NMIBC）' : STATE.line === 'mibc' ? '肌层浸润（MIBC）' : '未定';
+  const muscleCell = p.musclePresent === '有'
+    ? '<b>有</b>'
+    : p.musclePresent === '无'
+      ? '<b style="color:var(--wb-accent-ink)">无</b> <span class="chip chip-warn">分期可能不完整</span>'
+      : '<span class="src">报告未提及（≠「无」）</span>';
   const body = {
     '分野与分型': () => card('当前分野', `
       <dl class="kv">
-        <dt>派生分野</dt><dd><b>${STATE.line === 'nmibc' ? '非肌层浸润（NMIBC）' : STATE.line === 'mibc' ? '肌层浸润（MIBC）' : '未定'}</b>
+        <dt>派生分野</dt><dd><b>${lineName}</b>
           <span class="src">派生值；原文缺失就回到「未定」</span></dd>
         <dt>原始依据</dt><dd>${esc(p.raw)}</dd>
+        <dt>报告日期</dt><dd>${esc(p.reportDate)} <span class="src">${esc(p.source)}</span></dd>
         <dt>改动留痕</dt><dd>${STATE.lineHistory.length ? STATE.lineHistory.map((h) => `<span class="chip">${esc(h)}</span>`).join(' ') : '<span class="src">暂无改动</span>'}</dd>
       </dl>
       ${/未见肌层|未见肌肉/.test(p.raw) ? `<div class="notice notice-warn">
@@ -511,28 +525,63 @@ function pageStaging(tab) {
         也就是<b>分期可能不完整</b>。它不是「没有浸润」的意思，也不是好消息。
         是否要再做一次电切（二次电切）把肌肉层取到，<b>需要问医生</b>。
         <span class="verify-tag">来源待补</span></div>` : ''}
-      <div class="btn-row" style="margin-top:12px"><button class="btn" data-act="changeLine">重新选择分野</button></div>`),
-    '病理与分级': () => card('病理原文与两套分级', `
+      <div class="btn-row" style="margin-top:12px"><button class="btn" data-act="changeLine">重新选择分野</button></div>`)
+      + card('分野为什么是第一件事', `
+        <p>膀胱癌按<b>有没有长进肌肉层</b>分成两条路，这两条路的治疗目标不一样：</p>
+        <table class="tbl" style="margin-top:10px"><thead><tr><th>分野</th><th>病理写法</th><th>这条线在做什么</th></tr></thead><tbody>
+          <tr><td><b>非肌层浸润</b></td><td>Ta / T1 / Tis，或写「没有侵犯肌层」</td><td>把肿瘤切掉 + 膀胱灌注 + 长期复查，目标是<b>尽量保住膀胱</b></td></tr>
+          <tr><td><b>肌层浸润</b></td><td>T2 或更深，也就是已经长进肌肉层</td><td>根治性膀胱切除 + 尿流改道，或三联保膀胱；要面对<b>膀胱去留</b></td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">工作台不对「保膀胱还是切除」表达倾向。这里只帮你确认自己在哪条线上。</p>`)
+      + card('这一步做完你应该能回答', `
+        <ul class="plain"><li>我属于哪条线</li><li>我的分期是不是完整的</li>
+        <li>下次复诊我要问哪三个问题</li></ul>
+        <p class="src" style="margin-top:8px">如果三条都答不上来，回到上一张卡把报告原文抄完再来看。</p>`),
+    '病理与分级': () => card('报告原文（照录，不改写）', `
       <div class="notice notice-info">报告上可能同时出现「G2」这样的写法与「高级别」这样的写法。
         <b>本工作台只并列保存原文，不做换算，也不判断两者是否等价。</b>
         <span class="src">依据：已精读的 11 份中文共识中未出现 G1/G2/G3，只有「低级别/高级别」</span></div>
-      <table class="tbl" style="margin-top:12px"><thead><tr><th>项目</th><th>原文值</th><th>体系</th></tr></thead><tbody>
-        <tr><td>分级</td><td><b>${esc(p.gradeRaw)}</b></td><td>${p.gradeSchemeRaw ? esc(p.gradeSchemeRaw) : '<span class="src">报告未写</span>'}</td></tr>
-        <tr><td>另一套写法</td><td>${p.otherGradeRaw ? esc(p.otherGradeRaw) : '<span class="src">报告未出现</span>'}</td><td>—</td></tr>
-      </tbody></table>`),
+      <blockquote class="raw-quote">${esc(p.raw)}</blockquote>
+      <p class="src">认不出的词照录，并标「未核实」——不替你猜它是什么意思。</p>`)
+      + card('逐项拆开看', `
+        <table class="tbl"><thead><tr><th>项目</th><th>报告里怎么写的</th><th>怎么理解</th></tr></thead><tbody>
+          <tr><td>分级</td><td><b>${esc(p.gradeRaw)}</b></td><td class="src">原文照录；体系名报告未写</td></tr>
+          <tr><td>另一套写法</td><td>${p.otherGradeRaw ? esc(p.otherGradeRaw) : '<span class="src">报告未出现</span>'}</td><td class="src">出现了也并列保存，不做换算</td></tr>
+          <tr><td>浸润深度</td><td>浸润固有层（T1）</td><td class="src">固有层在黏膜和肌肉层之间</td></tr>
+          <tr><td>有没有取到肌层</td><td>${muscleCell}</td><td class="src">这一项决定分期完不完整</td></tr>
+          <tr><td>伴随原位癌（CIS）</td><td>${p.concurrentCis === '未提及' ? '<span class="src">报告未提及</span>' : esc(p.concurrentCis)}</td><td class="src">未提及 ≠ 没有</td></tr>
+          <tr><td>淋巴血管侵犯</td><td>${p.lvi === '未提及' ? '<span class="src">报告未提及</span>' : esc(p.lvi)}</td><td class="src">未提及 ≠ 没有</td></tr>
+          <tr><td>核对状态</td><td><span class="chip chip-warn">${esc(p.reviewState)}</span></td><td class="src">「已核对」只表示抄录无误，不是医学审核</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">报告原文里没有的项，这里一律写「未提及」，<b>不写成「无」</b>。</p>`),
     '分期断言': () => card('分期（多条并列，不覆盖）', `
       <table class="tbl"><thead><tr><th>类型</th><th>原文</th><th>日期</th><th>状态</th></tr></thead><tbody>
         <tr><td>病理分期</td><td>浸润固有层（T1）</td><td>2026-09-18</td><td><span class="chip chip-ok">现行</span></td></tr>
         <tr><td>临床分期</td><td><span class="src">还没有记录</span></td><td>—</td><td>—</td></tr>
+        <tr><td>影像所见</td><td><span class="src">还没有记录</span></td><td>—</td><td>—</td></tr>
+        <tr><td>淋巴结</td><td><span class="src">还没有记录</span></td><td>—</td><td>—</td></tr>
       </tbody></table>
-      <p class="src" style="margin-top:10px">同一患者可能同时存在临床分期与病理分期，两者并列保存。</p>`),
+      <p class="src" style="margin-top:10px">同一患者可能同时存在临床分期与病理分期，两者并列保存。</p>`)
+      + card('改了会怎样', `
+        <p>分期不是一行可以被覆盖的字段。新结论进来时<b>旧结论保留</b>，标成「已被替代」，并留下日期与来源——
+        这样你回看时能说清「什么时候、根据什么改的口径」。</p>
+        <p class="src" style="margin-top:8px">原型阶段这里只展示结构，改动留痕的完整实现放在数据库阶段。</p>`),
     '危险度': () => card('危险度分组', `
       <div class="notice notice-warn">
         危险度分组的<b>各条判据原文是图片</b>，本次未能取得文字。
         因此这里<b>不做任何分层判断</b>，只保留位置。${
           '<span class="verify-tag">来源待补</span>'}
       </div>
-      <p class="src" style="margin-top:10px">待补来源：2021 灌注共识表1、2024 保膀胱共识表5/表6。</p>`),
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>分组</th><th>判据</th><th>来源</th><th>状态</th></tr></thead><tbody>
+        <tr><td>低危</td><td rowspan="3" class="src">判据原文未取得，<b>不填任何条件</b></td><td rowspan="3" class="src">2021 灌注共识 表1<br>2024 保膀胱共识 表5 / 表6</td><td rowspan="3"><span class="chip chip-warn">待补</span></td></tr>
+        <tr><td>中危</td></tr>
+        <tr><td>高危</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">为什么宁可空着：分组直接决定灌注方案与复查频率。
+        判据没拿全就自动算一个分组，等于用猜的数字去影响治疗决策。</p>`)
+      + card('补齐来源之后会长成什么样', `
+        <p>拿到判据原文后，这里会按「条件 → 是否命中」逐条列出，命中的条目高亮，
+        并在底部写明 <b>依据哪一版共识、第几张表</b>，以及分组是由谁在什么时候确认的。</p>`),
   }[tab] || (() => '');
   return H('我的分型与分期', '原文优先；分级并列不换算；「未见肌层」不是好消息。')
     + tabsHTML('staging') + body();
@@ -570,35 +619,88 @@ function pageInstillation(tab) {
     </div>`;
   }).join('');
 
+  const done = INSTILLATION.events.filter((e) => e.st === 'done').length;
+  const cancelled = INSTILLATION.events.filter((e) => e.st === 'cancel').length;
+  const nextEv = INSTILLATION.events.find((e) => e.st === 'planned');
+  const totalPlanned = INSTILLATION.phasePlan.reduce((n, p) => n + p.total, 0);
+  const evRow = (e) => `<tr>
+      <td>${esc(e.phase)}</td><td class="num">第 ${e.idx} 次</td><td>${esc(e.planned)}</td>
+      <td>${e.actual ? esc(e.actual) : '<span class="src">—</span>'}</td>
+      <td>${e.st === 'done' ? '<span class="chip chip-ok">已完成</span>'
+        : e.st === 'cancel' ? '<span class="chip chip-warn">取消</span>'
+        : e.st === 'miss' ? '<span class="chip chip-warn">漏做</span>'
+        : '<span class="chip chip-neutral">计划中</span>'}</td>
+      <td>${e.cancelReason ? esc(e.cancelReason) : '<span class="src">—</span>'}</td></tr>`;
+
   const body = {
-    '周期总览': () => card(`${INSTILLATION.agent} · 两段结构`, `
+    '周期总览': () => statStrip([
+      ['方案', esc(INSTILLATION.agent) + ' ' + esc(INSTILLATION.doseRaw), '来源：2021 灌注共识'],
+      ['已完成', `${done} 次`, `全疗程计划 ${totalPlanned} 次`],
+      ['已取消', `${cancelled} 次`, cancelled ? '<span class="chip chip-warn">取消不是病情变坏</span>' : '—'],
+      ['下一次', nextEv ? esc(nextEv.planned) : '<span class="src">未排程</span>', nextEv ? `计划：${esc(nextEv.phase)} 第 ${nextEv.idx} 次` : ''],
+    ]) + card(`${INSTILLATION.agent} · 两段结构`, `
       <div class="course-seg">${segRows}</div>
       <div class="kv" style="margin-top:14px">
         <dt>剂量（原文）</dt><dd>${esc(INSTILLATION.doseRaw)} ${src('2021 灌注共识')}</dd>
         <dt>两次灌注间隔</dt><dd>${INSTILLATION.retentionMinutes ?? '<span class="verify-tag">来源待补</span>'}
           <span class="src">灌注后膀胱内保留时间：原文为图片，未取得，不给建议值</span></dd>
         <dt>BCG 供货</dt><dd>${INSTILLATION.supplyNote ? esc(INSTILLATION.supplyNote) : '<span class="src">本期无断供记录</span>'}</dd>
-      </div>`),
+      </div>
+      <p class="src" style="margin-top:10px">为什么分成两段：诱导期是<b>每周一次连续做</b>，维持期是<b>拉长间隔长期做</b>。
+        这两段的节奏不一样，所以不能画成一串等距的点。</p>`)
+      + card('全疗程事件', `
+        <table class="tbl"><thead><tr><th>阶段</th><th>次序</th><th>计划日</th><th>实际日</th><th>结果</th><th>取消原因</th></tr></thead>
+        <tbody>${INSTILLATION.events.map(evRow).join('')}</tbody></table>
+        <p class="src" style="margin-top:10px">「计划中」表示还没到日子，不是已经定了。</p>`),
     '本次记录': () => card('最近一次：2026-10-23（取消）', `
       <div class="notice notice-info">
         <b>这次没做，是禁忌在保护你，不是病情变坏了。</b>
         记录到的原因：<b>肉眼血尿</b>。
       </div>
-      <table class="tbl" style="margin-top:12px"><thead><tr><th>计划日</th><th>实际日</th><th>结果</th><th>取消原因</th></tr></thead><tbody>
-        <tr><td>2026-10-23</td><td>—</td><td><span class="chip chip-warn">取消</span></td><td>肉眼血尿</td></tr>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>计划日</th><th>实际日</th><th>结果</th><th>取消原因</th><th>命中的禁忌条目</th></tr></thead><tbody>
+        <tr><td>2026-10-23</td><td>—</td><td><span class="chip chip-warn">取消</span></td><td>肉眼血尿</td>
+        <td>${(() => { const c = CONTRA.find((x) => x.kind === '肉眼血尿'); return c ? `<span class="chip chip-neutral">${esc(c.kind)}</span> <span class="src">${esc(c.group)}</span>` : '<span class="src">—</span>'; })()}</td></tr>
       </tbody></table>
-      <p class="src" style="margin-top:10px">漏做一次之后<b>怎么补</b>，原始资料没有统一口径，因此这里不给任何建议。</p>`),
+      <p class="src" style="margin-top:10px">漏做一次之后<b>怎么补</b>，原始资料没有统一口径，因此这里不给任何建议。</p>`)
+      + card('一次灌注要记的东西', `
+        <table class="tbl"><thead><tr><th>时点</th><th>记什么</th><th>为什么</th></tr></thead><tbody>
+          <tr><td>灌注前</td><td>今天的核对项：有没有肉眼血尿、有没有尿路感染症状、距上次手术多少天</td><td class="src">命中的话当天就不会做，提前知道比到了医院才知道好</td></tr>
+          <tr><td>灌注中</td><td>药物名与剂量、灌注开始时间</td><td class="src">换药或换剂量时，后面看趋势才知道是从哪次变的</td></tr>
+          <tr><td>灌注后</td><td>憋了多久、当天和接下来几天的排尿感受</td><td class="src">感受是你自己最清楚的部分，医生问诊时会用到</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">原型阶段这些是结构示例；正式版会按字段录入，并跟「副作用」页共用同一份记录。</p>`),
     '禁忌与中断': () => card('禁忌（原文条目）', `
       <table class="tbl"><thead><tr><th>条目</th><th>适用范围</th></tr></thead><tbody>
         ${CONTRA.map((c) => `<tr><td>${esc(c.kind)}</td><td><span class="chip ${c.group === '仅 BCG' ? 'chip-brand' : 'chip-neutral'}">${esc(c.group)}</span></td></tr>`).join('')}
       </tbody></table>
-      <p class="src" style="margin-top:10px">${src('2021 非肌层浸润性膀胱癌膀胱灌注治疗专家共识')}。BCG 比化疗药多两条。</p>`),
+      <p class="src" style="margin-top:10px">${src('2021 非肌层浸润性膀胱癌膀胱灌注治疗专家共识')}。BCG 比化疗药多两条。</p>
+      <div class="notice notice-info" style="margin-top:12px">命中禁忌条目时，这次灌注<b>不做</b>。
+        工作台把它显示成「保护」而不是「失败」——同一个事实，两种说法对患者的感受完全不同。</div>`)
+      + card('中断记录', `
+        <table class="tbl"><thead><tr><th>日期</th><th>阶段 / 次序</th><th>原因</th><th>是否补做</th></tr></thead><tbody>
+          <tr><td>2026-10-23</td><td>诱导 第 4 次</td><td>肉眼血尿</td><td><span class="src">未记录</span></td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">中断原因是一个可复用的目录（禁忌条目、感染、自行未到、供货问题、其他），
+          这样统计「为什么老是做不完」才有可能，而不是一句自由文本。</p>`)
+      + card('如果遇到 BCG 断供', `
+        <p>BCG 的供应问题在共识里被明确提到过。这里会记录<b>从哪一次开始断、断了多久、医生给的替代安排</b>——
+          它属于「疗程被打断」的事实，不该混进副作用里。</p>
+        <p class="src" style="margin-top:8px">本演示档案没有断供记录，所以这家医院那条时间线上是空的。</p>`),
     '副作用': () => card('灌注后不适（自述）', `
-      <table class="tbl"><thead><tr><th>日期</th><th>感受</th><th>强度（自评）</th></tr></thead><tbody>
-        <tr><td>2026-10-16</td><td>尿频、尿急，排尿时灼热</td><td class="num">4 / 10</td></tr>
-        <tr><td>2026-10-09</td><td>当天乏力，第二天好转</td><td class="num">2 / 10</td></tr>
+      <table class="tbl"><thead><tr><th>日期</th><th>感受</th><th>强度（自评）</th><th>持续</th></tr></thead><tbody>
+        <tr><td>2026-10-16</td><td>尿频、尿急，排尿时灼热</td><td class="num">4 / 10</td><td>约 2 天</td></tr>
+        <tr><td>2026-10-09</td><td>当天乏力，第二天好转</td><td class="num">2 / 10</td><td>1 天</td></tr>
+        <tr><td>2026-10-02</td><td>无明显不适</td><td class="num">0 / 10</td><td>—</td></tr>
       </tbody></table>
-      <p class="src" style="margin-top:10px">分级判据原文为图片未取得，此处<b>不做分级</b>，只记自评强度。<span class="verify-tag">来源待补</span></p>`),
+      <p class="src" style="margin-top:10px">分级判据原文为图片未取得，此处<b>不做分级</b>，只记自评强度。<span class="verify-tag">来源待补</span></p>`)
+      + card('这类不适，什么时候必须联系医生', `
+        <div class="notice notice-warn">
+          灌注后出现<b>发热寒战、并且持续不缓解</b>，或伴明显乏力、血压偏低 —— 属于需要立刻联系医疗团队的情况，
+          不要等到下次门诊。详见「急症与安全」页的 <b>BCG 全身感染</b>入口。
+          <span class="verify-tag">判据来源待补</span>
+        </div>
+        <p class="src" style="margin-top:10px">原型阶段只给联系路径，不判断你的具体情况，也不给处置建议。
+          分级表原文补齐后，这里会显示「对照哪一版共识 · 第几级」。</p>`),
   }[tab] || (() => '');
   return H('膀胱灌注', '两段结构（即刻 → 诱导 → 维持）；取消＝禁忌保护；漏做不给建议。')
     + tabsHTML('instillation') + body();

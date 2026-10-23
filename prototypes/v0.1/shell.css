@@ -777,3 +777,47 @@ table.tbl td.num { text-align: right; }
   .strip-actions { width: 100%; }
   .strip-actions .btn { flex: 1 1 auto; }
 }
+
+/* ==========================================================================
+   顶部小结条 + 报告原文字块（2026-10-23 加厚核心页时新增）
+   小结条把「排到第几次 / 取消过几次 / 下次哪天」提到卡片上方，
+   不让患者在表格里自己数。
+   ========================================================================== */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 1px;
+  background: var(--wb-line);
+  border: 1px solid var(--wb-line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+}
+.stat-strip .stat-cell { background: var(--wb-card); padding: 12px 14px; }
+.stat-strip dt { font-size: var(--fs-xs); color: var(--wb-muted); margin-bottom: 5px; }
+.stat-strip dd {
+  margin: 0; font-size: calc(19px * var(--tz)); font-weight: 600;
+  color: var(--wb-ink); font-variant-numeric: tabular-nums; line-height: 1.25;
+}
+.stat-strip .src { display: block; margin-top: 4px; font-size: var(--fs-xs); line-height: 1.45; }
+.stat-strip .chip { font-size: var(--fs-xs); }
+
+.raw-quote {
+  margin: 12px 0 0;
+  padding: 11px 14px;
+  border-left: 3px solid var(--wb-brand);
+  background: var(--wb-brand-soft);
+  border-radius: 0 8px 8px 0;
+  font-size: var(--fs-base);
+  line-height: 1.65;
+  color: var(--wb-ink);
+  white-space: pre-wrap;
+}
+
+ul.plain { margin: 0; padding-left: 1.15em; line-height: 1.85; }
+ul.plain li { font-size: var(--fs-base); }
+
+/* 窄屏：小结条两列，避免一格一个字换行 */
+@media (max-width: 700px) {
+  .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
