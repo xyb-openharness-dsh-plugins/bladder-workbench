@@ -701,6 +701,23 @@ async function main() {
   assert('MIBC 看板切换成功', /肌层浸润/.test(mibcText));
   assert('MIBC 看板含尿流改道卡', /尿流改道/.test(mibcText));
   assert('NMIBC 专属卡（膀胱灌注周期）已不在', !/诱导 3 \/ 6 次已完成/.test(mibcText));
+
+  /* 在 MIBC 档案下，实际采用的术式页必须显示属于本人的记录。
+     曾经因为页签名（回肠造口）与资料里的写法（回肠通道造口）不一致，
+     静默失配成「这里没有属于你的记录」——断言锁住这条。 */
+  await page.evaluate(() => { location.hash = '#/diversion'; });
+  await page.waitForTimeout(280);
+  const mineIdx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.tab')).findIndex((x) => x.textContent.trim() === '回肠造口'));
+  assert('MIBC 档案下存在「回肠造口」页签', mineIdx >= 0, `idx=${mineIdx}`);
+  if (mineIdx >= 0) {
+    await (await page.$$('.tab'))[mineIdx].click();
+    await page.waitForTimeout(260);
+    const dtext = await page.innerText('#wbPage');
+    assert('MIBC 档案下「回肠造口」页显示本人的记录（不得失配为空）',
+      /我的记录/.test(dtext) && !/没有属于你的记录/.test(dtext), dtext.replace(/\s+/g, ' ').slice(0, 46));
+    assert('改道记录含术式字段与质控来源', /底盘型号/.test(dtext) && /BT-16-01/.test(dtext));
+  }
   await shot('20-看板-MIBC');
 
   await nav('我的分型与分期');

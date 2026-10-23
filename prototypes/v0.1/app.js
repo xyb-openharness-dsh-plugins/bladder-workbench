@@ -708,24 +708,88 @@ function pageInstillation(tab) {
 
 /* ================= 6. 尿流改道与造口 ================= */
 function pageDiversion(tab) {
-  const perKind = {
-    '回肠造口': ['底盘型号与更换周期', '造口周围皮肤并发症', '渗漏次数', '气味管理', '夜间集尿器', '耗材目录'],
-    '原位新膀胱': ['控尿训练进度', '间歇导尿次数', '残余尿量', '排尿方式', '夜间尿垫'],
-    '输尿管皮肤造口': ['支架管护理与更换', '吻合口观察', '造口周围皮肤', '集尿装置更换周期'],
-  }[tab];
+  /* 页签名与 DIVERSION.kind 不是同一套写法：页签叫「回肠造口」，
+     资料里写的是「回肠通道造口（Bricker 术）」。这里显式映射，
+     不做字符串包含判断 —— 否则换个写法就静默失配（曾经就踩过：
+     MIBC 档案下反而显示「这里没有属于你的记录」）。 */
+  const KIND_OF_TAB = {
+    '回肠造口': '回肠通道造口',
+    '原位新膀胱': '原位新膀胱',
+    '输尿管皮肤造口': '输尿管皮肤造口',
+  };
+  const isMine = STATE.line === 'mibc' && DIVERSION_CASE.activeKind === tab;
+  const caseInfo = DIVERSION_CASE.explain[tab];
+  const sourceKind = KIND_OF_TAB[tab];
+
+  const dailyCompare = `
+    <table class="tbl">
+      <thead><tr><th>术式</th><th>怎么排尿</th><th>要不要带袋子</th><th>要不要自己导尿</th><th>夜里</th></tr></thead>
+      <tbody>
+        <tr><td><b>回肠通道造口</b></td><td>腹壁造口，尿持续流到集尿袋</td><td>要，持续佩戴</td><td>一般不用</td><td>需要接夜间集尿器</td></tr>
+        <tr><td><b>原位新膀胱</b></td><td>靠自己的尿道排</td><td>不用</td><td>排不干净时可能要用</td><td>可能漏尿，用尿垫</td></tr>
+        <tr><td><b>输尿管皮肤造口</b></td><td>腹壁造口，尿流到集尿装置</td><td>要，持续佩戴</td><td>一般不用</td><td>需要接夜间集尿器</td></tr>
+      </tbody>
+    </table>
+    <p class="src" style="margin-top:10px">这张表只描述「日常怎么过」，<b>不含任何优劣排序</b>。
+      哪一种适合你，取决于病变范围、肾功能、身体条件和你自己的取舍，需要和医生按具体情况讨论。</p>`;
+
+  const mineBlock = (kind) => {
+    const rows = (DIVERSION_CASE.values[kind] || []);
+    return statStrip([
+      ['我的术式', esc(kind), '改动留痕，不覆盖'],
+      ['手术日期', esc(DIVERSION_CASE.operatedOn), esc(DIVERSION_CASE.hospital)],
+      ['已记录字段', `${rows.length} 项`, '按术式字段集'],
+    ]) + card(`${kind} · 我的记录`, `
+      <div class="notice notice-info">术式是<b>不可逆事实</b>：记成「我的术式」之后改动只追加版本、不覆盖，
+        这样回看时才说得清「什么时候改的口径」。</div>
+      <table class="tbl" style="margin-top:12px">
+        <thead><tr><th>项目</th><th>现在的值</th><th>来源 / 备注</th></tr></thead>
+        <tbody>${rows.map(([k, v, n]) => `<tr><td>${esc(k)}</td><td><b>${esc(v)}</b></td><td class="src">${esc(n)}</td></tr>`).join('')}</tbody>
+      </table>
+      <p class="src" style="margin-top:10px">来源：本人记录 · 未核对。字段集依据
+        中国膀胱癌规范诊疗质量控制指标（2022 版）BT-16-01/02/03。</p>`);
+  };
+
+  const explainBlock = (kind) => card(`${kind} · 这个术式下会记什么`, `
+    <div class="notice notice-info">
+      ${isMine ? '' : `本演示档案采用的是 <b>${esc(DIVERSION_CASE.activeKind)}</b>，所以这里没有属于你的记录。<br>`}
+      选择不同术式后，记录的字段<b>会跟着变</b>：新膀胱会长出控尿与残余尿，造口会长出底盘与渗漏。
+    </div>
+    <table class="tbl" style="margin-top:12px">
+      <thead><tr><th>要记的字段</th><th>这是什么、为什么要记</th></tr></thead>
+      <tbody>${(caseInfo || []).map(([k, why]) => `<tr><td><b>${esc(k)}</b></td><td>${esc(why)}</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn" data-act="setDiversion">把「${esc(kind)}」记录为我的术式（不可逆，改动留痕）</button>
+    </div>
+    <p class="src" style="margin-top:10px">来源：中国膀胱癌规范诊疗质量控制指标（2022 版）BT-16-01/02/03。</p>`);
+
+  const perKindBody = () => {
+    if (isMine) return mineBlock(tab) + card('换术式？', `
+      <p>术式一旦记录，工作台不会让你「改一下」就当没发生过。要走的是
+      <b>追加一条新版本并说明原因</b>，旧版本保留可查。</p>
+      <p class="src" style="margin-top:8px">这是为极少数情况准备的（例如记录写错、或确实做了二次手术）。</p>`);
+    return explainBlock(tab)
+      + card('如果选了这一种，接下来会面对什么', `
+        <p>${esc((DIVERSION.find((d) => d.kind === sourceKind) || {}).daily || '')}</p>
+        <p class="src" style="margin-top:8px">这里只描述日常怎么过，不评价哪一种更好。
+          需要比较时用「三术式对照」页，那里同样不排序、不推荐。</p>`);
+  };
 
   let body;
   if (tab === '三术式对照') {
     body = card('三种术式对照', `
       <div class="notice notice-info"><b>这里不排序、不推荐、不用倾向色，也不预选任何一项。</b>哪一种更适合，需要你和医生按具体情况讨论。</div>
-      <div class="compare" style="margin-top:14px">
-        ${DIVERSION.map((d) => `
-          <div class="compare-col">
-            <div class="cc-head"><h3>${esc(d.kind)}</h3><span class="chip chip-neutral">${esc(d.aka)}</span></div>
-            <p style="font-size:var(--fs-md);color:var(--wb-muted);margin-bottom:8px">${esc(d.daily)}</p>
-            <ul>${d.fields.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
-          </div>`).join('')}
-      </div>`)
+      <div style="margin-top:14px">${dailyCompare}</div>`)
+      + card('各自的字段集（记录时长的不是一回事）', `
+        <div class="compare" style="margin-top:4px">
+          ${DIVERSION.map((d) => `
+            <div class="compare-col">
+              <div class="cc-head"><h3>${esc(d.kind)}</h3><span class="chip chip-neutral">${esc(d.aka)}</span></div>
+              <p style="font-size:var(--fs-md);color:var(--wb-muted);margin-bottom:8px">${esc(d.daily)}</p>
+              <ul>${d.fields.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+            </div>`).join('')}
+        </div>`)
       + card('术式讨论记录（零倾向）', `
         <div class="notice notice-info">这里只记「医生和你讨论过哪几种术式、你当时问了什么」，<b>不记「你倾向哪一种」</b>，也不打分。</div>
         <table class="tbl" style="margin-top:14px">
@@ -742,7 +806,12 @@ function pageDiversion(tab) {
         </table>
         <p class="src" style="margin-top:10px">来源：本人的门诊经过 · 未核对。术式一旦记成「我的术式」按<b>不可逆事实</b>处理，之后改动只追加版本、不覆盖（见 docs/SCHEMA.md ADR-03）。</p>`);
   } else if (tab === '造口日记') {
-    body = card('造口日记（一次录一批）', `
+    body = statStrip([
+      ['近 30 天更换底盘', `${STOMA_LOG.reduce((a, l) => a + l.changes, 0)} 次`, '按批次加总'],
+      ['近 30 天渗漏', `${STOMA_LOG.reduce((a, l) => a + l.leaks, 0)} 次`, '次数 ≠ 严重程度'],
+      ['皮肤发红批次', `${STOMA_LOG.filter((l) => l.skin === '红').length} 批`, '按批次算'],
+      ['记法', '一次录一批', '不需要每天打卡'],
+    ]) + card('造口日记（一次录一批）', `
       <div class="notice notice-info">按<b>一批</b>记录，不需要每天打卡。耗材型号从目录里选，不用每次重打。</div>
       <div class="batch-row" style="margin-top:14px">
         <label class="bf"><span>批次日期</span><input type="date" value="2026-10-23"></label>
@@ -782,22 +851,32 @@ function pageDiversion(tab) {
       </div>`;
   } else if (tab === '耗材目录') {
     body = card('可复用耗材目录', `
-      <table class="tbl"><thead><tr><th>类别</th><th>品牌 / 型号</th><th>规格</th><th class="num">建议更换周期（天）</th></tr></thead><tbody>
-        ${STOMA_SUPPLY.map((s) => `<tr><td>${esc(s.kind)}</td><td>${esc(s.brand)}</td><td>${esc(s.size)}</td><td class="num">${s.interval}</td></tr>`).join('')}
-      </tbody></table>`);
-  } else if (perKind) {
-    body = card(`${tab} · 字段集`, `
-      <div class="notice notice-info">选择不同术式后，这里记录的字段<b>会跟着变</b>（新膀胱出现控尿与残余尿；造口出现底盘与渗漏）。</div>
-      <table class="tbl" style="margin-top:12px">
-        <thead><tr><th>要记的字段</th><th>现在</th></tr></thead>
-        <tbody>${perKind.map((f) => `<tr><td>${esc(f)}</td><td><span class="chip chip-neutral">还没有记录</span></td></tr>`).join('')}</tbody>
-      </table>
-      <div class="btn-row" style="margin-top:14px">
-        <button class="btn btn-primary" data-act="setDiversion">记录为我的术式（不可逆，改动留痕）</button>
-      </div>
-      <p class="src" style="margin-top:10px">来源：中国膀胱癌规范诊疗质量控制指标（2022 版）BT-16-01/02/03。</p>`);
+      <div class="notice notice-info">型号在这里维护一次，之后每次记录<b>从目录里选</b>，不用重复打字。
+        名称与型号用演示占位，正式版由你自己填。</div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>类别</th><th>品牌 / 型号</th><th>规格</th><th class="num">常用更换周期（天）</th><th>状态</th></tr></thead><tbody>
+        ${STOMA_SUPPLY.map((s) => `<tr><td>${esc(s.kind)}</td><td>${esc(s.brand)}</td><td>${esc(s.size)}</td><td class="num">${s.interval}</td>
+          <td><span class="chip chip-ok">在用</span></td></tr>`).join('')}
+      </tbody></table>`)
+      + card('尺寸为什么会变', `
+        <p>造口不是一开始多大就一直是多大。术后一段时间内尺寸会变，所以这里记的是
+        <b>每次量到的尺寸</b>，而不是给一个固定值——用旧的尺寸裁底盘，就会出现渗漏和皮肤发红。</p>
+        <table class="tbl" style="margin-top:12px"><thead><tr><th>日期</th><th>量到的尺寸</th><th>当时用的底盘</th><th>备注</th></tr></thead><tbody>
+          <tr><td>2026-06-25</td><td>52 mm</td><td>演示A · 55 mm</td><td class="src">术后早期</td></tr>
+          <tr><td>2026-07-02</td><td>42 mm</td><td>演示A · 45 mm</td><td class="src">换小一号后渗漏减少</td></tr>
+          <tr><td>2026-09-30</td><td>42 mm</td><td>演示A · 45 mm</td><td class="src">近一次</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">来源：本人记录 · 未核对。多久量一次、用什么量，
+          以造口治疗师给你的做法为准，工作台不给标准。</p>`)
+      + card('更换与库存记录', `
+        <table class="tbl"><thead><tr><th>日期</th><th>动作</th><th>耗材</th><th class="num">数量</th><th>备注</th></tr></thead><tbody>
+          <tr><td>2026-10-20</td><td>更换底盘</td><td>底盘 · 演示A 45 mm</td><td class="num">2</td><td class="src">当批渗漏 1 次</td></tr>
+          <tr><td>2026-10-13</td><td>更换底盘</td><td>底盘 · 演示A 45 mm</td><td class="num">2</td><td class="src">皮肤无异常</td></tr>
+          <tr><td>2026-10-06</td><td>领用</td><td>造口袋 · 演示A 标准</td><td class="num">30</td><td class="src">一个月量</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">库存与领用放在一起记，是为了在「快用完了」之前有准备，
+          避免临时换型号又带来一轮皮肤问题。预警阈值由你自己设，工作台不预设。</p>`);
   } else {
-    body = '<div class="empty"><strong>该页签还没有内容</strong></div>';
+    body = perKindBody();
   }
 
   const priv = (tab === '造口日记' || tab === '回肠造口')
@@ -840,35 +919,72 @@ function pageTreatment(tab) {
 /* ================= 8. 复查与膀胱镜 ================= */
 function pageFollowup(tab) {
   const f = FOLLOWUP;
+  const lastCx = f.cytology[0];
   const body = {
-    '复查排程': () => card('复查排程', `
+    '复查排程': () => statStrip([
+      ['下次膀胱镜', esc(f.lastExam.nextPlannedOn), '尿细胞学同次送检'],
+      ['上次结果', 'T1', '高级别尿路上皮癌'],
+      ['间隔口径', '每 3 个月', '2022 版共识'],
+      ['上尿路影像', '每 6～12 个月', '另排一次'],
+    ]) + card('复查排程', `
       <table class="tbl"><thead><tr><th>项目</th><th>计划日期</th><th>间隔口径（带版本）</th></tr></thead><tbody>
         ${f.schedule.map((s) => `<tr><td>${esc(s.kind)}</td><td>${esc(s.planned)}</td><td>${esc(s.intervalSource)}</td></tr>`).join('')}
       </tbody></table>
       <div class="notice notice-info" style="margin-top:12px">
         间隔数字来自 <b>2022 版</b>共识；<b>2024 版不再复述</b>具体间隔。本工作台<b>不写「终身」</b>——
         已精读的 11 份中文共识中未出现该表述。
-      </div>`),
+      </div>`)
+      + card('复查节奏分三段看', `
+        <table class="tbl"><thead><tr><th>术后时间</th><th>建议间隔</th><th>大致包含什么</th></tr></thead><tbody>
+          <tr><td>2 年以内</td><td><b>每 3 个月</b></td><td>B 超 + 胸片 + 膀胱镜</td></tr>
+          <tr><td>2 ～ 5 年</td><td><b>每 6 个月</b></td><td>同上</td></tr>
+          <tr><td>5 年以后</td><td><b>每年</b></td><td>同上</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">来源：患者科普问答原文。这段节奏是<b>术后按年数分段的</b>，
+          所以工作台按你手术日期自动落在哪一段，而不是给一个统一频率。</p>`),
     '本次记录': () => card('最近一次膀胱镜：2026-09-18', `
       <dl class="kv">
+        <dt>日期</dt><dd>${esc(f.lastExam.performedOn)}</dd>
+        <dt>方式</dt><dd>${esc(f.lastExam.modality)}</dd>
         <dt>发现（原文）</dt><dd>${esc(f.lastExam.findingRaw)}</dd>
         <dt>结论（原文）</dt><dd>${esc(f.lastExam.conclusionRaw)}</dd>
         <dt>是否取活检</dt><dd>${esc(f.lastExam.biopsyTaken)}</dd>
         <dt>下次计划</dt><dd>${esc(f.lastExam.nextPlannedOn)}</dd>
-      </dl>`),
-    '方式与麻醉': () => card('方式与麻醉', `
+      </dl>
+      <blockquote class="raw-quote">${esc(f.lastExam.conclusionRaw)}</blockquote>
+      <p class="src" style="margin-top:10px">检查结论与病理结论分开放：膀胱镜下看到什么，和切下来化验出什么，
+        是两件事，可能不一致。</p>`)
+      + card('和上一次比', `
+        <table class="tbl"><thead><tr><th>日期</th><th>镜下发现</th><th>取活检</th><th>当时的结论</th></tr></thead><tbody>
+          <tr><td>2026-09-18</td><td>右侧壁乳头状新生物，已电切</td><td>是</td><td>高级别尿路上皮癌，T1，未见肌层组织</td></tr>
+          <tr><td>2026-06-12</td><td class="src">未见明确新生物</td><td>否</td><td class="src">未见瘤细胞</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">把两次并排看，是为了在门诊能说清「这次和上次有什么不一样」，
+          而不是替医生判断变化意味着什么。</p>`),
+    '方式与麻醉': () => card('方式与麻醉（本次）', `
       <dl class="kv">
         <dt>镜体</dt><dd>硬性膀胱镜</dd>
         <dt>麻醉</dt><dd>腰麻</dd>
         <dt>日期</dt><dd>${esc(f.lastExam.performedOn)}</dd>
-      </dl>
-      <p class="src" style="margin-top:10px">可选记录：柔性 / 硬性 / 荧光 / 麻醉方式（来源：常规随访项目）。</p>`),
+      </dl>`)
+      + card('这些选项各是什么意思', `
+        <table class="tbl"><thead><tr><th>项目</th><th>可选值</th><th>影响什么</th></tr></thead><tbody>
+          <tr><td>镜体</td><td>硬性 / 柔性</td><td class="src">柔性镜通常更细，检查过程的不适感往往更轻</td></tr>
+          <tr><td>麻醉</td><td>局部 / 腰麻 / 全身</td><td class="src">决定当天能不能自己回家、多久能恢复</td></tr>
+          <tr><td>荧光膀胱镜</td><td>用 / 不用</td><td class="src">一种辅助看清病变的方式，是否使用由医院条件与医生判断决定</td></tr>
+          <tr><td>是否取活检</td><td>是 / 否</td><td class="src">取了活检就要等病理，结论会晚几天出来</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">记录方式与麻醉，是为了下次能提前知道自己会经历什么，
+          也方便和医生讨论能不能换成更舒服的做法。</p>`),
     '疼痛与心情': () => card('疼痛与心情（与临床结论分区）', `
-      <div class="notice notice-info">这一块是<b>你的感受</b>，和临床结论分开存放，不会混进结论区。</div>
-      <div class="kv" style="margin-top:12px">
-        <dt>疼痛自评</dt><dd class="num">${f.experience.painScore} / 10</dd>
-        <dt>心情记录</dt><dd>${esc(f.experience.moodNote)}</dd>
-      </div>
+      <div class="notice notice-info">这一块是<b>你的感受</b>，和临床结论分开存放，不会混进结论区，
+        也不会被当成「病情变化」。</div>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>日期</th><th class="num">疼痛自评</th><th>心情记录</th></tr></thead><tbody>
+        <tr><td>2026-09-18</td><td class="num">6 / 10</td><td>检查前一周睡不好；这次麻醉后恢复比上次快</td></tr>
+        <tr><td>2026-06-12</td><td class="num">4 / 10</td><td>检查前一晚没睡好</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:10px">为什么把它放在复查页而不是「心理」页：
+        检查本身就是一个会被记住的事件，下次检查前的紧张会受上一次体验影响，记下来才有对照。</p>
       <div class="private-zone" style="margin-top:14px"><span class="pz-tag">默认私密：本块默认不带入导出与 AI 草稿。</span></div>`),
     '尿细胞学': () => card('尿细胞学（四态四个值）', `
       <div class="notice notice-info">
@@ -880,17 +996,44 @@ function pageFollowup(tab) {
           <td>${esc(c.raw)}</td><td>${esc(c.method)}</td></tr>`).join('')}
       </tbody></table>
       <p class="src" style="margin-top:10px">标本类型（自然尿 / 膀胱冲洗）不同时，结果不直接可比。
-        四态的权威分级口径<b>尚未取得</b>。<span class="verify-tag">来源待补</span></p>`),
+        四态的权威分级口径<b>尚未取得</b>。<span class="verify-tag">来源待补</span></p>`)
+      + card('四个值分别是什么意思', `
+        <table class="tbl"><thead><tr><th>结果</th><th>字面意思</th><th>它不表示什么</th></tr></thead><tbody>
+          <tr><td>${chipCat('阴性')}</td><td>这次标本里没有查到瘤细胞</td><td class="src">不等于「一定没有病」</td></tr>
+          <tr><td>${chipCat('非典型')}</td><td>细胞长得不太典型，但看不出明确是瘤细胞</td><td class="src"><b>既不是阳性也不是阴性</b>，常需要复查或进一步检查</td></tr>
+          <tr><td>${chipCat('可疑')}</td><td>有倾向但不确凿</td><td class="src">不等于确诊</td></tr>
+          <tr><td>${chipCat('阳性')}</td><td>查到考虑为瘤细胞</td><td class="src">仍需结合膀胱镜与病理</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">为什么要分成四个值：如果只写成「有 / 没有」，
+          「非典型」这种最让人焦虑、也最需要复查的结果就会被压成一句话，患者看不懂自己处在哪一档。</p>`)
+      + card('其他尿检标志物', `
+        <table class="tbl"><thead><tr><th>项目</th><th>状态</th><th>说明</th></tr></thead><tbody>
+          <tr><td>尿细胞学</td><td><span class="chip chip-ok">已记录</span></td><td class="src">本页上方</td></tr>
+          <tr><td>FISH</td><td><span class="chip chip-neutral">还没有记录</span></td><td class="src">位置已留</td></tr>
+          <tr><td>NMP22 / BTA</td><td><span class="chip chip-neutral">还没有记录</span></td><td class="src">位置已留</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">这些检查各自的判读口径与适用条件<b>原文未取得</b>，
+          所以只留位置，不写参考值，也不解释「高了代表什么」。<span class="verify-tag">来源待补</span></p>`),
     '上尿路监测': () => card('上尿路监测（第二原发监测）', `
       <div class="notice notice-info">这是对<b>另一个器官</b>的长期监测，不是「转移」。两者分开呈现。</div>
       <table class="tbl" style="margin-top:12px"><thead><tr><th>日期</th><th>方式</th><th>发现（原文）</th><th>肾积水</th></tr></thead><tbody>
         ${f.upperTract.map((u) => `<tr><td>${esc(u.date)}</td><td>${esc(u.modality)}</td><td>${esc(u.findingRaw)}</td><td>${esc(u.hydronephrosis)}</td></tr>`).join('')}
       </tbody></table>
       <p class="src" style="margin-top:10px">我国尿路上皮癌来自肾盂及输尿管的比例可达 20%～30%。
-        ${src('中国尿路上皮癌 HER2 检测临床病理专家共识（2021 版）')}</p>`),
+        ${src('中国尿路上皮癌 HER2 检测临床病理专家共识（2021 版）')}</p>`)
+      + card('为什么要盯着另外两个器官', `
+        <p>膀胱、肾盂、输尿管的内壁是同一层细胞（尿路上皮）。所以这条线要盯的不只是膀胱，
+        还有<b>上尿路</b>——这也是膀胱癌和大多数癌种不一样的地方：治完一处，还要长期看另一处。</p>
+        <table class="tbl" style="margin-top:12px"><thead><tr><th>看什么</th><th>怎么看</th><th>多久一次</th></tr></thead><tbody>
+          <tr><td>上尿路形态</td><td>CT 尿路造影 / 超声等影像</td><td>每 6～12 个月</td></tr>
+          <tr><td>有没有肾积水</td><td>随影像一起看</td><td>同上</td></tr>
+          <tr><td>肾功能</td><td>血肌酐 / eGFR</td><td>随复查一起验</td></tr>
+        </tbody></table>
+        <p class="src" style="margin-top:10px">间隔数字来自 2022 版共识口径。这里只记事实，
+          不判断影像上的变化是好是坏——那是医生的事。</p>`),
   }[tab] || (() => '');
   return H('复查与膀胱镜', '检查即心理事件；尿细胞学四态；上尿路是第二原发监测。')
-    + tabsHTML('followup') + body();
+    + tabsHTML('followup') + body;
 }
 
 /* ================= 9. 检查与指标 ================= */
