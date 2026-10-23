@@ -1,0 +1,53 @@
+{
+  "project": "/Users/qinxiaoqiang/Downloads/bladder-workbench",
+  "version_file": null,
+  "package_versions": [
+    {
+      "path": "package.json",
+      "value": "0.1.0"
+    }
+  ],
+  "html": [
+    {
+      "file": "prototypes/v0.1/index.html",
+      "bytes": 4368,
+      "size": "4 KB",
+      "hits": [
+        {
+          "value": "0.1.0",
+          "zone": "comment",
+          "context": "的」 ============ --> <div class=\"wb-demo-bar\" role=\"note\"> <span class=\"db-left\"><b>交互原型 v0.1.0</b> · 全部为模拟资料</span> <span class=\"db-right\">仅本页演示 · 刷新重置 · 未接入 DSH / AI · 无数据库</span>"
+        },
+        {
+          "value": "0.1.0",
+          "zone": "comment",
+          "context": "class=\"tb-version\" id=\"versionChip\" title=\"与 package.json / VERSION / workbench.json 同源\">v0.1.0</span> </div> <!-- 中：一句状态说明（随页面变化） --> <p class=\"tb-status\" id=\"tbStatus\">原型模式 · 资"
+        },
+        {
+          "value": "0.1.0",
+          "zone": "footer",
+          "context": "<footer class=\"wb-footer\"> <span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id=\"footVersion\">0.1.0</b></span> <span class=\"wb-foot-note\">本页为设计原型，数据为演示用；<b>不构成诊断或治疗建议</b></span> <"
+        }
+      ],
+      "distinct": [
+        "0.1.0"
+      ],
+      "refers_constant": false,
+      "has_version_meta": false
+    }
+  ],
+  "primary_html": "prototypes/v0.1/index.html",
+  "legacy_html": [],
+  "distinct_versions": [
+    "0.1.0"
+  ],
+  "conflicts": {},
+  "release_records": [
+    "docs/RELEASE.md"
+  ],
+  "notes": [
+    "未找到 VERSION 单一来源文件；版本可能手写在多处。",
+    "prototypes/v0.1/index.html 未发现版本常量或 meta 版本标记，疑似手写字面量。",
+    "脚本不判断首屏可见性、不判断市场版本一致性；这两项需打开页面与市场条目核对。"
+  ]
+}

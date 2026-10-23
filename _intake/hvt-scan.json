@@ -1,0 +1,2578 @@
+{
+  "profile": "膀胱癌",
+  "root": "/Users/qinxiaoqiang/Downloads/bladder-workbench",
+  "rows": [
+    {
+      "id": "BL-05",
+      "scene": "Ta/T1/Tis 三态与危险度分组",
+      "trigger": "报告上是 Ta 还是 T1 还是 Tis → 危险度分组决定方案",
+      "terms": [
+        "Ta",
+        "T1",
+        "Tis",
+        "原位癌",
+        "危险度",
+        "中危",
+        "高危",
+        "低危",
+        "非肌层浸润"
+      ],
+      "hits": 230,
+      "docs": {
+        "agents.md": {
+          "total": 8,
+          "terms": {
+            "Ta": 7,
+            "T1": 1
+          }
+        },
+        "readme.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/01-workflow.md": {
+          "total": 4,
+          "terms": {
+            "Ta": 4
+          }
+        },
+        "docs/03-design-system.md": {
+          "total": 3,
+          "terms": {
+            "Ta": 3
+          }
+        },
+        "docs/04-data.md": {
+          "total": 2,
+          "terms": {
+            "Ta": 2
+          }
+        },
+        "docs/06-validation-and-release.md": {
+          "total": 3,
+          "terms": {
+            "Ta": 3
+          }
+        },
+        "docs/07-interactive-design.md": {
+          "total": 2,
+          "terms": {
+            "Ta": 2
+          }
+        },
+        "docs/08-taste-seed.md": {
+          "total": 2,
+          "terms": {
+            "Ta": 2
+          }
+        },
+        "docs/09-workbench-status.md": {
+          "total": 3,
+          "terms": {
+            "Ta": 3
+          }
+        },
+        "docs/11-reusable-patterns.md": {
+          "total": 2,
+          "terms": {
+            "Ta": 2
+          }
+        },
+        "docs/13-designer-first.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/14-html-and-data-contract.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/16-one-chart-spec.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/18-mineru-parsing.md": {
+          "total": 9,
+          "terms": {
+            "Ta": 8,
+            "危险度": 1
+          }
+        },
+        "docs/20-agent-pane-design.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/24-metric-trend-tab-design.md": {
+          "total": 15,
+          "terms": {
+            "Ta": 9,
+            "T1": 6
+          }
+        },
+        "docs/25-guideline-bridge.md": {
+          "total": 3,
+          "terms": {
+            "Ta": 1,
+            "高危": 2
+          }
+        },
+        "docs/brief.md": {
+          "total": 6,
+          "terms": {
+            "Ta": 2,
+            "T1": 2,
+            "Tis": 1,
+            "非肌层浸润": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 4,
+          "terms": {
+            "T1": 2,
+            "危险度": 1,
+            "高危": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 6,
+          "terms": {
+            "Ta": 2,
+            "T1": 1,
+            "Tis": 1,
+            "危险度": 1,
+            "高危": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 6,
+          "terms": {
+            "Ta": 2,
+            "T1": 3,
+            "Tis": 1
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 4,
+          "terms": {
+            "Ta": 1,
+            "T1": 1,
+            "Tis": 1,
+            "非肌层浸润": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 9,
+          "terms": {
+            "Ta": 2,
+            "T1": 1,
+            "Tis": 1,
+            "危险度": 1,
+            "高危": 3,
+            "非肌层浸润": 1
+          }
+        },
+        "docs/git-sync-2026-10-20.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/lessons.md": {
+          "total": 9,
+          "terms": {
+            "Ta": 6,
+            "T1": 2,
+            "Tis": 1
+          }
+        },
+        "docs/metric-trend-spec.md": {
+          "total": 3,
+          "terms": {
+            "Ta": 2,
+            "T1": 1
+          }
+        },
+        "docs/parity.csv": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 1,
+          "terms": {
+            "危险度": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 1,
+          "terms": {
+            "非肌层浸润": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 8,
+          "terms": {
+            "Ta": 3,
+            "T1": 2,
+            "Tis": 1,
+            "危险度": 1,
+            "高危": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/sources.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 11,
+          "terms": {
+            "Ta": 3,
+            "T1": 1,
+            "危险度": 5,
+            "高危": 2
+          }
+        },
+        "docs/ui-design.md": {
+          "total": 1,
+          "terms": {
+            "Ta": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 4,
+          "terms": {
+            "危险度": 1,
+            "高危": 2,
+            "非肌层浸润": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 16,
+          "terms": {
+            "Ta": 1,
+            "T1": 2,
+            "原位癌": 3,
+            "中危": 1,
+            "高危": 5,
+            "非肌层浸润": 4
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 76,
+          "terms": {
+            "Ta": 7,
+            "T1": 12,
+            "Tis": 3,
+            "原位癌": 12,
+            "危险度": 6,
+            "中危": 5,
+            "高危": 23,
+            "低危": 4,
+            "非肌层浸润": 4
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 1,
+        "A": 1
+      },
+      "c": 5,
+      "warnings": []
+    },
+    {
+      "id": "BL-01",
+      "scene": "两套分级并行与「未见肌层」",
+      "trigger": "病理报告写「高级别尿路上皮癌，Ta/T1，未见肌层」→ 想知道到底几期",
+      "terms": [
+        "未见肌层",
+        "肌层",
+        "高级别",
+        "低级别",
+        "WHO 1973",
+        "WHO 2004",
+        "G1",
+        "G2",
+        "G3",
+        "分级"
+      ],
+      "hits": 402,
+      "docs": {
+        "agents.md": {
+          "total": 5,
+          "terms": {
+            "G1": 1,
+            "G2": 1,
+            "分级": 3
+          }
+        },
+        "docs/04-data.md": {
+          "total": 1,
+          "terms": {
+            "分级": 1
+          }
+        },
+        "docs/07-interactive-design.md": {
+          "total": 1,
+          "terms": {
+            "G2": 1
+          }
+        },
+        "docs/11-reusable-patterns.md": {
+          "total": 2,
+          "terms": {
+            "分级": 2
+          }
+        },
+        "docs/15-hvt-review.md": {
+          "total": 5,
+          "terms": {
+            "G1": 1,
+            "G2": 2,
+            "G3": 1,
+            "分级": 1
+          }
+        },
+        "docs/16-one-chart-spec.md": {
+          "total": 3,
+          "terms": {
+            "G2": 1,
+            "分级": 2
+          }
+        },
+        "docs/18-mineru-parsing.md": {
+          "total": 1,
+          "terms": {
+            "G1": 1
+          }
+        },
+        "docs/21-research-playbook.md": {
+          "total": 2,
+          "terms": {
+            "分级": 2
+          }
+        },
+        "docs/22-phases-and-gates.md": {
+          "total": 8,
+          "terms": {
+            "G1": 2,
+            "G2": 3,
+            "G3": 3
+          }
+        },
+        "docs/23-metric-grading-and-alerts.md": {
+          "total": 23,
+          "terms": {
+            "G1": 1,
+            "G2": 1,
+            "G3": 2,
+            "分级": 19
+          }
+        },
+        "docs/24-metric-trend-tab-design.md": {
+          "total": 5,
+          "terms": {
+            "分级": 5
+          }
+        },
+        "docs/25-guideline-bridge.md": {
+          "total": 32,
+          "terms": {
+            "G1": 8,
+            "G2": 4,
+            "G3": 4,
+            "分级": 16
+          }
+        },
+        "docs/brief.md": {
+          "total": 8,
+          "terms": {
+            "未见肌层": 2,
+            "肌层": 4,
+            "高级别": 1,
+            "分级": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 21,
+          "terms": {
+            "未见肌层": 3,
+            "肌层": 3,
+            "高级别": 2,
+            "低级别": 1,
+            "G1": 3,
+            "G2": 4,
+            "G3": 3,
+            "分级": 2
+          }
+        },
+        "docs/demo-index.md": {
+          "total": 18,
+          "terms": {
+            "G1": 11,
+            "G2": 3,
+            "G3": 2,
+            "分级": 2
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 15,
+          "terms": {
+            "未见肌层": 1,
+            "肌层": 3,
+            "高级别": 1,
+            "低级别": 1,
+            "WHO 1973": 1,
+            "G1": 3,
+            "G2": 1,
+            "G3": 1,
+            "分级": 3
+          }
+        },
+        "docs/design-session.md": {
+          "total": 6,
+          "terms": {
+            "未见肌层": 1,
+            "肌层": 2,
+            "高级别": 1,
+            "G1": 1,
+            "分级": 1
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 3,
+          "terms": {
+            "肌层": 2,
+            "G1": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 41,
+          "terms": {
+            "未见肌层": 4,
+            "肌层": 9,
+            "高级别": 3,
+            "低级别": 1,
+            "WHO 1973": 1,
+            "G1": 8,
+            "G2": 5,
+            "G3": 3,
+            "分级": 7
+          }
+        },
+        "docs/lessons.md": {
+          "total": 7,
+          "terms": {
+            "G1": 2,
+            "G2": 1,
+            "G3": 1,
+            "分级": 3
+          }
+        },
+        "docs/one-chart-spec.md": {
+          "total": 7,
+          "terms": {
+            "G2": 5,
+            "G3": 1,
+            "分级": 1
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 4,
+          "terms": {
+            "G2": 2,
+            "分级": 2
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 16,
+          "terms": {
+            "未见肌层": 2,
+            "肌层": 5,
+            "G1": 1,
+            "G2": 2,
+            "分级": 6
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 31,
+          "terms": {
+            "未见肌层": 4,
+            "肌层": 8,
+            "高级别": 3,
+            "G1": 4,
+            "G2": 3,
+            "G3": 2,
+            "分级": 7
+          }
+        },
+        "docs/schema.md": {
+          "total": 6,
+          "terms": {
+            "G3": 4,
+            "分级": 2
+          }
+        },
+        "docs/spec.md": {
+          "total": 36,
+          "terms": {
+            "未见肌层": 1,
+            "肌层": 2,
+            "高级别": 2,
+            "低级别": 1,
+            "G1": 5,
+            "G2": 9,
+            "G3": 7,
+            "分级": 9
+          }
+        },
+        "docs/user-research.md": {
+          "total": 16,
+          "terms": {
+            "未见肌层": 2,
+            "肌层": 6,
+            "G1": 3,
+            "G2": 1,
+            "G3": 1,
+            "分级": 3
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 22,
+          "terms": {
+            "肌层": 9,
+            "高级别": 1,
+            "低级别": 1,
+            "G1": 1,
+            "G2": 1,
+            "G3": 1,
+            "分级": 8
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 57,
+          "terms": {
+            "未见肌层": 3,
+            "肌层": 17,
+            "高级别": 12,
+            "低级别": 6,
+            "WHO 1973": 2,
+            "WHO 2004": 2,
+            "G1": 2,
+            "G2": 2,
+            "G3": 2,
+            "分级": 9
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 1,
+        "A": 0
+      },
+      "c": 4,
+      "warnings": []
+    },
+    {
+      "id": "BL-03",
+      "scene": "根治性膀胱切除与三种尿流改道",
+      "trigger": "医生说要切膀胱 → 面对三种改道方式",
+      "terms": [
+        "尿流改道",
+        "回肠通道",
+        "Bricker",
+        "原位新膀胱",
+        "输尿管皮肤造口",
+        "造口",
+        "根治性膀胱切除"
+      ],
+      "hits": 255,
+      "docs": {
+        "readme.md": {
+          "total": 2,
+          "terms": {
+            "尿流改道": 1,
+            "造口": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 7,
+          "terms": {
+            "尿流改道": 1,
+            "造口": 5,
+            "根治性膀胱切除": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 12,
+          "terms": {
+            "尿流改道": 2,
+            "回肠通道": 1,
+            "Bricker": 1,
+            "原位新膀胱": 1,
+            "输尿管皮肤造口": 1,
+            "造口": 6
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 7,
+          "terms": {
+            "尿流改道": 1,
+            "原位新膀胱": 1,
+            "输尿管皮肤造口": 1,
+            "造口": 4
+          }
+        },
+        "docs/design-session.md": {
+          "total": 22,
+          "terms": {
+            "尿流改道": 1,
+            "回肠通道": 1,
+            "Bricker": 1,
+            "原位新膀胱": 2,
+            "输尿管皮肤造口": 3,
+            "造口": 14
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 13,
+          "terms": {
+            "尿流改道": 2,
+            "原位新膀胱": 1,
+            "输尿管皮肤造口": 1,
+            "造口": 8,
+            "根治性膀胱切除": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 24,
+          "terms": {
+            "尿流改道": 4,
+            "回肠通道": 1,
+            "原位新膀胱": 2,
+            "输尿管皮肤造口": 3,
+            "造口": 14
+          }
+        },
+        "docs/lessons.md": {
+          "total": 2,
+          "terms": {
+            "造口": 2
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 5,
+          "terms": {
+            "尿流改道": 1,
+            "原位新膀胱": 1,
+            "造口": 3
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 23,
+          "terms": {
+            "尿流改道": 3,
+            "输尿管皮肤造口": 2,
+            "造口": 18
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 11,
+          "terms": {
+            "原位新膀胱": 1,
+            "输尿管皮肤造口": 1,
+            "造口": 9
+          }
+        },
+        "docs/schema.md": {
+          "total": 3,
+          "terms": {
+            "原位新膀胱": 1,
+            "造口": 2
+          }
+        },
+        "docs/spec.md": {
+          "total": 28,
+          "terms": {
+            "尿流改道": 4,
+            "回肠通道": 1,
+            "原位新膀胱": 3,
+            "输尿管皮肤造口": 2,
+            "造口": 17,
+            "根治性膀胱切除": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 9,
+          "terms": {
+            "尿流改道": 1,
+            "造口": 7,
+            "根治性膀胱切除": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 59,
+          "terms": {
+            "尿流改道": 3,
+            "造口": 52,
+            "根治性膀胱切除": 4
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 28,
+          "terms": {
+            "尿流改道": 4,
+            "回肠通道": 3,
+            "原位新膀胱": 3,
+            "输尿管皮肤造口": 3,
+            "造口": 3,
+            "根治性膀胱切除": 12
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 1,
+        "A": 0
+      },
+      "c": 4,
+      "warnings": []
+    },
+    {
+      "id": "BL-06",
+      "scene": "膀胱灌注 BCG 与化疗",
+      "trigger": "开始灌注 → 不知道排到第几次、为什么被取消",
+      "terms": [
+        "灌注",
+        "BCG",
+        "卡介苗",
+        "吉西他滨",
+        "表柔比星",
+        "吡柔比星",
+        "诱导",
+        "维持",
+        "即刻灌注"
+      ],
+      "hits": 417,
+      "docs": {
+        "readme.md": {
+          "total": 1,
+          "terms": {
+            "灌注": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 8,
+          "terms": {
+            "灌注": 5,
+            "BCG": 3
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 13,
+          "terms": {
+            "灌注": 6,
+            "BCG": 4,
+            "诱导": 2,
+            "维持": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 8,
+          "terms": {
+            "灌注": 4,
+            "BCG": 2,
+            "诱导": 1,
+            "维持": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 11,
+          "terms": {
+            "灌注": 9,
+            "BCG": 2
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 7,
+          "terms": {
+            "灌注": 4,
+            "BCG": 3
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 34,
+          "terms": {
+            "灌注": 18,
+            "BCG": 9,
+            "诱导": 4,
+            "维持": 3
+          }
+        },
+        "docs/lessons.md": {
+          "total": 4,
+          "terms": {
+            "灌注": 2,
+            "BCG": 1,
+            "诱导": 1
+          }
+        },
+        "docs/one-chart-spec.md": {
+          "total": 11,
+          "terms": {
+            "灌注": 6,
+            "BCG": 1,
+            "诱导": 2,
+            "维持": 2
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 2,
+          "terms": {
+            "灌注": 2
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 19,
+          "terms": {
+            "灌注": 13,
+            "诱导": 5,
+            "维持": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 25,
+          "terms": {
+            "灌注": 14,
+            "BCG": 5,
+            "诱导": 3,
+            "维持": 3
+          }
+        },
+        "docs/schema.md": {
+          "total": 9,
+          "terms": {
+            "灌注": 6,
+            "BCG": 1,
+            "诱导": 1,
+            "维持": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 41,
+          "terms": {
+            "灌注": 19,
+            "BCG": 9,
+            "吉西他滨": 1,
+            "表柔比星": 1,
+            "诱导": 6,
+            "维持": 5
+          }
+        },
+        "docs/user-research.md": {
+          "total": 24,
+          "terms": {
+            "灌注": 11,
+            "BCG": 7,
+            "卡介苗": 1,
+            "诱导": 3,
+            "维持": 2
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 49,
+          "terms": {
+            "灌注": 20,
+            "BCG": 17,
+            "卡介苗": 4,
+            "吉西他滨": 4,
+            "诱导": 1,
+            "维持": 3
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 151,
+          "terms": {
+            "灌注": 62,
+            "BCG": 44,
+            "吉西他滨": 5,
+            "表柔比星": 2,
+            "吡柔比星": 2,
+            "诱导": 18,
+            "维持": 16,
+            "即刻灌注": 2
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 1,
+        "A": 0
+      },
+      "c": 4,
+      "warnings": []
+    },
+    {
+      "id": "BL-15",
+      "scene": "膀胱镜复查与尿细胞学四态",
+      "trigger": "下次膀胱镜何时做、尿里那行「非典型细胞」什么意思",
+      "terms": [
+        "膀胱镜",
+        "尿细胞学",
+        "非典型",
+        "可疑",
+        "荧光膀胱镜",
+        "FISH",
+        "NMP22",
+        "BTA",
+        "膀胱冲洗"
+      ],
+      "hits": 159,
+      "docs": {
+        "readme.md": {
+          "total": 1,
+          "terms": {
+            "膀胱镜": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 4,
+          "terms": {
+            "膀胱镜": 3,
+            "尿细胞学": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 11,
+          "terms": {
+            "膀胱镜": 6,
+            "尿细胞学": 2,
+            "非典型": 1,
+            "可疑": 1,
+            "膀胱冲洗": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 6,
+          "terms": {
+            "膀胱镜": 1,
+            "尿细胞学": 1,
+            "非典型": 2,
+            "可疑": 1,
+            "膀胱冲洗": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 5,
+          "terms": {
+            "膀胱镜": 5
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 6,
+          "terms": {
+            "膀胱镜": 3,
+            "尿细胞学": 1,
+            "非典型": 1,
+            "可疑": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 21,
+          "terms": {
+            "膀胱镜": 7,
+            "尿细胞学": 4,
+            "非典型": 5,
+            "可疑": 2,
+            "FISH": 1,
+            "膀胱冲洗": 2
+          }
+        },
+        "docs/one-chart-spec.md": {
+          "total": 5,
+          "terms": {
+            "尿细胞学": 3,
+            "非典型": 1,
+            "可疑": 1
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 3,
+          "terms": {
+            "膀胱镜": 2,
+            "尿细胞学": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 17,
+          "terms": {
+            "膀胱镜": 8,
+            "尿细胞学": 5,
+            "非典型": 3,
+            "膀胱冲洗": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 7,
+          "terms": {
+            "膀胱镜": 1,
+            "非典型": 4,
+            "可疑": 1,
+            "膀胱冲洗": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 4,
+          "terms": {
+            "膀胱镜": 2,
+            "非典型": 1,
+            "可疑": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 23,
+          "terms": {
+            "膀胱镜": 6,
+            "尿细胞学": 8,
+            "非典型": 4,
+            "可疑": 3,
+            "FISH": 1,
+            "膀胱冲洗": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 11,
+          "terms": {
+            "膀胱镜": 3,
+            "尿细胞学": 3,
+            "非典型": 3,
+            "可疑": 1,
+            "FISH": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 19,
+          "terms": {
+            "膀胱镜": 12,
+            "尿细胞学": 1,
+            "可疑": 1,
+            "NMP22": 3,
+            "膀胱冲洗": 2
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 16,
+          "terms": {
+            "膀胱镜": 6,
+            "尿细胞学": 3,
+            "FISH": 7
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 1,
+        "A": 0
+      },
+      "c": 4,
+      "warnings": []
+    },
+    {
+      "id": "BL-04",
+      "scene": "TURBT 与二次电切",
+      "trigger": "医生安排再做一次电切 → 不理解为什么要重做",
+      "terms": [
+        "TURBT",
+        "经尿道",
+        "电切",
+        "二次电切",
+        "完全切除",
+        "再次电切"
+      ],
+      "hits": 136,
+      "docs": {
+        "readme.md": {
+          "total": 3,
+          "terms": {
+            "TURBT": 1,
+            "电切": 1,
+            "二次电切": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 5,
+          "terms": {
+            "TURBT": 2,
+            "电切": 1,
+            "二次电切": 1,
+            "完全切除": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 1,
+          "terms": {
+            "TURBT": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 5,
+          "terms": {
+            "TURBT": 2,
+            "电切": 1,
+            "二次电切": 1,
+            "完全切除": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 7,
+          "terms": {
+            "TURBT": 3,
+            "电切": 2,
+            "二次电切": 2
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 1,
+          "terms": {
+            "TURBT": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 11,
+          "terms": {
+            "TURBT": 6,
+            "电切": 2,
+            "二次电切": 2,
+            "完全切除": 1
+          }
+        },
+        "docs/lessons.md": {
+          "total": 1,
+          "terms": {
+            "TURBT": 1
+          }
+        },
+        "docs/one-chart-spec.md": {
+          "total": 2,
+          "terms": {
+            "TURBT": 2
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 4,
+          "terms": {
+            "TURBT": 2,
+            "电切": 1,
+            "二次电切": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 14,
+          "terms": {
+            "TURBT": 5,
+            "电切": 4,
+            "二次电切": 2,
+            "完全切除": 3
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 11,
+          "terms": {
+            "TURBT": 5,
+            "电切": 3,
+            "二次电切": 2,
+            "完全切除": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 2,
+          "terms": {
+            "TURBT": 2
+          }
+        },
+        "docs/spec.md": {
+          "total": 14,
+          "terms": {
+            "TURBT": 6,
+            "电切": 4,
+            "二次电切": 4
+          }
+        },
+        "docs/user-research.md": {
+          "total": 1,
+          "terms": {
+            "TURBT": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 19,
+          "terms": {
+            "TURBT": 4,
+            "经尿道": 8,
+            "电切": 7
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 35,
+          "terms": {
+            "TURBT": 24,
+            "经尿道": 3,
+            "电切": 5,
+            "二次电切": 2,
+            "完全切除": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 0,
+        "F": 1,
+        "I": 1,
+        "A": 0
+      },
+      "c": 3,
+      "warnings": []
+    },
+    {
+      "id": "BL-09",
+      "scene": "上尿路第二原发监测",
+      "trigger": "膀胱的病为什么还要查肾和输尿管",
+      "terms": [
+        "上尿路",
+        "肾盂",
+        "输尿管",
+        "第二原发",
+        "肾积水",
+        "输尿管镜"
+      ],
+      "hits": 98,
+      "docs": {
+        "readme.md": {
+          "total": 1,
+          "terms": {
+            "上尿路": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 10,
+          "terms": {
+            "上尿路": 5,
+            "肾盂": 1,
+            "输尿管": 3,
+            "第二原发": 1
+          }
+        },
+        "docs/demo-index.md": {
+          "total": 1,
+          "terms": {
+            "上尿路": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 6,
+          "terms": {
+            "上尿路": 2,
+            "输尿管": 3,
+            "肾积水": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 3,
+          "terms": {
+            "输尿管": 3
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 3,
+          "terms": {
+            "上尿路": 1,
+            "输尿管": 1,
+            "第二原发": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 19,
+          "terms": {
+            "上尿路": 6,
+            "肾盂": 2,
+            "输尿管": 7,
+            "第二原发": 2,
+            "肾积水": 2
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 1,
+          "terms": {
+            "上尿路": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 11,
+          "terms": {
+            "上尿路": 5,
+            "肾盂": 1,
+            "输尿管": 4,
+            "第二原发": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 12,
+          "terms": {
+            "上尿路": 4,
+            "肾盂": 1,
+            "输尿管": 4,
+            "第二原发": 1,
+            "肾积水": 1,
+            "输尿管镜": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 3,
+          "terms": {
+            "肾盂": 1,
+            "输尿管": 1,
+            "第二原发": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 6,
+          "terms": {
+            "上尿路": 3,
+            "输尿管": 2,
+            "第二原发": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 5,
+          "terms": {
+            "肾盂": 3,
+            "输尿管": 2
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 17,
+          "terms": {
+            "上尿路": 5,
+            "肾盂": 2,
+            "输尿管": 6,
+            "肾积水": 4
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 0,
+        "A": 0
+      },
+      "c": 3,
+      "warnings": []
+    },
+    {
+      "id": "BL-18",
+      "scene": "照护者交接与耗材管理",
+      "trigger": "换我来照顾 → 不知道排到第几周、用哪个型号",
+      "terms": [
+        "照护者",
+        "交接",
+        "耗材",
+        "底盘型号",
+        "代办",
+        "记录人"
+      ],
+      "hits": 100,
+      "docs": {
+        "agents.md": {
+          "total": 3,
+          "terms": {
+            "交接": 3
+          }
+        },
+        "readme.md": {
+          "total": 2,
+          "terms": {
+            "照护者": 1,
+            "交接": 1
+          }
+        },
+        "docs/01-workflow.md": {
+          "total": 2,
+          "terms": {
+            "交接": 2
+          }
+        },
+        "docs/07-interactive-design.md": {
+          "total": 1,
+          "terms": {
+            "照护者": 1
+          }
+        },
+        "docs/11-reusable-patterns.md": {
+          "total": 1,
+          "terms": {
+            "交接": 1
+          }
+        },
+        "docs/13-designer-first.md": {
+          "total": 1,
+          "terms": {
+            "交接": 1
+          }
+        },
+        "docs/15-hvt-review.md": {
+          "total": 2,
+          "terms": {
+            "照护者": 1,
+            "记录人": 1
+          }
+        },
+        "docs/16-one-chart-spec.md": {
+          "total": 1,
+          "terms": {
+            "照护者": 1
+          }
+        },
+        "docs/17-closed-loop-project-flow.md": {
+          "total": 2,
+          "terms": {
+            "照护者": 1,
+            "交接": 1
+          }
+        },
+        "docs/21-research-playbook.md": {
+          "total": 1,
+          "terms": {
+            "照护者": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 4,
+          "terms": {
+            "照护者": 4
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 4,
+          "terms": {
+            "照护者": 3,
+            "底盘型号": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 3,
+          "terms": {
+            "照护者": 2,
+            "交接": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 11,
+          "terms": {
+            "照护者": 4,
+            "交接": 2,
+            "耗材": 3,
+            "记录人": 2
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 5,
+          "terms": {
+            "照护者": 5
+          }
+        },
+        "docs/designer-workflow-review.md": {
+          "total": 2,
+          "terms": {
+            "交接": 2
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 9,
+          "terms": {
+            "照护者": 3,
+            "交接": 1,
+            "耗材": 2,
+            "底盘型号": 2,
+            "记录人": 1
+          }
+        },
+        "docs/handoff.md": {
+          "total": 2,
+          "terms": {
+            "交接": 2
+          }
+        },
+        "docs/lessons.md": {
+          "total": 2,
+          "terms": {
+            "交接": 2
+          }
+        },
+        "docs/maintenance.md": {
+          "total": 1,
+          "terms": {
+            "交接": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 13,
+          "terms": {
+            "照护者": 4,
+            "交接": 3,
+            "耗材": 3,
+            "记录人": 3
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 5,
+          "terms": {
+            "交接": 1,
+            "耗材": 3,
+            "记录人": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 3,
+          "terms": {
+            "照护者": 2,
+            "记录人": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 13,
+          "terms": {
+            "照护者": 7,
+            "交接": 1,
+            "耗材": 4,
+            "记录人": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 6,
+          "terms": {
+            "照护者": 3,
+            "耗材": 3
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 1,
+          "terms": {
+            "照护者": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 1,
+        "I": 0,
+        "A": 0
+      },
+      "c": 3,
+      "warnings": []
+    },
+    {
+      "id": "BL-07",
+      "scene": "顺铂门槛与围术期系统治疗",
+      "trigger": "医生说「你肾不行，不能用顺铂」→ 想知道影响什么",
+      "terms": [
+        "顺铂",
+        "新辅助",
+        "辅助化疗",
+        "肾功",
+        "eGFR",
+        "肌酐清除率",
+        "分肾",
+        "肾图"
+      ],
+      "hits": 120,
+      "docs": {
+        "readme.md": {
+          "total": 1,
+          "terms": {
+            "肾功": 1
+          }
+        },
+        "docs/24-metric-trend-tab-design.md": {
+          "total": 1,
+          "terms": {
+            "肾功": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 1,
+          "terms": {
+            "肾功": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 3,
+          "terms": {
+            "顺铂": 1,
+            "肾功": 2
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 5,
+          "terms": {
+            "顺铂": 1,
+            "肾功": 1,
+            "eGFR": 1,
+            "分肾": 1,
+            "肾图": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 15,
+          "terms": {
+            "顺铂": 3,
+            "肾功": 9,
+            "eGFR": 2,
+            "分肾": 1
+          }
+        },
+        "docs/one-chart-spec.md": {
+          "total": 8,
+          "terms": {
+            "顺铂": 1,
+            "肾功": 6,
+            "eGFR": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 21,
+          "terms": {
+            "顺铂": 2,
+            "肾功": 11,
+            "eGFR": 5,
+            "分肾": 3
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 10,
+          "terms": {
+            "顺铂": 2,
+            "肾功": 5,
+            "eGFR": 2,
+            "分肾": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 1,
+          "terms": {
+            "肾图": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 12,
+          "terms": {
+            "顺铂": 1,
+            "肾功": 8,
+            "eGFR": 2,
+            "分肾": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 4,
+          "terms": {
+            "顺铂": 2,
+            "肾功": 1,
+            "eGFR": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 25,
+          "terms": {
+            "顺铂": 11,
+            "新辅助": 10,
+            "肾功": 3,
+            "肌酐清除率": 1
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 13,
+          "terms": {
+            "顺铂": 3,
+            "新辅助": 5,
+            "辅助化疗": 1,
+            "肾功": 2,
+            "eGFR": 1,
+            "肌酐清除率": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-08",
+      "scene": "BCG 无应答与保膀胱抉择",
+      "trigger": "BCG 灌注后仍复发 → 要不要切膀胱",
+      "terms": [
+        "BCG无应答",
+        "卡介苗失败",
+        "保膀胱",
+        "膀胱切除",
+        "膀胱灌注失败",
+        "复发"
+      ],
+      "hits": 140,
+      "docs": {
+        "readme.md": {
+          "total": 1,
+          "terms": {
+            "复发": 1
+          }
+        },
+        "docs/18-mineru-parsing.md": {
+          "total": 1,
+          "terms": {
+            "复发": 1
+          }
+        },
+        "docs/25-guideline-bridge.md": {
+          "total": 1,
+          "terms": {
+            "复发": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 3,
+          "terms": {
+            "保膀胱": 2,
+            "膀胱切除": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 2,
+          "terms": {
+            "保膀胱": 1,
+            "复发": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 5,
+          "terms": {
+            "保膀胱": 2,
+            "复发": 3
+          }
+        },
+        "docs/design-session.md": {
+          "total": 2,
+          "terms": {
+            "保膀胱": 1,
+            "复发": 1
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 7,
+          "terms": {
+            "保膀胱": 3,
+            "膀胱切除": 1,
+            "复发": 3
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 6,
+          "terms": {
+            "保膀胱": 4,
+            "复发": 2
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 1,
+          "terms": {
+            "保膀胱": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 4,
+          "terms": {
+            "保膀胱": 3,
+            "复发": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 12,
+          "terms": {
+            "保膀胱": 8,
+            "膀胱切除": 1,
+            "复发": 3
+          }
+        },
+        "docs/user-research.md": {
+          "total": 11,
+          "terms": {
+            "保膀胱": 8,
+            "膀胱切除": 1,
+            "复发": 2
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 20,
+          "terms": {
+            "膀胱切除": 11,
+            "复发": 9
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 64,
+          "terms": {
+            "保膀胱": 19,
+            "膀胱切除": 16,
+            "复发": 29
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-10",
+      "scene": "灌注的局部与全身毒性",
+      "trigger": "灌注后尿频尿急尿痛、或高热寒战 → 要不要去医院",
+      "terms": [
+        "化学性膀胱炎",
+        "尿频",
+        "尿急",
+        "尿痛",
+        "血尿",
+        "BCG全身感染",
+        "发热",
+        "寒战",
+        "膀胱刺激"
+      ],
+      "hits": 53,
+      "docs": {
+        "docs/brief.md": {
+          "total": 1,
+          "terms": {
+            "血尿": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 2,
+          "terms": {
+            "化学性膀胱炎": 1,
+            "血尿": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 2,
+          "terms": {
+            "发热": 1,
+            "寒战": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 1,
+          "terms": {
+            "血尿": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 4,
+          "terms": {
+            "化学性膀胱炎": 1,
+            "血尿": 2,
+            "寒战": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 2,
+          "terms": {
+            "血尿": 1,
+            "寒战": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 2,
+          "terms": {
+            "化学性膀胱炎": 1,
+            "血尿": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 4,
+          "terms": {
+            "血尿": 4
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 28,
+          "terms": {
+            "尿频": 4,
+            "尿急": 4,
+            "尿痛": 4,
+            "血尿": 10,
+            "发热": 5,
+            "膀胱刺激": 1
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 7,
+          "terms": {
+            "化学性膀胱炎": 2,
+            "尿频": 1,
+            "尿急": 1,
+            "尿痛": 1,
+            "血尿": 2
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-11",
+      "scene": "改道后代谢长期负担",
+      "trigger": "术后几年总觉得没力气 → 是不是缺什么",
+      "terms": [
+        "B12",
+        "维生素B12",
+        "代谢性酸中毒",
+        "碳酸氢盐",
+        "电解质",
+        "肾结石",
+        "氯"
+      ],
+      "hits": 42,
+      "docs": {
+        "docs/24-metric-trend-tab-design.md": {
+          "total": 1,
+          "terms": {
+            "电解质": 1
+          }
+        },
+        "docs/brief.md": {
+          "total": 2,
+          "terms": {
+            "B12": 1,
+            "电解质": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 2,
+          "terms": {
+            "B12": 1,
+            "代谢性酸中毒": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 3,
+          "terms": {
+            "B12": 1,
+            "代谢性酸中毒": 1,
+            "电解质": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 2,
+          "terms": {
+            "B12": 1,
+            "电解质": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 8,
+          "terms": {
+            "B12": 3,
+            "代谢性酸中毒": 1,
+            "碳酸氢盐": 2,
+            "电解质": 1,
+            "氯": 1
+          }
+        },
+        "docs/one-chart-spec.md": {
+          "total": 1,
+          "terms": {
+            "电解质": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 2,
+          "terms": {
+            "B12": 1,
+            "电解质": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 3,
+          "terms": {
+            "B12": 1,
+            "碳酸氢盐": 1,
+            "电解质": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 13,
+          "terms": {
+            "B12": 5,
+            "代谢性酸中毒": 1,
+            "碳酸氢盐": 2,
+            "电解质": 3,
+            "氯": 2
+          }
+        },
+        "docs/user-research.md": {
+          "total": 4,
+          "terms": {
+            "B12": 2,
+            "代谢性酸中毒": 2
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 1,
+          "terms": {
+            "电解质": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-12",
+      "scene": "造口日常与造口周围皮肤",
+      "trigger": "第一次自己换底盘 → 漏了、皮肤红了怎么办",
+      "terms": [
+        "底盘",
+        "造口周围皮肤",
+        "渗漏",
+        "气味",
+        "造口疝",
+        "造口护理",
+        "集尿袋"
+      ],
+      "hits": 40,
+      "docs": {
+        "docs/brief.md": {
+          "total": 3,
+          "terms": {
+            "底盘": 2,
+            "渗漏": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 5,
+          "terms": {
+            "底盘": 2,
+            "渗漏": 2,
+            "集尿袋": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 3,
+          "terms": {
+            "底盘": 1,
+            "渗漏": 1,
+            "气味": 1
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 3,
+          "terms": {
+            "底盘": 2,
+            "渗漏": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 8,
+          "terms": {
+            "底盘": 4,
+            "渗漏": 3,
+            "气味": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 7,
+          "terms": {
+            "底盘": 3,
+            "渗漏": 3,
+            "气味": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 4,
+          "terms": {
+            "底盘": 3,
+            "渗漏": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 1,
+          "terms": {
+            "底盘": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 3,
+          "terms": {
+            "底盘": 3
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 3,
+          "terms": {
+            "造口疝": 2,
+            "造口护理": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-13",
+      "scene": "新膀胱控尿与间歇导尿",
+      "trigger": "做完新膀胱 → 尿不干净要不要导尿",
+      "terms": [
+        "控尿",
+        "间歇导尿",
+        "残余尿",
+        "夜间尿垫",
+        "排尿训练",
+        "新膀胱"
+      ],
+      "hits": 41,
+      "docs": {
+        "docs/brief.md": {
+          "total": 3,
+          "terms": {
+            "控尿": 1,
+            "间歇导尿": 1,
+            "新膀胱": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 3,
+          "terms": {
+            "控尿": 1,
+            "间歇导尿": 1,
+            "新膀胱": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 5,
+          "terms": {
+            "控尿": 2,
+            "间歇导尿": 1,
+            "残余尿": 1,
+            "新膀胱": 1
+          }
+        },
+        "docs/design-session.md": {
+          "total": 4,
+          "terms": {
+            "控尿": 1,
+            "新膀胱": 3
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 4,
+          "terms": {
+            "控尿": 1,
+            "新膀胱": 3
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 7,
+          "terms": {
+            "控尿": 1,
+            "间歇导尿": 1,
+            "残余尿": 1,
+            "新膀胱": 4
+          }
+        },
+        "docs/prototype-review.md": {
+          "total": 1,
+          "terms": {
+            "新膀胱": 1
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 4,
+          "terms": {
+            "控尿": 1,
+            "间歇导尿": 1,
+            "残余尿": 1,
+            "新膀胱": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 1,
+          "terms": {
+            "新膀胱": 1
+          }
+        },
+        "docs/schema.md": {
+          "total": 1,
+          "terms": {
+            "新膀胱": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 3,
+          "terms": {
+            "新膀胱": 3
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 5,
+          "terms": {
+            "控尿": 1,
+            "新膀胱": 4
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-14",
+      "scene": "性功能与生育",
+      "trigger": "切了以后还能不能有性生活",
+      "terms": [
+        "性功能",
+        "勃起",
+        "生育",
+        "精液",
+        "性欲",
+        "亲密"
+      ],
+      "hits": 29,
+      "docs": {
+        "docs/16-one-chart-spec.md": {
+          "total": 1,
+          "terms": {
+            "生育": 1
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 2,
+          "terms": {
+            "性功能": 1,
+            "亲密": 1
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 2,
+          "terms": {
+            "性功能": 1,
+            "亲密": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 5,
+          "terms": {
+            "性功能": 2,
+            "勃起": 1,
+            "生育": 2
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 4,
+          "terms": {
+            "性功能": 2,
+            "亲密": 2
+          }
+        },
+        "docs/schema.md": {
+          "total": 4,
+          "terms": {
+            "性功能": 2,
+            "生育": 1,
+            "亲密": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 7,
+          "terms": {
+            "性功能": 4,
+            "生育": 2,
+            "亲密": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 1,
+          "terms": {
+            "性功能": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 2,
+          "terms": {
+            "性功能": 1,
+            "生育": 1
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 1,
+          "terms": {
+            "性功能": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 0,
+        "F": 1,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-16",
+      "scene": "血块填塞与尿潴留",
+      "trigger": "排出大量血块、有尿意排不出 → 是不是要马上处理",
+      "terms": [
+        "血块",
+        "尿潴留",
+        "填塞",
+        "导尿",
+        "持续胀痛"
+      ],
+      "hits": 26,
+      "docs": {
+        "docs/brief.md": {
+          "total": 3,
+          "terms": {
+            "血块": 1,
+            "尿潴留": 1,
+            "导尿": 1
+          }
+        },
+        "docs/core-modules.md": {
+          "total": 2,
+          "terms": {
+            "导尿": 2
+          }
+        },
+        "docs/design-prompt.md": {
+          "total": 4,
+          "terms": {
+            "血块": 1,
+            "尿潴留": 1,
+            "填塞": 1,
+            "导尿": 1
+          }
+        },
+        "docs/designer-brief.md": {
+          "total": 2,
+          "terms": {
+            "血块": 1,
+            "尿潴留": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 3,
+          "terms": {
+            "血块": 1,
+            "导尿": 2
+          }
+        },
+        "docs/scenario-paths.md": {
+          "total": 1,
+          "terms": {
+            "导尿": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 1,
+          "terms": {
+            "血块": 1
+          }
+        },
+        "docs/spec.md": {
+          "total": 5,
+          "terms": {
+            "血块": 2,
+            "尿潴留": 2,
+            "导尿": 1
+          }
+        },
+        "docs/research/2025-2026-膀胱癌治疗格局-事实提取.md": {
+          "total": 4,
+          "terms": {
+            "导尿": 4
+          }
+        },
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 1,
+          "terms": {
+            "导尿": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 1,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 2,
+      "warnings": []
+    },
+    {
+      "id": "BL-17",
+      "scene": "BCG 全身感染急症",
+      "trigger": "灌注后 24–72 小时高热寒战不缓解",
+      "terms": [
+        "BCG全身感染",
+        "高热",
+        "寒战",
+        "抗结核",
+        "灌注后发热",
+        "血压偏低"
+      ],
+      "hits": 7,
+      "docs": {
+        "docs/design-prompt.md": {
+          "total": 2,
+          "terms": {
+            "高热": 1,
+            "寒战": 1
+          }
+        },
+        "docs/diff-matrix.md": {
+          "total": 2,
+          "terms": {
+            "高热": 1,
+            "寒战": 1
+          }
+        },
+        "docs/scenarios.md": {
+          "total": 2,
+          "terms": {
+            "高热": 1,
+            "寒战": 1
+          }
+        },
+        "docs/user-research.md": {
+          "total": 1,
+          "terms": {
+            "高热": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 1,
+        "M": 0,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 1,
+      "warnings": []
+    },
+    {
+      "id": "BL-02",
+      "scene": "组织学变异型",
+      "trigger": "报告出现「微乳头」「腺样分化」等词 → 不知道是不是更凶",
+      "terms": [
+        "变异型",
+        "微乳头",
+        "腺样分化",
+        "鳞状分化",
+        "肉瘤样",
+        "组织学变异"
+      ],
+      "hits": 2,
+      "docs": {
+        "docs/research/中文权威共识-事实提取.md": {
+          "total": 2,
+          "terms": {
+            "微乳头": 1,
+            "组织学变异": 1
+          }
+        }
+      },
+      "layers": {
+        "S": 0,
+        "M": 0,
+        "F": 0,
+        "I": 0,
+        "A": 0
+      },
+      "c": 0,
+      "warnings": [
+        "命中过少（≤2 次），疑似只在名词列表出现",
+        "仅单一文档命中：docs/research/中文权威共识-事实提取.md"
+      ]
+    }
+  ]
+}
