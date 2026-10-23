@@ -101,20 +101,29 @@ async function main() {
   assert('S01 首屏是分野引导卡，不是看板', !!gate);
   const gateText = gate ? await gate.innerText() : '';
   assert('闸门含三个选项', (await page.$$('.gate-choice')).length === 3, `${(await page.$$('.gate-choice')).length} 个`);
-  /* 原先查的是 .big-card —— 那是只有 CSS、没有标记的死类名，断言永远为真。
-     换成首屏真实使用的容器类名：未选线时这些必须一个都不存在。 */
-  const gateLeftovers = await page.evaluate(() => {
-    /* 只查「只有选了线才会出现」的容器。
-       闸门页本身有一张不分野也能做的两件事卡（含 .todo-item），那是有意保留的。 */
-    const sel = ['.entry-card', '.strip', '.todo-item', '.q-item', '.chart-host', '.metric-card'];
-    sel.splice(2, 1);
-    const hit = {};
-    sel.forEach((x) => { const n = document.querySelectorAll(x).length; if (n) hit[x] = n; });
-    return hit;
+  /* 设计变更（2026-10-23）：原先未选线时整页只有一张闸门卡，首屏看着是空的、
+     不像能用的产品（用户反馈「首页没有任何内容，这不真实」）。
+     现在闸门降级成第一张卡，下面照常按演示档案 DEMO-1 渲染，但必须明标未确认。
+     这条断言因此从「专属内容必须为 0」改成「闸门仍在 + 必有未确认标记 + 首页有内容」。 */
+  const gateState = await page.evaluate(() => {
+    const t = document.querySelector('#wbPage').innerText;
+    return {
+      gate: !!document.querySelector('.gate-page'),
+      gateChoice: document.querySelectorAll('.gate-choice').length,
+      unconfirmed: /分野未确认/.test(t),
+      demoNamed: /DEMO-1/.test(t),
+      entry: document.querySelectorAll('.entry-card').length,
+      noFakeConfirm: !/当前阶段：/.test(t) || /分野未确认/.test(t),
+    };
   });
-  assert('尚未选线时看板专属内容为 0（不得先长出专属内容）',
-    Object.keys(gateLeftovers).length === 0, JSON.stringify(gateLeftovers));
+  assert('尚未选线时：闸门仍在首屏且明标「分野未确认 · 按演示档案」',
+    gateState.gate && gateState.gateChoice === 3 && gateState.unconfirmed && gateState.demoNamed,
+    JSON.stringify(gateState));
+  assert('尚未选线时首页不是空的（演示档案已渲染，但不假装已确认）',
+    gateState.entry >= 1 && gateState.noFakeConfirm, JSON.stringify(gateState));
   assert('闸门页保留的待办卡明确标注「不依赖分野」', /不依赖分野/.test(await page.textContent('#wbPage')));
+  assert('闸门文案如实说明「未选定时先按演示档案展示」（不得再写看板不显示内容）',
+    /演示档案 DEMO-1/.test(await page.textContent('#wbPage')) && !/看板不会显示任何一条线/.test(await page.textContent('#wbPage')));
   assert('闸门里有 Ta/T1/Tis 白话解释', /Ta\s*\/\s*T1\s*\/\s*Tis/.test(gateText));
   assert('闸门里有「我还不确定」', /我还不确定/.test(gateText));
   assert('闸门声明不对保膀胱/切除表达倾向', /不.*表达倾向|不对.*倾向/.test(gateText));
@@ -285,8 +294,32 @@ async function main() {
   /* --- 指标卡 3D 翻转 --- */
   console.log('\n【检查与指标 · 3D 卡】');
   await nav('检查与指标');
+  /* 用户反馈（2026-10-23）：「指标卡片没有实现 3D 反转」。
+     复查发现卡片本身是好的 —— 是默认页签落在一张裸表上，3D 卡藏在第二个页签后面，
+     打开这页根本看不到。默认页签必须是卡片。 */
+  const metricsDefaultTab = await page.evaluate(() => {
+    const t = document.querySelector('#wbPage .tab[aria-selected="true"]');
+    return t ? t.textContent.trim() : null;
+  });
+  const cardsOnArrival = await page.$$('.metric-card');
+  assert('检查与指标默认落在「分类指标卡」上（3D 卡不该藏在第二个页签后面）',
+    metricsDefaultTab === '分类指标卡' && cardsOnArrival.length >= 7,
+    `默认页签=${metricsDefaultTab}，首屏卡片=${cardsOnArrival.length}`);
   await page.click('.tab:has-text("分类指标卡")');
   await page.waitForTimeout(260);
+  /* C11 可比组：肌酐在 2026-10-08 换了医院（酶法 → 苦味酸法），必须拆成两组 */
+  const grp = await page.evaluate(() => {
+    const m = METRICS.find((x) => x.code === 'cr');
+    const gs = CHART.groupsOf(m);
+    return { n: gs.length, labels: gs.map((g) => `${g.label}:${g.n}`),
+             note: (document.querySelector('.metric-card[data-metric="cr"] .mc-groups') || {}).textContent || '' };
+  });
+  assert('可比组（C11）：肌酐换医院后拆成 2 组', grp.n === 2, JSON.stringify(grp));
+  assert('可比组写在卡片正面（说清是哪几组、各几次）',
+    /可比组 2 个/.test(grp.note) && /演示检验科/.test(grp.note) && /演示社区医院/.test(grp.note), grp.note);
+  const totalPts = await page.evaluate(() => METRICS.reduce((a, m) => a + m.points.length, 0));
+  assert('演示数据够厚（指标记录 ≥ 45 条，跨 ≥ 12 个月）', totalPts >= 45,
+    `${totalPts} 条`);
   const before = await page.getAttribute('.metric-card', 'data-flipped');
   const persistStyle = await page.evaluate(() => {
     const inner = document.querySelector('.metric-inner');

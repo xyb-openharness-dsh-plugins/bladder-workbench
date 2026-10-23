@@ -73,6 +73,27 @@ const CHART = (() => {
   }
 
   const fmt = (v) => (Math.round(v * 10) / 10).toString();
+  const esc = (v) => String(v == null ? '' : v)
+    .replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* C11：机构或方法一变就拆「可比组」。
+     数值随机构/方法漂移是真实的（酶法与苦味酸法测同一份血可以差一截），
+     把两组连成一条线等于凭空造出一段趋势。点级 lab/method 优先，回退到指标级。 */
+  const labOf = (m, pt) => (pt && pt.lab) || m.lab || '自测';
+  const methodOf = (m, pt) => (pt && pt.method) || m.method || '—';
+  const groupKey = (m, pt) => `${labOf(m, pt)}|${methodOf(m, pt)}`;
+  /** 供卡片与图例复用：全部记录按可比组归并，返回 [{key,label,lab,method,n}] */
+  const groupsOf = (m) => {
+    const out = [];
+    m.points.forEach((pt) => {
+      const key = groupKey(m, pt);
+      const hit = out.find((g) => g.key === key);
+      if (hit) hit.n++;
+      else out.push({ key, lab: labOf(m, pt), method: methodOf(m, pt),
+                      label: `${labOf(m, pt)} · ${methodOf(m, pt)}`, n: 1 });
+    });
+    return out;
+  };
 
   /** 主渲染：返回 { treatLane, svg, legend, empty, reason } */
   function render(codes, win, width) {
@@ -107,19 +128,28 @@ const CHART = (() => {
       const ys = Y(s);
       const coords = s.pts.map((p) => [X(p.d), ys(p.v)]);
 
-      // C2：单点不连线
-      if (coords.length > 1) {
-        const d = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+      // C11 + C2：拆可比组；一组里只有一个点就不连线（只画点）
+      const runs = [];
+      s.pts.forEach((pt, i) => {
+        const k = groupKey(s, pt);
+        const tail = runs[runs.length - 1];
+        if (tail && tail.k === k) tail.idx.push(i);
+        else runs.push({ k, idx: [i] });
+      });
+      runs.forEach((run) => {
+        if (run.idx.length < 2) return;
+        const d = run.idx
+          .map((i, n) => `${n ? 'L' : 'M'}${coords[i][0].toFixed(1)} ${coords[i][1].toFixed(1)}`).join(' ');
         parts.push(
           `<path class="series-line" d="${d}" stroke="${s.color}" pathLength="1" `
           + `style="stroke-dasharray:1;stroke-dashoffset:1;animation:dash .7s ease forwards;animation-delay:${animDelay}ms"/>`
         );
         animDelay += 45;                                  // C9：40–50ms 递增
-      }
+      });
       coords.forEach(([x, y], i) => {
         parts.push(
           `<circle class="series-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="${s.color}">`
-          + `<title>${s.name} ${s.pts[i].d}：${fmt(s.pts[i].v)} ${s.unit}｜${s.lab || '自测'} · ${s.method || '—'}｜${s.src}</title>`
+          + `<title>${esc(s.name)} ${esc(s.pts[i].d)}：${fmt(s.pts[i].v)} ${esc(s.unit)}｜${esc(labOf(s, s.pts[i]))} · ${esc(methodOf(s, s.pts[i]))}｜${esc(s.src)}</title>`
           + `</circle>`
         );
       });
@@ -144,6 +174,9 @@ const CHART = (() => {
     const marks = TREATMENTS
       .filter((t) => day(t.d) >= from && day(t.d) <= to)
       .map((t) => ({ ...t, x: PAD.l + ((day(t.d) - from) / span) * INNER_W }));
+    /* 行距必须大于标签行高：11px 字号 line-height 1.4 ≈ 15.4px，
+       用 13px 时相邻两行在垂直方向必然相交（长窗口把三个事件挤到 70px 内就暴露了）。 */
+    const ROW_PITCH = 17;
     const rowRight = [];
     const rows = marks.map((m) => {
       let r = 0;
@@ -153,21 +186,26 @@ const CHART = (() => {
     });
     const maxRow = rows.reduce((a, b) => Math.max(a, b), 0);
     const treatLane = marks.map((m, i) =>
-      `<div class="treat-mark" style="left:${(m.x / W * 100).toFixed(3)}%;top:${4 + rows[i] * 13}px" data-ev="${m.id}">`
+      `<div class="treat-mark" style="left:${(m.x / W * 100).toFixed(3)}%;top:${4 + rows[i] * ROW_PITCH}px" data-ev="${m.id}">`
       + `<div class="tm-diamond" aria-hidden="true"></div>`
       + `<div class="tm-label">${m.label}</div>`
       + `<div class="tm-stem" aria-hidden="true"></div></div>`
     ).join('');
-    const laneH = 30 + maxRow * 13;
+    const laneH = 30 + maxRow * ROW_PITCH;
 
     // 轴：首末日期
     parts.push(`<text class="axis-label" x="${PAD.l}" y="${H - 6}">${iso(from)}</text>`);
     parts.push(`<text class="axis-label" x="${PAD.l + INNER_W}" y="${H - 6}" text-anchor="end">${iso(to)}</text>`);
 
-    const legend = withData.map((s) =>
-      `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>`
-      + `${s.name}（${fmt(s.min)}–${fmt(s.max)} ${s.unit}）</span>`
-    ).join('');
+    const legend = withData.map((s) => {
+      const gs = groupsOf(s);
+      const gnote = gs.length > 1
+        ? `<span class="legend-group">${gs.length} 个可比组，不跨组连线：`
+          + gs.map((g) => `${esc(g.label)}（${g.n} 次）`).join(' / ') + `</span>`
+        : '';
+      return `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>`
+        + `${esc(s.name)}（${fmt(s.min)}–${fmt(s.max)} ${esc(s.unit)}）</span>${gnote}`;
+    }).join('');
 
     return {
       empty: false,
@@ -197,5 +235,5 @@ const CHART = (() => {
     return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${line}${dots}</svg>`;
   }
 
-  return { render, sparkline, fmt, TREATMENTS };
+  return { render, sparkline, fmt, groupsOf, TREATMENTS };
 })();

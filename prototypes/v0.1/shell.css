@@ -716,6 +716,11 @@ table.tbl td.num { text-align: right; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--wb-muted); }
 .legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
 
+/* 可比组（C11）：机构或方法中途变了就不连线，界面要能说清是哪几组。
+   中性灰、不做好坏着色 —— 「换了医院」不是病情变化。 */
+.mc-groups { color: var(--wb-ghost); }
+.legend-group { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--wb-ghost); line-height: 1.5; }
+
 /* ============================================================
    窄屏覆盖 —— 必须保留在文件末尾
    坑（勿改回）：这些覆盖与上面的基础规则同优先级，若放在文件中段，

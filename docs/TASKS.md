@@ -36,7 +36,7 @@
 
 ## 当前失败/复现
 
-无。`node scripts/verify-prototype.mjs` → 124 条断言全部通过，浏览器控制台零 error。
+无。`node scripts/verify-prototype.mjs` → 130 条断言全部通过，浏览器控制台零 error。
 
 ## 未验证项（不得写成「已支持」）
 

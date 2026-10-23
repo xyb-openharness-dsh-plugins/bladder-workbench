@@ -238,10 +238,13 @@ function card(title, body, extra = '') {
 
 /* ================= 1. 看板 ================= */
 function pageDashboard() {
-  // 未分野 / 保持未定：都不显示任何一条线的专属卡片
-  if (!STATE.line || STATE.line === 'undetermined') return gateHTML();
+  /* 未分野时不再把整页让给闸门 —— 那样首页看着是空的，不像一个能用的产品。
+     改为：闸门降级成「第一张卡」，下面照常按演示档案 DEMO-1（NMIBC）渲染，
+     并在 hero 上明写「分野未确认」——不假装用户已经选过。 */
+  const confirmed = STATE.line === 'nmibc' || STATE.line === 'mibc';
+  const nmibc = STATE.line !== 'mibc';
+  const gateFirst = confirmed ? '' : gateHTML();
 
-  const nmibc = STATE.line === 'nmibc';
   const lineName = nmibc ? '非肌层浸润（Ta/T1/Tis）· 保膀胱线' : '肌层浸润（T2+）· 根治与改道线';
   const stage = nmibc ? '膀胱灌注诱导期' : '术后待定改道术式';
 
@@ -256,6 +259,7 @@ function pageDashboard() {
             : '你要面对两个不可逆的选择：膀胱切不切、改道走哪一种。这里把三种术式并排摆出来，不给倾向。'}</p>
         </div>
         <span class="chip chip-brand">当前阶段：${esc(stage)}</span>
+        ${confirmed ? '' : '<span class="chip chip-warn">分野未确认 · 按演示档案 DEMO-1 展示</span>'}
       </div>
     </div>`;
 
@@ -319,7 +323,7 @@ function pageDashboard() {
       <div class="legend" data-legend></div>
     </div>`;
 
-  return hero + strip
+  return gateFirst + hero + strip
     + `<div class="entry-grid">` + entries.map((e) => `
         <button type="button" class="entry-card" data-goto="${e.go}">
           <span class="entry-ico" aria-hidden="true">${e.ico}</span>
@@ -372,7 +376,8 @@ function gateHTML() {
         <div class="hero-eyebrow">UroPal · 第一步</div>
         <h1 class="hero-title">${undet ? '先保持未定。这一步不着急。' : '第一步不是记录，是先弄清楚你属于哪条线。'}</h1>
         <p class="hero-sub">膀胱癌按<b>有没有长进肌肉层</b>分成两条很不一样的路。
-          <b>这一步决定你看到的内容</b>，所以在你选定之前，看板不会显示任何一条线的专属卡片。
+          <b>这一步决定你看到的内容</b>。还没选定的时候，下面先按<b>演示档案 DEMO-1（NMIBC）</b>
+          给你看一遍全貌，并在标题旁标出「分野未确认」——不假装你已经选过；选定后整页跟着换。
           不确定也可以选最后一项，随时能改，改动会留痕。</p>
       </div>
       <span class="chip chip-neutral">当前阶段：${undet ? '分野未定' : '未分野'}</span>
@@ -790,7 +795,20 @@ function pageFollowup(tab) {
 function pageMetrics(tab) {
   let body;
   if (tab === '分类指标卡') {
-    body = `<div class="metric-grid" data-metric-grid>${METRICS.map((m, i) => metricCardHTML(m, i)).join('')}</div>
+    const cats = [...new Set(METRICS.map((m) => m.cat))];
+    const total = METRICS.reduce((a, m) => a + m.points.length, 0);
+    const lastD = METRICS.flatMap((m) => m.points.map((p) => p.d)).sort().pop();
+    const split = METRICS.filter((m) => CHART.groupsOf && CHART.groupsOf(m).length > 1);
+    body = `<div class="strip" style="margin-bottom:16px">
+        <div class="strip-main">
+          <div class="strip-head">${METRICS.length} 项指标 · ${cats.length} 个分组 · ${total} 条记录 · 最近更新 ${esc(lastD)}</div>
+          <div class="strip-note">分组顺序与「病情一图秀」同一来源，两页一致。
+            ${split.length ? `其中 <b>${split.map((m) => esc(m.name)).join('、')}</b> 的机构或方法中途变过，已拆成不同<b>可比组</b>，不跨组连线。`
+              : '全部指标机构与方法一致。'}</div>
+        </div>
+        <div class="strip-actions"><button type="button" class="btn" data-goto="chart">打开一图秀</button></div>
+      </div>
+      <div class="metric-grid" data-metric-grid>${METRICS.map((m, i) => metricCardHTML(m, i)).join('')}</div>
       <p class="src" style="margin-top:12px">卡背面是<b>固定高度 3D 翻转</b>，不是向下展开。
         点卡片或按回车/空格翻转；≥700px 两列，窄屏一列，不做三列以上。</p>`;
   } else if (tab === '电解质与 B12') {
@@ -811,7 +829,11 @@ function pageMetrics(tab) {
         <dt>顺铂门槛</dt><dd>${esc(RENAL.threshold.text)} ${src(RENAL.threshold.source)}</dd>
       </div>`);
   } else {
+    const cats2 = [...new Set(METRICS.map((m) => m.cat))];
     body = card('指标总览（与一图秀同源）', `
+      <div class="btn-row" style="margin-bottom:12px">
+        ${cats2.map((c) => `<span class="chip chip-cat">${esc(c)} · ${METRICS.filter((m) => m.cat === c).length} 项</span>`).join('')}
+      </div>
       <table class="tbl"><thead><tr><th>分组</th><th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>分级</th></tr></thead><tbody>
         ${METRICS.map((m) => {
           const last = m.points[m.points.length - 1];
@@ -865,6 +887,15 @@ function rulerHTML(m) {
   </div>`;
 }
 
+/* 可比组：机构或方法变了就不该连成一条线。多于一组时明写出来，少一组就不啰嗦。 */
+function groupsHTML(m) {
+  if (!CHART.groupsOf) return '';
+  const gs = CHART.groupsOf(m);
+  if (gs.length < 2) return '';
+  return `<span class="mc-groups">可比组 ${gs.length} 个（不跨组连线）：`
+    + gs.map((g) => `${esc(g.label)} ${g.n} 次`).join(' / ') + `</span>`;
+}
+
 function metricCardHTML(m, i) {
   const last = m.points[m.points.length - 1];
   const prev = m.points[m.points.length - 2];
@@ -886,6 +917,7 @@ function metricCardHTML(m, i) {
         <div class="mc-meta">
           <span>共 ${m.points.length} 次记录 · 最近 ${esc(last.d)}</span>
           <span>来源：${esc(m.src)}${m.lab ? ' · ' + esc(m.lab) : ''}</span>
+          ${groupsHTML(m)}
           <span>${m.refLow != null && m.refHigh != null ? `参考范围 ${CHART.fmt(m.refLow)} ~ ${CHART.fmt(m.refHigh)} ${esc(m.unit)}`
             : m.refLow != null ? `参考范围 ≥ ${CHART.fmt(m.refLow)} ${esc(m.unit)}（报告未给上限）`
             : m.refHigh != null ? `参考范围 ≤ ${CHART.fmt(m.refHigh)} ${esc(m.unit)}（报告未给下限）`
@@ -898,7 +930,7 @@ function metricCardHTML(m, i) {
         <div class="mb-chart">${CHART.sparkline(m)}</div>
         <div class="mc-meta">
           <span>全期范围 ${CHART.fmt(m.min ?? Math.min(...m.points.map(p => p.v)))} ～ ${CHART.fmt(m.max ?? Math.max(...m.points.map(p => p.v)))} ${esc(m.unit)}</span>
-          <span>${m.lab ? `机构 ${esc(m.lab)}` : '自测'} · 方法 ${esc(m.method || '—')}</span>
+          <span>${groupsHTML(m) || (m.lab ? `机构 ${esc(m.lab)} · 方法 ${esc(m.method || '—')}` : '自测')}</span>
           ${m.ctcae ? `<span>${esc(m.ctcae.range || '')}｜来源：CTCAE v5.0</span>` : '<span>未启用分级对照</span>'}
         </div>
         <span class="mc-flip-hint">翻回正面 ⟳</span>
