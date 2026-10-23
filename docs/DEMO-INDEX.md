@@ -89,7 +89,7 @@ FROM v_bladder_interventional WHERE is_china = 1;
 | 文档 | 内容 | 对应闸口 |
 |---|---|---|
 | `USER-RESEARCH.md` | 两条线的患者困难排序；**证据分层，明确写「无真实访谈」** | G1 |
-| `SCENARIOS.md` | S01–S16 场景（触发 → 想完成的事 → 产物）+ 排序 | G1 |
+| `SCENARIOS.md` | S01–S18 场景（触发 → 想完成的事 → 产物）+ 排序 | G1 |
 | `HVT-REVIEW.md` | 沿 HVT 十条疾病轴现场推导膀胱癌术语包 + 五层落地检查 | **G1** |
 | `DIFF-MATRIX.md` | **15 行**差异化矩阵，每条「场景 → 功能 → 验收」 | **G1**（锁①：非空才允许开工） |
 | `BRIEF.md` / `SPEC.md` | 需求简报与完整规格（含 ADR） | G1 |

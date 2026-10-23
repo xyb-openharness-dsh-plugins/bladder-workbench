@@ -23,7 +23,7 @@
 
 六件顺序拼接总哈希：`bf0ed94f3284aaeb970b986f2ec9b8574327dc1941eabe480be52467275cf2e3`
 
-**当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M14）、`docs/SCENARIOS.md`（S01–S16）、`docs/SCHEMA.md`（**草案，未冻结**）
+**当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S16）、`docs/SCHEMA.md`（**草案，未冻结**）
 
 **预览环境 / 容器尺寸 / 日期**
 - Chromium（Playwright 1.62.1）无头渲染，`1440×960` 与 `390×844` 两档

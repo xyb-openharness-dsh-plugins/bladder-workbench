@@ -33,6 +33,8 @@ INSERT INTO diversion_facts(id,subject_id,kind,performed_on,created_at)
   VALUES('dv1','s1','ileal_conduit','2026-08-01','2026-10-01');
 INSERT INTO metric_definitions(code,name,cat,unit,dec,value_kind,created_at)
   VALUES('egfr','eGFR','肾功能','mL/min/1.73m²',0,'num','2026-10-01');
+INSERT INTO source_refs(id,subject_id,kind,label,version,created_at)
+  VALUES('sr1','s1','consensus','2024 版保膀胱共识','2024','2026-10-01');
 `;
 
 const probes = [
@@ -102,6 +104,42 @@ const probes = [
     sql: `INSERT INTO trials(id,source,reg_no,scope,study_type) VALUES('t1','ctgov','NCT1','utuc','interventional')` },
   { name: '试验 scope 不许写自由文本', expect: 'error',
     sql: `INSERT INTO trials(id,source,reg_no,scope,study_type) VALUES('t2','ctgov','NCT2','可能是膀胱','interventional')` },
+
+  // —— S17：BCG「无应答」是医生给的判断，不是工作台算的 ——
+  { name: 'BCG「初治」可不带判定日与医生原话', expect: 'ok',
+    sql: `INSERT INTO bcg_responses(id,subject_id,course_id,status,recorded_at)
+          VALUES('br1','s1','ic1','初治','2026-10-02')` },
+  { name: 'BCG「无应答」缺判定日与医生原话必须被拒', expect: 'error',
+    sql: `INSERT INTO bcg_responses(id,subject_id,course_id,status,recorded_at)
+          VALUES('br2','s1','ic1','无应答','2026-10-24')` },
+  { name: 'BCG「无应答」带判定日与医生原话原文可写', expect: 'ok',
+    sql: `INSERT INTO bcg_responses(id,subject_id,course_id,status,decided_on,decided_by_raw,doctor_words_raw,recorded_at)
+          VALUES('br3','s1','ic1','无应答','2026-10-24','主诊医生','这次属于 BCG 无应答，考虑下一步','2026-10-24')` },
+  { name: 'BCG 应答状态不许自造值（不得写「可能失败」）', expect: 'error',
+    sql: `INSERT INTO bcg_responses(id,subject_id,status,decided_on,doctor_words_raw,recorded_at)
+          VALUES('br4','s1','可能失败','2026-10-24','x','2026-10-24')` },
+
+  // —— S17：极高危四项与共识原文一一对应，不许增补删减 ——
+  { name: '极高危标志「变异组织类型」可写', expect: 'ok',
+    sql: `INSERT INTO high_risk_markers(id,subject_id,kind,source_ref_id,noted_on,created_at)
+          VALUES('hr1','s1','变异组织类型','sr1','2026-10-24','2026-10-24')` },
+  { name: '极高危标志「BCG无应答」可写', expect: 'ok',
+    sql: `INSERT INTO high_risk_markers(id,subject_id,kind,source_ref_id,created_at)
+          VALUES('hr2','s1','BCG无应答','sr1','2026-10-24')` },
+  { name: '极高危标志不许自造第五项', expect: 'error',
+    sql: `INSERT INTO high_risk_markers(id,subject_id,kind,created_at)
+          VALUES('hr3','s1','年龄大于七十','2026-10-24')` },
+
+  // —— S18：组织学变异型只做原文保留 ——
+  { name: '病理变异型按原文照录可写', expect: 'ok',
+    sql: `INSERT INTO pathology_findings(id,report_id,finding_key,value_raw,verified)
+          VALUES('pf1','pr1','组织学变异类型','伴微乳头分化',0)` },
+  { name: '变异型是否主要类型三态「未提及」可写', expect: 'ok',
+    sql: `INSERT INTO pathology_findings(id,report_id,finding_key,value_raw,variant_is_predominant)
+          VALUES('pf2','pr1','变异型是否主要类型','报告未提及','未提及')` },
+  { name: '变异型是否主要类型不许写自造值', expect: 'error',
+    sql: `INSERT INTO pathology_findings(id,report_id,finding_key,value_raw,variant_is_predominant)
+          VALUES('pf3','pr1','变异型是否主要类型','大部分是','mostly')` },
 ];
 
 let pass = 0;

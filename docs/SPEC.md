@@ -90,13 +90,13 @@
 
 实体/关系见 `docs/SCHEMA.md` 与 `schema/draft/0001_initial.sql`（草案，**`G3` 前不执行不冻结**）。
 
-**实体清单（19 组）**：
+**实体清单（21 组）**：
 
-通用 `workspace` / `subject` / `document`(sha256) / `source_ref` / `record` / `viewpoint`(is_private 默认 1) / `question` / `task` / `saved_result` / `export_job` / `change_log`；导入 `import_file` / `parse_job` / `candidate`；**膀胱癌专属** `diagnosis_assertion` / `pathology_finding` / `staging_assertion` / `surgery_event` / `instillation_course`+`instillation_event`+`contraindication_flag` / `diversion_fact` / `stoma_supply`+`stoma_log`+`continence_log` / `followup_schedule`+`cystoscopy_record`+`cystoscopy_experience` / `urine_cytology` / `upper_tract_surveillance` / `renal_function`+`split_renal_function`+`drainage` / `urgent_symptom` / `private_note` / `treatment_line`+`regimen_drug`+`cycle`+`response`；指标 `metric_definition`(版本化 code+version) / `observation` / `measurement` / `symptom_entry`。
+通用 `workspace` / `subject` / `document`(sha256) / `source_ref` / `record` / `viewpoint`(is_private 默认 1) / `question` / `task` / `saved_result` / `export_job` / `change_log`；导入 `import_file` / `parse_job` / `candidate`；**膀胱癌专属** `diagnosis_assertion` / `pathology_finding` / `staging_assertion` / `surgery_event` / `instillation_course`+`instillation_event`+`contraindication_flag` / **`bcg_response`（S17）** / **`high_risk_marker`（S17）** / `diversion_fact` / `stoma_supply`+`stoma_log`+`continence_log` / `followup_schedule`+`cystoscopy_record`+`cystoscopy_experience` / `urine_cytology` / `upper_tract_surveillance` / `renal_function`+`split_renal_function`+`drainage` / `urgent_symptom` / `private_note` / `treatment_line`+`regimen_drug`+`cycle`+`response`；指标 `metric_definition`(版本化 code+version) / `observation` / `measurement` / `symptom_entry`。
 
 **事实与候选分离**：`candidate` **永远只是候选**，逐项确认才进事实层。接受 ≠ 审核；审核字段保持 NULL 直到人工确认。
 
-**核心校验**：`muscle_present ∈ {有,无,未提及}`；`result_state ∈ {阴性,非典型,可疑,阳性}`；`phase ∈ {即刻,诱导,维持}`；`diversion_fact.kind` 四值；`observation` 缺测留 **NULL**（不写 0、不写空串）；**`lab` 或 `method` 不同的观察值不连线**。
+**核心校验**：`muscle_present ∈ {有,无,未提及}`；`variant_is_predominant ∈ {是,否,未提及}`；`bcg_response.status ∈ {初治,无应答,不耐受,未判定}`；`high_risk_marker.kind` **四值且与共识原文一一对应**（BCG无应答/血管淋巴管侵犯/变异组织类型/前列腺尿道侵犯）；`result_state ∈ {阴性,非典型,可疑,阳性}`；`phase ∈ {即刻,诱导,维持}`；`diversion_fact.kind` 四值；`observation` 缺测留 **NULL**（不写 0、不写空串）；**`lab` 或 `method` 不同的观察值不连线**。
 
 **时区与单位**：日期存 ISO `YYYY-MM-DD`；时间戳带 `+08:00`。单位存**原文** `unit_raw` + 归一 `unit_norm`（归一前**先剥 LaTeX 外壳**：`$10^9/L$` → `10⁹/L`）；认不出留空并标「缺单位」。
 
@@ -263,14 +263,15 @@ HTML 路径/版本/hash：prototypes/v0.1/  —— hash 待补（G2 时记录）
 **规则** 未选线不给任一线的专属内容；可改，改留痕。
 **验收** AC-01 未选线时看板**不出现**任何一线专属大卡；AC-02 选 NMIBC 出「灌注/膀胱镜复查/尿细胞学」卡、选 MIBC 出「改道/肾功能/造口日记」卡，**两者不并存**；AC-03「我还不确定」可选且不强行归类；AC-04 改线进版本链不覆盖。
 
-### M02 `F-病理核对`（S02，**优先级最高的翻译点**）
-**字段** `pathology_finding`：`finding_id / document_id / raw_text / report_date / specimen / grade_raw（原文）/ grade_scheme_raw（原文提到的体系名，可空）/ muscle_present（有|无|未提及）/ tumor_size_raw / concurrent_cis_raw / lymphovascular_invasion_raw / review_state（待核对|已核对）/ reviewed_by / reviewed_at`。
+### M02 `F-病理核对`（S02, S18，**优先级最高的翻译点**）
+**字段** `pathology_finding`：`finding_id / document_id / raw_text / report_date / specimen / grade_raw（原文）/ grade_scheme_raw（原文提到的体系名，可空）/ muscle_present（有|无|未提及）/ tumor_size_raw / concurrent_cis_raw / lymphovascular_invasion_raw / histologic_variants_raw（照录）/ variant_is_predominant（是|否|未提及，>50%）/ review_state（待核对|已核对）/ reviewed_by / reviewed_at`。
 **规则**
 - **两套分级并列原文保存，不做任何映射、不出现等价表述**（依据：11 份中文共识中 `G1/G2/G3` **零出现**，只有「低级别/高级别」）。
 - `muscle_present = 无` 必须呈现为「**分期可能不完整，是需要问医生的点**」，**不得渲染成好消息**。
 - 报告未提及 = `未提及`，**不等于**「无」。
 - 认不出的词**照录**并标「未核实」。
-**验收** AC-05「未见肌层」标为待澄清项而非正常结论；AC-06 三态可区分；AC-07 全站搜不到任何 G↔级别换算/等价文案；AC-08 认不出照录标「未核实」。
+- **组织学变异型（S18）只做原文保留**：识别到 `histologic_variants_raw` 非空时追加一条待问项，**不解释预后、不做分级、不写「更凶/更危险」**。可带来源陈述「2024 版把『变异组织类型』列为极高危构成之一」，但**不得**由工作台据此给出处置方向。
+**验收** AC-05「未见肌层」标为待澄清项而非正常结论；AC-06 三态可区分；AC-07 全站搜不到任何 G↔级别换算/等价文案；AC-08 认不出照录标「未核实」；**AC-48** 变异型只出现在原文与待问项，全站搜不到针对变异型的预后/严重程度措辞；**AC-49** `variant_is_predominant` 三态可区分。
 
 ### M03 `F-灌注`（S03，**最独有**）
 **字段**
@@ -333,6 +334,17 @@ HTML 路径/版本/hash：prototypes/v0.1/  —— hash 待补（G2 时记录）
 
 ### M12 `F-试验`（S16）
 **验收** AC-44 显示「登记状态 ≠ 入组资格」；AC-45 标注 `utuc` 与 `urothelial-unspecified` 边界；AC-46 不构成方案推荐；AC-47 可收藏并转成入组问题。
+
+### M15 `F-应答`（S17，**NMIBC 线最重要的一次抉择**）
+**字段** `bcg_response`：`response_id / course_id（指向 instillation_course）/ status（初治|无应答|不耐受|未判定）/ decided_on / decided_by_raw（医生原话里的角色）/ doctor_words_raw（医生原话照录）/ recorded_at`。
+`high_risk_marker`：`marker_id / subject_id / kind（BCG无应答|血管淋巴管侵犯|变异组织类型|前列腺尿道侵犯）/ source_ref_id（指向共识原文条目）/ noted_on`。
+**规则**
+- **`status` 只能来自「医生说了什么」**：`decided_on` 与 `doctor_words_raw` 必填（原文照录）。工作台**不自行判定**「无应答」——那是临床判断。
+- **零倾向**：不推荐切也不推荐保。指南原文（2024 保膀胱共识：「BCG 无应答、血管淋巴管侵犯、变异组织类型、前列腺尿道侵犯患者，应首选根治性膀胱切除术」）可作**带来源的引用**呈现，但界面必须**同时**标明**这是指南的判断，不是本工作台的结论**。
+- **不预测**：不给出「还能保多久」「成功率多少」任何形式的估计。
+- `high_risk_marker` 四项**与共识原文一一对应**，不得增补或删减；每一项都要能回指原文条目（`source_ref_id`）。
+- 应答状态变化**进版本链**（不覆盖旧判定），因为「什么时候被判无应答」本身就是患者要回顾的事实。
+**验收** **AC-50** 界面不出现「建议切/建议保」类表述，且指南原文引用旁必须同屏出现「这是指南的判断」标识；**AC-51** `decided_on` 与 `doctor_words_raw` 为空时不得保存为「无应答」；**AC-52** 极高危四项与共识原文可逐项比对，且每项有 `source_ref_id`；**AC-53** 全站搜不到针对「还能保多久」的估计式文案；**AC-54** 应答状态改动留痕、旧判定标「已被替代」而不删除。
 
 ### M13 指标目录与一图秀
 **一期指标目录**：肾功能（eGFR、肌酐）｜血常规（白细胞、血红蛋白、中性粒细胞绝对值）｜肝功能（ALT、AST）｜营养（体重）｜症状自评（疼痛 0–10、排尿困扰、乏力）｜尿检（尿细胞学**四态，不进折线**）｜电解质与代谢（钾、氯、碳酸氢盐、B12 —— ⚠️ **来源待补，P2**）。

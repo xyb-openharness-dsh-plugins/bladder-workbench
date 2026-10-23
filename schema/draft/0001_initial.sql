@@ -132,6 +132,10 @@ CREATE TABLE pathology_findings (
   value_raw     TEXT NOT NULL,             -- 原文照录，改一个字都要留原值
   value_norm    TEXT,                      -- 归一后的枚举，认不出就留空并标未核实
   graded_by     TEXT,                      -- 'WHO1973' / 'WHO2004_2022' / 未注明
+  -- 组织学变异型（S18）：finding_key='组织学变异类型' 时 value_raw 照录
+  -- （腺样/鳞状/巢状/微乳头样/神经内分泌分化…）。是否占主要类型（>50%）单独一列
+  -- 且三态受控——因为「报告没提」和「明确说不是」是两回事，不能混成一个空值。
+  variant_is_predominant TEXT CHECK (variant_is_predominant IN ('是','否','未提及')),
   verified      INTEGER NOT NULL DEFAULT 0 CHECK (verified IN (0, 1)),
   ord           INTEGER NOT NULL DEFAULT 0
 );
@@ -632,6 +636,36 @@ CREATE TABLE trial_bookmarks (
 -- ---------------------------------------------------------------------------
 -- 演示档案与真实档案必须能一眼分开。JSON 扩展有类型/schema/version/上限，
 -- 核心关系保留外键与约束，不拿无限 JSON 代替设计。
+-- BCG 应答状态（S17）。status 只能来自"医生说了什么"：
+-- decided_on 与 doctor_words_raw 必填，工作台不自行判定「无应答」。
+-- 应答状态是患者要回顾的事实，改动进版本链不覆盖。
+CREATE TABLE bcg_responses (
+  id                TEXT PRIMARY KEY,
+  subject_id        TEXT NOT NULL REFERENCES subjects(id),
+  course_id         TEXT REFERENCES instillation_courses(id),
+  status            TEXT NOT NULL CHECK (status IN ('初治','无应答','不耐受','未判定')),
+  decided_on        TEXT,                  -- 医生给出这个判断的日期；status≠初治时必填
+  decided_by_raw    TEXT,                  -- 医生原话里的角色；不猜姓名
+  doctor_words_raw  TEXT,                  -- 医生原话照录；status≠初治时必填
+  supersedes_id     TEXT REFERENCES bcg_responses(id),  -- 版本链，不覆盖旧判定
+  is_current        INTEGER NOT NULL DEFAULT 1 CHECK (is_current IN (0,1)),
+  recorded_at       TEXT NOT NULL,
+  CHECK (status = '初治' OR (decided_on IS NOT NULL AND doctor_words_raw IS NOT NULL))
+);
+
+-- 极高危四项构成（S17）。kind 四值**与 2024 版共识原文一一对应**，不得增补删减：
+-- 「BCG 无应答、血管淋巴管侵犯、变异组织类型、前列腺尿道侵犯」
+-- 每一项都要能回指原文条目（source_ref_id），否则它只是工作台的猜测。
+CREATE TABLE high_risk_markers (
+  id            TEXT PRIMARY KEY,
+  subject_id    TEXT NOT NULL REFERENCES subjects(id),
+  kind          TEXT NOT NULL CHECK (kind IN ('BCG无应答','血管淋巴管侵犯','变异组织类型','前列腺尿道侵犯')),
+  source_ref_id TEXT REFERENCES source_refs(id),  -- 回指共识原文；NULL 表示尚未回指
+  noted_on      TEXT,
+  note_raw      TEXT,
+  created_at    TEXT NOT NULL
+);
+
 CREATE TABLE demo_meta (
   key           TEXT PRIMARY KEY,
   value         TEXT,

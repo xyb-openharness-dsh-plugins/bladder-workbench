@@ -1,7 +1,7 @@
 # 数据主体—关系—表
 
 **状态**：**草案（未冻结）**。G3（数据契约）未签认 → 不进 `schema/`、不写 `freeze-contract.md`、不建生产表、不写迁移。
-草案位置：`schema/draft/0001_initial.sql`（42 张表 · 8 个索引）。
+草案位置：`schema/draft/0001_initial.sql`（44 张表 · 8 个索引；约束探针 28 / 28 通过）。
 约束探针：`node scripts/check-schema-draft.mjs` → **18 / 18 通过**。
 复核时点：HTML 原型经用户确认后，按 `docs/14-HTML-AND-DATA-CONTRACT.md` 复核并落实。
 
