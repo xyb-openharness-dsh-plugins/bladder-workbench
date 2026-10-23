@@ -53,6 +53,7 @@ const DOC_EXEMPT = {
   'docs/USER-RESEARCH.md': 'A5 记录「早期提案误写，已纠正」的纠错过程',
   'docs/HVT-REVIEW.md': '本审核报告必须引用被禁原文作为证据',
   'docs/DESIGN-SESSION.md': '决策留痕：DESIGN-26 必须能写出"被改掉的是哪一处"，否则无从追溯',
+  'docs/ACCEPTANCE.md': '验收合同：AC-24/AC-30/AC-48 的判据就是"搜不到某个词"，不写出该词就无法验收',
   'docs/PROTOTYPE-REVIEW.md': '原型审查记录，需引用反馈原话与被改文案',
   'docs/research/中文权威共识-事实提取.md': '研究原文摘录：记录「原文没有出现终身二字」这一事实',
   'prompts/NEW-CANCER-WORKBENCH.md': '脚手架提示词，规则来源',
