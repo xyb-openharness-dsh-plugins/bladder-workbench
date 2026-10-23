@@ -217,22 +217,32 @@ const CHART = (() => {
     };
   }
 
-  /** 3D 卡背面的迷你折线（固定高度内，不展开） */
-  function sparkline(metric) {
-    const w = 240, h = 96, p = 8;
+  /**
+   * 3D 卡背面的迷你折线（固定高度内，不展开）。
+   *
+   * ⚠️ 必须按调用方量到的真实尺寸渲染，viewBox 与容器完全一致 ——
+   * 此前用固定 240×96 + preserveAspectRatio="none"，容器是 537×144 时
+   * 横向被拉长 30%，曲线明显变形（用户反馈「曲线变形」）。
+   * 与一图秀同一套「1 用户单位 = 1px」口径。
+   */
+  function sparkline(metric, w, h) {
+    const W = Math.max(80, Math.round(w || 240));
+    const H = Math.max(50, Math.round(h || 96));
+    const p = Math.round(Math.min(W, H) / 12);       // 内边距随尺寸走
     const vs = metric.points.map((x) => x.v);
     if (!vs.length) return '<div class="empty"><strong>还没有记录</strong>添加后这里显示趋势</div>';
     const min = Math.min(...vs), max = Math.max(...vs);
-    const X = (i) => p + (i / Math.max(vs.length - 1, 1)) * (w - 2 * p);
-    const Y = (v) => (max === min ? h / 2 : h - p - ((v - min) / (max - min)) * (h - 2 * p));
+    const X = (i) => p + (i / Math.max(vs.length - 1, 1)) * (W - 2 * p);
+    const Y = (v) => (max === min ? H / 2 : H - p - ((v - min) / (max - min)) * (H - 2 * p));
     const pts = vs.map((v, i) => [X(i), Y(v)]);
     const line = pts.length > 1
       ? `<path class="series-line" d="${pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')}" stroke="${metric.color}" pathLength="1" style="stroke-dasharray:1;stroke-dashoffset:1;animation:dash .6s ease forwards"/>`
       : '';
+    const r = Math.max(2.4, Math.round(Math.min(W, H) / 110));   // 点随尺寸缩放，否则 537px 宽下圆点看不见
     const dots = pts.map(([x, y], i) =>
-      `<circle class="series-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" fill="${metric.color}"><title>${metric.points[i].d}：${fmt(vs[i])} ${metric.unit}</title></circle>`
+      `<circle class="series-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${metric.color}"><title>${esc(metric.points[i].d)}：${fmt(vs[i])} ${esc(metric.unit)}</title></circle>`
     ).join('');
-    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${line}${dots}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${line}${dots}</svg>`;
   }
 
   return { render, sparkline, fmt, groupsOf, TREATMENTS };

@@ -346,6 +346,28 @@ async function main() {
   const gridCols = await page.evaluate(() => getComputedStyle(document.querySelector('.metric-grid')).gridTemplateColumns.split(' ').length);
   assert('≥700px 两列', gridCols === 2, `${gridCols} 列`);
 
+  /* 用户反馈（2026-10-23）：「反转卡片效果有了，但是曲线变形」。
+     根因：卡片背面迷你折线用固定 240×96 的 viewBox + preserveAspectRatio="none"，
+     而容器实测 537×144，横向被拉长 30%。
+     修法：与一图秀同一套「1 用户单位 = 1px」，按容器实测尺寸渲染。这条锁住它。 */
+  const spark = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.mb-chart').forEach((el) => {
+      const svg = el.querySelector('svg');
+      if (!svg) return;
+      const r = svg.getBoundingClientRect();
+      const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+      const dot = svg.querySelector('circle');
+      out.push({ stretch: (vb[2] / vb[3]) / (r.width / r.height), dot: dot && +dot.getAttribute('r') });
+    });
+    return out;
+  });
+  const worst = spark.length ? Math.max(...spark.map((x) => Math.abs(x.stretch - 1))) : 9;
+  const minDot = spark.length ? Math.min(...spark.map((x) => x.dot || 0)) : 0;
+  assert('指标卡背面迷你折线 1:1（不得横向拉伸变形）', spark.length >= 4 && worst < 0.05,
+    `${spark.length} 张，最长宽比偏差 ${(worst * 100).toFixed(1)}%`);
+  assert('迷你折线的圆点随尺寸缩放（否则 537px 宽下看不见）', minDot >= 2.4, `r=${minDot}`);
+
   /* 正面参考范围尺：中性标位置，不按好坏着色 */
   const ruler = await page.evaluate(() => {
     const el = document.querySelector('.metric-card[data-metric="hb"] .m-ruler');

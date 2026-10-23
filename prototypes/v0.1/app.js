@@ -927,7 +927,7 @@ function metricCardHTML(m, i) {
       </div>
       <div class="metric-face metric-back" aria-hidden="true" inert>
         <div class="mc-back-title">${esc(m.name)} · 趋势</div>
-        <div class="mb-chart">${CHART.sparkline(m)}</div>
+        <div class="mb-chart" data-spark="${esc(m.code)}"></div>
         <div class="mc-meta">
           <span>全期范围 ${CHART.fmt(m.min ?? Math.min(...m.points.map(p => p.v)))} ～ ${CHART.fmt(m.max ?? Math.max(...m.points.map(p => p.v)))} ${esc(m.unit)}</span>
           <span>${groupsHTML(m) || (m.lab ? `机构 ${esc(m.lab)} · 方法 ${esc(m.method || '—')}` : '自测')}</span>
@@ -1466,6 +1466,19 @@ function paintCharts() {
       ? `<div class="treat-lane"></div><div class="plot"><div class="plot-empty">${esc(r.reason || '所选时间窗内没有记录')}</div></div>`
       : `<div class="treat-lane" style="height:${r.laneH || 30}px">${r.treatLane}</div><div class="plot">${r.svg}</div>`;
     if (leg) leg.innerHTML = r.legend || '';
+  });
+  paintSparklines();
+}
+
+/* 3D 卡背面的迷你折线按容器实测尺寸重绘 —— 尺寸随卡片宽度/字号档变化，
+   必须跟一图秀走同一套重绘路径（否则停在某个旧尺寸上又会被拉伸）。 */
+function paintSparklines() {
+  $$('.mb-chart[data-spark]').forEach((host) => {
+    const m = METRICS.find((x) => x.code === host.dataset.spark);
+    if (!m) return;
+    const w = Math.max(80, Math.round(host.clientWidth));
+    const h = Math.max(50, Math.round(host.clientHeight));
+    host.innerHTML = CHART.sparkline(m, w, h);
   });
 }
 /* 面板宽度、字号、窗口变化都会改宿主宽度 —— 都要重绘，否则图表停在旧宽度 */
