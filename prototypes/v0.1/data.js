@@ -9,7 +9,8 @@
 /* ---------- 左侧导航（12 个一级页；设置走顶栏齿轮） ---------- */
 const NAV = [
   { id: 'dashboard',    text: '看板',            ico: '◎' },
-  { id: 'records',      text: '病情整理',        ico: '▤' },
+  { id: 'records',      text: '病情整理',        ico: '▤',
+    tabs: ['资料库', '待核对草稿', '病情档案', '指标检测', '病情汇总'] },
   { id: 'staging',      text: '我的分型与分期',  ico: '◈', tabs: ['分野与分型', '病理与分级', '分期断言', '危险度'] },
   { id: 'surgery',      text: '手术与 TURBT',    ico: '✚', tabs: ['TURBT 序列', '二次电切', '根治性切除'] },
   { id: 'instillation', text: '膀胱灌注',        ico: '◍', tabs: ['周期总览', '本次记录', '禁忌与中断', '副作用'] },

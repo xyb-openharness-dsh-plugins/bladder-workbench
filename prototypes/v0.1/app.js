@@ -28,6 +28,24 @@ const src = (t) => `<span class="src src-line">${esc(t)}</span>`;
 const verify = (t) => `<span class="verify-tag">${esc(t)}</span>`;
 const chipCat = (v) => `<span class="chip chip-cat" data-state="${esc(v)}">${esc(v)}</span>`;
 
+/* 登记库给的是英文枚举，原样端给患者等于没翻译。
+   中文标签在前，原始值留在 title 里，需要追溯时仍拿得到。 */
+const TRIAL_STATUS_ZH = {
+  RECRUITING: '招募中', NOT_YET_RECRUITING: '尚未招募', ACTIVE_NOT_RECRUITING: '进行中 · 不招募',
+  ENROLLING_BY_INVITATION: '邀请入组', COMPLETED: '已完成', WITHDRAWN: '已撤销',
+  TERMINATED: '已终止', SUSPENDED: '已暂停', UNKNOWN: '未标注',
+};
+const TRIAL_SETTING_ZH = {
+  'nmibc-or-intravesical': '非肌层浸润 · 膀胱灌注',
+  'mibc-or-perioperative': '肌层浸润 · 围术期',
+  'advanced-or-metastatic': '晚期 · 转移',
+  unspecified: '未标注',
+};
+const zhTrial = (map, raw) => {
+  const zh = map[raw];
+  return `<span title="原始值：${esc(raw)}">${esc(zh || raw)}</span>`;
+};
+
 /* ---------------- 设置持久化 ---------------- */
 const LS_KEY = 'uropal.prototype.v0.1';
 function loadState() {
@@ -1084,16 +1102,20 @@ function pageTrials(tab) {
         <b>登记状态不等于入组资格。</b>能否参加要以研究方案与医生判断为准。
         本页<b>不构成方案推荐</b>。
       </div>
-      <table class="tbl" style="margin-top:14px"><thead><tr><th>登记号</th><th>标题（原文）</th><th>状态</th><th>处境</th></tr></thead><tbody>
+      <table class="tbl tbl-trials" style="margin-top:14px"><thead><tr><th>登记号</th><th>标题（原文）</th><th>状态</th><th>处境</th></tr></thead><tbody>
         ${TRIALS.map((t) => `<tr>
           <td><code>${esc(t.reg)}</code></td>
           <td><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>
               <div class="src">${esc(t.sponsor)}</div></td>
-          <td><span class="chip chip-neutral">${esc(t.status)}</span></td>
-          <td><span class="chip chip-cat">${esc(t.setting)}</span></td>
+          <td><span class="chip chip-neutral">${zhTrial(TRIAL_STATUS_ZH, t.status)}</span></td>
+          <td><span class="chip chip-cat">${zhTrial(TRIAL_SETTING_ZH, t.setting)}</span></td>
         </tr>`).join('')}
       </tbody></table>
-      <p class="src" style="margin-top:12px">
+      <p class="src" style="margin-top:10px">
+        「处境」= 该研究面向的病程阶段，来自抓取时的<b>自动分类</b>，<b>未逐条核对</b>，不代表入组资格。
+        鼠标停在标签上可看原始值。
+      </p>
+      <p class="src" style="margin-top:10px">
         视图计数：膀胱癌视角 ${TRIALS_STATS.views.v_bladder_only} · 干预性 ${TRIALS_STATS.views.v_interventional}
         · 膀胱癌×干预性 ${TRIALS_STATS.views.v_bladder_interventional} · 含中国 ${TRIALS_STATS.views.v_china}。
         <code>utuc</code>（上尿路尿路上皮癌）与 <code>urothelial-unspecified</code>（尿路上皮癌未特指）是不同口径，已单独标注。

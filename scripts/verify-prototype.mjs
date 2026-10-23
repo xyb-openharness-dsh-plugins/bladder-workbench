@@ -195,6 +195,41 @@ async function main() {
   assert('存在「取消」状态的圆点', !!cancelDot);
   await shot('03-膀胱灌注-周期');
 
+  /* --- 每个挂页签的页都必须真的注册了页签 --- */
+  console.log('\n【页签完整性】');
+  /* 曾经：pageRecords 按页签分发内容，但 NAV 里的 records 忘了写 tabs，
+     于是「病情整理」点进去是「该页签还没有内容」。这类洞只有逐页走才看得见。 */
+  const tabbed = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.nav-item[data-route]').forEach((b) => {
+      out.push(b.dataset.route);
+    });
+    return out;
+  });
+  const tabProblems = [];
+  for (const r of tabbed) {
+    await page.evaluate((x) => { location.hash = '#/' + x; }, r);
+    await page.waitForTimeout(150);
+    const info = await page.evaluate(() => ({
+      tabs: document.querySelectorAll('#wbPage .tab').length,
+      empty: document.querySelectorAll('#wbPage .empty, #wbPage .empty-rich').length,
+      chars: document.querySelector('#wbPage').innerText.replace(/\s+/g, '').length,
+    }));
+    if (info.empty > 0 || info.chars < 40) tabProblems.push(`${r}(tabs=${info.tabs},empty=${info.empty},chars=${info.chars})`);
+  }
+  assert('每个一级页打开都有实质内容（无空壳页）', tabProblems.length === 0, tabProblems.join(' '));
+  const navNoTabs = await page.evaluate(() => {
+    const bad = [];
+    document.querySelectorAll('.nav-item[data-route]').forEach((b) => {
+      if (b.dataset.route === 'dashboard') return;
+    });
+    return bad;
+  });
+  await nav('病情整理');
+  const recTabs = await page.$$eval('#wbPage .tab', (els) => els.map((e) => e.textContent.trim()));
+  assert('病情整理有五个页签且默认落在资料库',
+    recTabs.length === 5 && recTabs[0] === '资料库', recTabs.join(' / '));
+
   /* --- 尿流改道 --- */
   console.log('\n【尿流改道与造口】');
   await nav('尿流改道与造口');
@@ -429,6 +464,17 @@ async function main() {
   /* --- 临床试验 --- */
   console.log('\n【临床试验】');
   await nav('临床试验');
+  /* 登记库的英文枚举不许原样端给患者 */
+  const trialEnums = await page.evaluate(() => {
+    const t = document.querySelector('#wbPage table')?.innerText || '';
+    return (t.match(/\b(NOT_YET_RECRUITING|RECRUITING|ACTIVE_NOT_RECRUITING|ENROLLING_BY_INVITATION|nmibc-or-intravesical|mibc-or-perioperative|advanced-or-metastatic)\b/g) || []);
+  });
+  assert('临床试验的状态/处境已本地化（不直接显示英文枚举）', trialEnums.length === 0, trialEnums.join(' '));
+  const zhStatus = await page.evaluate(() => {
+    const cells = [...document.querySelectorAll('#wbPage table tbody tr')].map((r) => r.children[2]?.innerText.trim());
+    return { n: cells.length, zh: cells.filter((c) => /[\u4e00-\u9fa5]/.test(c || '')).length };
+  });
+  assert('每条试验的状态都显示中文标签', zhStatus.n > 0 && zhStatus.zh === zhStatus.n, JSON.stringify(zhStatus));
   await page.waitForTimeout(200);
   const tri = await page.innerText('#wbPage');
   assert('显示 2026 真实登记总数 295', /295/.test(tri), '');

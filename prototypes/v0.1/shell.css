@@ -487,6 +487,13 @@ table.tbl td.num { text-align: right; }
    ------------------------------------------------------------ */
 .bc-main { font-size: var(--fs-lg); font-weight: 600; }
 
+/* table-layout:fixed 会均分列宽，试验表里英文标题被挤成 5–6 行。
+   给这张表固定的列宽配比：标题拿大头。 */
+.tbl-trials th:nth-child(1) { width: 19%; }
+.tbl-trials th:nth-child(2) { width: 47%; }
+.tbl-trials th:nth-child(3) { width: 15%; }
+.tbl-trials th:nth-child(4) { width: 19%; }
+
 /* 灌注周期：两段结构 */
 .course-seg { display: flex; flex-direction: column; gap: 8px; }
 .seg-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
