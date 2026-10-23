@@ -17,11 +17,11 @@
 | `index.html` | `cbcd779f4ae644bc815f8b15393988cf9f5495374d7bfc2eac187e63207ec095` |
 | `tokens.css` | `8b36dfac64f14e418ad9f6f84bd34bc0cd4fec8e6eb92ee273be1759a8b87d8d` |
 | `shell.css` | `8f7046919ae5f2950db979355f56502cfac4dae31308f49349e1636474e6a266` |
-| `data.js` | `0866561487f3a4517ca944b30b2294285c11ecc39ebe1cbed2683b52057f0079` |
+| `data.js` | `885bbba26e1f54a80c33fc72df386ea88c5c93ba8abad7cb5c9781cfd69fcd04` |
 | `charts.js` | `d0af60e59a8ed0f3475497b980dd2f435826c7ea629125725e18c1892cee2982` |
-| `app.js` | `dfcd73a7ebc6adf6a6ed7f0e6b4b3cec682f54ec4e3bcaa7b8961c2f420c0147` |
+| `app.js` | `34b745cf880467b7ddbafd37945cb8f2f87bc9cee42ca1878c893e00aa2ea638` |
 
-六件顺序拼接总哈希：`3935e90297e4af04d66e6bf1bcd78ec87bfcadc62026157c20d408812659875d`
+六件顺序拼接总哈希：`391e25184388645b22c7dec340d3dfd032b36fd39c30e7a437e9cf91b457a0f4`
 
 **当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M14）、`docs/SCENARIOS.md`（S01–S16）、`docs/SCHEMA.md`（**草案，未冻结**）
 

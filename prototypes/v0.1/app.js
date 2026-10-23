@@ -1381,13 +1381,65 @@ function pageFollowup(tab) {
 
 /* ================= 9. 检查与指标 ================= */
 function pageMetrics(tab) {
-  let body;
-  if (tab === '分类指标卡') {
-    const cats = [...new Set(METRICS.map((m) => m.cat))];
-    const total = METRICS.reduce((a, m) => a + m.points.length, 0);
+  const cats = [...new Set(METRICS.map((m) => m.cat))];
+  const total = METRICS.reduce((a, m) => a + m.points.length, 0);
+
+  const overviewBody = () => card('指标总览（与一图秀同源）', `
+    <div class="notice notice-info">同一份指标目录供<b>指标卡、一图秀、复诊摘要</b>共用。
+    分组名、顺序、项数在指标页与一图秀必须完全一致 —— 对不上说明有人各写了一套。</div>
+    ${statStrip([
+      ['指标项', `${METRICS.length} 项`, `${cats.length} 个分组`],
+      ['检测记录', `${total} 条`, `最近 ${esc(METRICS.flatMap((m) => m.points.map((p) => p.d)).sort().pop())}`],
+      ['启用分级', `${METRICS.filter((m) => m.ctcae).length} 项`, '对照 CTCAE v5.0'],
+      ['未启用分级', `${METRICS.filter((m) => !m.ctcae).length} 项`, '「×ULN」型等，不近似'],
+    ])}
+    <div class="btn-row" style="margin:12px 0">
+      ${cats.map((c) => `<span class="chip chip-cat">${esc(c)} · ${METRICS.filter((m) => m.cat === c).length} 项</span>`).join('')}
+    </div>
+    <table class="tbl"><thead><tr>
+      <th>分组</th><th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>分级（对照，不是诊断）</th>
+    </tr></thead><tbody>
+      ${METRICS.map((m) => {
+        const last = m.points[m.points.length - 1];
+        return `<tr><td><span class="chip chip-cat">${esc(m.cat)}</span></td><td>${esc(m.name)}</td>
+          <td class="num">${CHART.fmt(last.v)}</td><td>${esc(m.unit)}</td><td>${esc(last.d)}</td>
+          <td>${m.ctcae ? `<span class="chip chip-warn">${esc(m.ctcae.text)}</span>` : '<span class="src">未启用</span>'}</td></tr>`;
+      }).join('')}
+    </tbody></table>
+    ${collapsible('「分级」为什么写「对照」而不是「诊断」', `
+      <p>因为工作台只做一件事：把报告上的数字，跟 CTCAE v5.0 里写死的阈值比一下，然后告诉你落在第几级。</p>
+      <p>它<b>不知道</b>你为什么是这个数、有没有别的病、医生会不会按这个处理。所以徽章写的是
+      「对照 CTCAE v5.0 · N 级」，并且必须同时给出<b>区间与出处</b>。</p>
+      <p class="src">分级结果是<b>派生值</b>：读取时现算，<b>不落库</b>。标准换版本时，
+      旧记录会自动按新标准重算 —— 不会出现「库里存着一份算好的旧结果」。</p>`)}
+    ${collapsible('只对有绝对数值界限的项目启用分级', `
+      <table class="tbl"><thead><tr><th>标准里的写法</th><th>能不能用</th><th>为什么</th></tr></thead><tbody>
+        <tr><td>「＜ 3.0 ×10⁹/L」</td><td><b>能用</b></td><td>有绝对数值和单位，直接比</td></tr>
+        <tr><td>「＞ 3 × ULN」</td><td><b>不用</b></td><td>要先拿到该机构的结构化参考范围上限。没拿到就不启用，也不拿 3 倍去凑</td></tr>
+        <tr><td>「轻度 / 中度」这类</td><td><b>不用</b></td><td>标准里没有数值界限，靠描述会各人各判</td></tr>
+      </tbody></table>
+      <p class="src">标准原文随包放在 <code>assets/reference/ctcae/</code>，界面给普通链接，不做内嵌预览。</p>`)}
+    ${collapsible('同一项指标，「没有」有六种，不能混', `
+      <table class="tbl"><thead><tr><th>状态</th><th>含义</th></tr></thead><tbody>
+        <tr><td>未检测</td><td>这次没做这项检查</td></tr>
+        <tr><td>未检出</td><td>做了，但没测到（可能低于检出限）</td></tr>
+        <tr><td>阴性</td><td>做了，结果是正常范围</td></tr>
+        <tr><td>失败</td><td>做了，但标本或仪器出问题，结果不用</td></tr>
+        <tr><td>待出</td><td>做了，报告还没拿到</td></tr>
+        <tr><td>意义未明</td><td>出了结果，但结论不能定性</td></tr>
+      </tbody></table>
+      <p class="src">这六种在界面和数据库里都是<b>独立的值</b>。
+      混成一个「无」，等于把「没查」读成了「正常」。</p>`)}
+    ${collapsible('单位为什么要存两份', `
+      <p>报告导出的单位常带 LaTeX 外壳，比如 <code>$10^9/L$</code>。
+      如果直接拿它当键去比较，同一个单位会变成两种，白白多出一个「可比组」。</p>
+      <p>所以先剥外壳得到 <code>10⁹/L</code> 作为归一值用于比较，
+      <b>原样值仍然保留</b>，回看时能跟报告一字对上。</p>`)}`);
+
+  const cardBody = () => {
     const lastD = METRICS.flatMap((m) => m.points.map((p) => p.d)).sort().pop();
     const split = METRICS.filter((m) => CHART.groupsOf && CHART.groupsOf(m).length > 1);
-    body = `<div class="strip" style="margin-bottom:16px">
+    return `<div class="strip" style="margin-bottom:16px">
         <div class="strip-main">
           <div class="strip-head">${METRICS.length} 项指标 · ${cats.length} 个分组 · ${total} 条记录 · 最近更新 ${esc(lastD)}</div>
           <div class="strip-note">分组顺序与「病情一图秀」同一来源，两页一致。
@@ -1399,50 +1451,99 @@ function pageMetrics(tab) {
       <div class="metric-grid" data-metric-grid>${METRICS.map((m, i) => metricCardHTML(m, i)).join('')}</div>
       <p class="src" style="margin-top:12px">卡背面是<b>固定高度 3D 翻转</b>，不是向下展开。
         点卡片或按回车/空格翻转；≥700px 两列，窄屏一列，不做三列以上。</p>`;
-  } else if (tab === '电解质与 B12') {
-    body = card('电解质与代谢（长期）', `
-      <div class="notice notice-warn">
-        B12、碳酸氢盐、氯、尿路感染与结石这几项，在已精读的 11 份中文共识里<b>查不到原文出处</b>。
-        字段位置先留出来，但<b>不填数字、不做解释</b>。<span class="verify-tag">来源待补</span>
-      </div>
-      <div class="empty" style="margin-top:12px"><strong>还没有记录</strong>来源补齐后再开放</div>`);
-  } else if (tab === '肾功能') {
-    body = card('肾功能', `
-      <table class="tbl"><thead><tr><th>日期</th><th class="num">eGFR</th><th class="num">肌酐</th><th>方法</th><th>机构</th></tr></thead><tbody>
-        ${RENAL.points.map((p) => `<tr><td>${esc(p.date)}</td><td class="num">${p.egfr}</td><td class="num">${p.creatinine}</td><td>${esc(p.method)}</td><td>${esc(p.lab)}</td></tr>`).join('')}
+  };
+
+  const electrolyteBody = () => card('电解质与代谢（长期）', `
+    <div class="notice notice-warn">
+      B12、碳酸氢盐、氯、尿路感染与结石这几项，在已精读的 11 份中文共识里<b>查不到原文出处</b>。
+      字段位置先留出来，但<b>不填数字、不给阈值、不做解释</b>。<span class="verify-tag">来源待补</span>
+    </div>
+    <h3 style="margin-top:16px">要盯的项目（只留位置，不给值）</h3>
+    <table class="tbl"><thead><tr>
+      <th>项目</th><th>为什么要盯</th><th>记录内容</th><th>状态</th>
+    </tr></thead><tbody>
+      <tr><td>碳酸氢盐（HCO₃⁻）</td><td>用肠管做尿路通道后，酸碱平衡可能长期偏移</td><td>每次化验的值与日期</td><td><span class="chip chip-warn">来源待补</span></td></tr>
+      <tr><td>氯（Cl⁻）</td><td>同上，与酸碱状态一起看</td><td>值与日期</td><td><span class="chip chip-warn">来源待补</span></td></tr>
+      <tr><td>钾（K⁺）</td><td>改道后可能偏高或偏低</td><td>值与日期</td><td><span class="chip chip-warn">来源待补</span></td></tr>
+      <tr><td>维生素 B12</td><td>用到末端回肠的术式可能影响吸收</td><td>值、日期、是否在补充</td><td><span class="chip chip-warn">来源待补</span></td></tr>
+      <tr><td>尿路感染</td><td>造口或新膀胱的感染表现与普通人不同</td><td>发作日期、症状、培养结果</td><td><span class="chip chip-warn">来源待补</span></td></tr>
+      <tr><td>结石</td><td>长期随访中的常见问题</td><td>影像发现与日期</td><td><span class="chip chip-warn">来源待补</span></td></tr>
+    </tbody></table>
+    <p class="src" style="margin-top:10px">「为什么要盯」这一列是通行的机制解释，
+    本机资料里<b>没有中文原文出处</b>，所以标为待补 —— 不拿它当依据。</p>
+    ${collapsible('为什么这一页宁可空着，也不给数字', `
+      <p>因为一旦写了具体阈值，它就会被当成标准来用。</p>
+      <p>而电解质这块的「正常范围」跟<b>术式、术后时间、有没有在补碱、当地检验科的方法</b>都有关，
+      拿一个通用数字套上去，比不写更糟。</p>
+      <p>这一页的设计是：<b>结构先立住、来源补齐再开放</b>。补来源这件事记在 SPEC 的「未核实清单」里。</p>`)}
+    <h3 style="margin-top:16px">可以问医生的问题（现在就能问）</h3>
+    ${qlist([
+      '我用的是哪段肠管做通道，对电解质有什么长期影响？',
+      '碳酸氢盐偏低要不要补？补多久？',
+      '维生素 B12 需要定期查吗，多久一次？',
+      '造口或新膀胱的尿路感染，和普通尿路感染表现一样吗？',
+    ])}`);
+
+  const renalBody = () => {
+    const pts = RENAL.points;
+    const last = pts[pts.length - 1];
+    const prev = pts.length > 1 ? pts[pts.length - 2] : null;
+    const delta = prev ? last.egfr - prev.egfr : null;
+    return card('肾功能', `
+      ${statStrip([
+        ['最近 eGFR', `${last.egfr} ml/min/1.73m²`, `${esc(last.date)} · ${esc(last.method)}`],
+        ['与上次比', delta == null ? '—' : `${delta > 0 ? '↑' : '↓'} ${Math.abs(delta)}`,
+         prev ? `上次 ${prev.egfr}（${esc(prev.date)}）` : ''],
+        ['分肾功能', RENAL.split ? `左 ${RENAL.split.left}% / 右 ${RENAL.split.right}%` : '未记录',
+         RENAL.split ? `${esc(RENAL.split.on)} · ${esc(RENAL.split.method)}` : ''],
+        ['肾积水与引流', RENAL.drainage.kind, RENAL.drainage.placedOn || '未放置'],
+      ])}
+      <h3 style="margin-top:16px">肾功能趋势</h3>
+      <table class="tbl"><thead><tr>
+        <th>日期</th><th class="num">eGFR</th><th class="num">肌酐</th><th>方法</th><th>机构</th><th>与门槛的位置</th>
+      </tr></thead><tbody>
+        ${pts.map((p) => `<tr><td>${esc(p.date)}</td><td class="num">${p.egfr}</td><td class="num">${p.creatinine}</td>
+          <td>${esc(p.method)}</td><td>${esc(p.lab)}</td>
+          <td>${p.egfr > 60 ? `高于门槛 ${(p.egfr - 60).toFixed(0)}` : `低于门槛 ${(60 - p.egfr).toFixed(0)}`}</td></tr>`).join('')}
       </tbody></table>
-      <div class="kv" style="margin-top:14px">
-        <dt>分肾功能</dt><dd><span class="src">还没有记录（核素肾图等）</span></dd>
-        <dt>肾积水与引流</dt><dd>${esc(RENAL.drainage.kind)}</dd>
-        <dt>顺铂门槛</dt><dd>${esc(RENAL.threshold.text)} ${src(RENAL.threshold.source)}</dd>
-      </div>`);
-  } else {
-    const cats2 = [...new Set(METRICS.map((m) => m.cat))];
-    body = card('指标总览（与一图秀同源）', `
-      <div class="btn-row" style="margin-bottom:12px">
-        ${cats2.map((c) => `<span class="chip chip-cat">${esc(c)} · ${METRICS.filter((m) => m.cat === c).length} 项</span>`).join('')}
+      <div class="notice notice-warn" style="margin-top:12px">
+        门槛：<b>${esc(RENAL.threshold.text)}</b> ${src(RENAL.threshold.source)}
+        <div style="margin-top:6px" class="src">这里只显示门槛与出处，<b>不判断你应该用或不应该用哪个方案</b>。</div>
       </div>
-      <table class="tbl"><thead><tr><th>分组</th><th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>分级</th></tr></thead><tbody>
-        ${METRICS.map((m) => {
-          const last = m.points[m.points.length - 1];
-          return `<tr><td><span class="chip chip-cat">${esc(m.cat)}</span></td><td>${esc(m.name)}</td>
-            <td class="num">${CHART.fmt(last.v)}</td><td>${esc(m.unit)}</td><td>${esc(last.d)}</td>
-            <td>${m.ctcae ? `<span class="chip chip-warn">${esc(m.ctcae.text)}</span>` : '<span class="src">未启用</span>'}</td></tr>`;
-        }).join('')}
-      </tbody></table>
-      <p class="src" style="margin-top:10px">
-        分级只对 CTCAE v5.0 中有<b>绝对数值界限</b>的项启用；「×ULN」型未拿到结构化参考上限前不启用、不近似。
-        分级是<b>对照不是诊断</b>，读取时计算，不落库。原文见 assets/reference/ctcae/。
-      </p>
-      <p class="src" style="margin-top:6px">分类指标（${CATEGORICAL.map((c) => esc(c.name)).join('、')}）不进折线图。</p>`);
-  }
-  return H('检查与指标', '同一指标目录供指标页与一图秀共用；分组顺序两页一致。')
-    + tabsHTML('metrics') + body;
+      ${collapsible('一次血肌酐看不出「是哪一侧的肾在拖后腿」', `
+        <p>血肌酐和 eGFR 反映的是<b>两个肾加在一起</b>的总体水平。</p>
+        <p>核素肾图分别测左右两肾各自的功能占比。一侧明显偏低时，
+        「要不要放支架、能不能做某些治疗」的判断依据就不同了。</p>
+        <table class="tbl" style="margin-top:8px"><thead><tr><th>项目</th><th>本演示档案</th><th>说明</th></tr></thead><tbody>
+          <tr><td>左肾 / 右肾占比</td><td>${RENAL.split ? `左 ${RENAL.split.left}% / 右 ${RENAL.split.right}%` : '未记录'}</td><td>${RENAL.split ? esc(RENAL.split.on) + ' · ' + esc(RENAL.split.method) : '—'}</td></tr>
+          <tr><td>肾积水</td><td>${esc(RENAL.drainage.kind)}</td><td>尿排不出去会反过来伤肾</td></tr>
+          <tr><td>引流（DJ 管 / 肾造瘘）</td><td>${esc(RENAL.drainage.kind)}</td><td>${RENAL.drainage.placedOn ? esc(RENAL.drainage.placedOn) : '未放置'}</td></tr>
+        </tbody></table>`)}
+      ${collapsible('为什么膀胱癌要一直盯着肾', `
+        <ul>
+          <li><b>有些药要靠肾排出去</b>——肾功能不够就上不了，比如顺铂。</li>
+          <li><b>尿路可能被堵住</b>——肿瘤压到或治疗后狭窄，尿排不出去会反过来伤肾。</li>
+          <li><b>改道之后肾更辛苦</b>——尿的出路变了，长期要盯着电解质和肾功能。</li>
+        </ul>
+        <p class="src">所以肾功能不是「顺便查一下」，它是决定后面能走哪条路的硬门槛。</p>`)}
+      <h3 style="margin-top:16px">可以问医生的问题</h3>
+      ${qlist([
+        '现在的肾功能，还能不能用顺铂？',
+        '如果不能用顺铂，替代方案对效果影响有多大？',
+        '肾功能往下走，是治疗引起的还是别的原因？',
+        '要不要做一次分肾核素肾图？',
+      ])}`);
+  };
+
+  const body = {
+    '指标总览': overviewBody,
+    '分类指标卡': cardBody,
+    '电解质与 B12': electrolyteBody,
+    '肾功能': renalBody,
+  }[tab] || (() => '<div class="empty"><strong>该页签还没有内容</strong></div>');
+  return H('检查与指标', '同一份目录供指标卡与一图秀共用；分级是对照不是诊断。') + tabsHTML('metrics') + body();
 }
 
-/* 参考范围尺：只标「最近值落在哪」，不做好坏着色、不做判断 */
-/* 参考范围说明另起一行。原先夹在上下限中间，窄屏读起来像一句话
-   （「90 浅色区 = … —」）。单侧范围也不再用「—」冒充上限。 */
 function rulerNote(m, last) {
   const v = `竖线 = 最近值 ${CHART.fmt(last)}${m.unit ? ' ' + m.unit : ''}`;
   if (m.refLow != null && m.refHigh != null) {
@@ -1866,16 +1967,91 @@ function pageTrials(tab) {
         ChinaDrugTrials（CDE）本轮<b>未采集</b>，未命中不能解释为不存在。
       </p>`);
   } else if (tab === '已收藏') {
-    body = card('已收藏', `<div class="empty"><strong>还没有收藏</strong>在「线索」里点选后可收藏，并转成入组问题。</div>`);
+    const F = TRIAL_FAVORITES;
+    const withQ = F.filter((f) => /已转成/.test(f.next)).length;
+    body = card('已收藏的线索', `
+      <div class="notice notice-info"><b>收藏不等于报名</b>，也不代表你符合条件。
+      收藏之后的动作只有两个：<b>转成问题</b>、<b>带去门诊</b>。</div>
+      ${statStrip([
+        ['收藏数', `${F.length} 条`, '来自「线索」页'],
+        ['已转成问题', `${withQ} 条`, '可在「入组问题」页看到'],
+        ['待办', `${F.length - withQ} 条`, '还没想好下一步'],
+        ['数据日期', TRIALS_STATS.fetchedAt, `共 ${TRIALS_STATS.total} 条登记记录`],
+      ])}
+      <table class="tbl" style="margin-top:12px"><thead><tr>
+        <th>登记号</th><th>我为什么收藏它</th><th>收藏日期</th><th>下一步</th><th>操作</th>
+      </tr></thead><tbody>
+        ${F.map((f) => `<tr>
+          <td><code>${esc(f.reg)}</code></td>
+          <td>${esc(f.why)}</td>
+          <td>${esc(f.on)}</td>
+          <td class="src">${esc(f.next)}</td>
+          <td><div class="btn-row">
+            <button class="btn btn-sm" data-goto="trials" data-tab="入组问题">转成问题</button>
+            <button class="btn btn-sm">取消收藏</button>
+          </div></td>
+        </tr>`).join('')}
+      </tbody></table>
+      ${collapsible('为什么收藏时要写一句「我为什么收藏它」', `
+        <p>因为过两周你只会看到一串登记号，想不起来当初为什么点的那颗心。</p>
+        <p>写一句话之后，即便最后不去，你也能说清自己当时在关心什么 ——
+        这往往就是下次门诊最该问的那个问题。</p>`)}
+      ${collapsible('收藏之后还能做什么', `
+        <table class="tbl"><thead><tr><th>动作</th><th>会得到什么</th><th>不会得到什么</th></tr></thead><tbody>
+          <tr><td>转成问题</td><td>进「入组问题」清单，门诊时逐条问</td><td>不会替你判断符合不符合</td></tr>
+          <tr><td>带去门诊</td><td>打印或复制成一段文字</td><td>不会自动联系研究团队</td></tr>
+          <tr><td>自己联系研究团队</td><td>登记页上通常有联系方式</td><td>工作台不代发、不代约</td></tr>
+        </tbody></table>
+        <p class="src">「已收藏」为空时，这一页会说明去哪儿收藏，而不是留一块空白。</p>`)}`);
   } else {
+    const Q = TRIAL_QUESTIONS;
+    const studies = new Set(Q.map((q) => q.for).filter((x) => x !== '—')).size;
+    const groups = [...new Set(Q.map((q) => q.group))];
     body = card('入组问题', `
-      <ul style="font-size:var(--fs-md)">
-        <li>这个研究在招的是不是我这一类（NMIBC / MIBC / 晚期）？</li>
-        <li>我之前做过 BCG 并且失败，算不算符合条件？</li>
-        <li>eGFR 66 会不会影响入组？</li>
-      </ul>
-      <p class="src" style="margin-top:10px">问题的答案由研究团队判断，工作台不判断资格。</p>`);
+      <div class="notice notice-warn"><b>能不能参加由研究团队判断，工作台不判断资格。</b>
+      这一页只做一件事：把该问的问题列清楚，让你在门诊上一条不漏。</div>
+      ${statStrip([
+        ['问题总数', `${Q.length} 条`, `${groups.length} 组`],
+        ['涉及具体研究', `${studies} 项`, '另外几条是通用问题'],
+        ['还没问', `${Q.filter((q) => !q.asked).length} 条`, '下次门诊带上'],
+        ['收藏的线索', `${TRIAL_FAVORITES.length} 条`, '来自「已收藏」'],
+      ])}
+      <table class="tbl" style="margin-top:12px"><thead><tr>
+        <th>分组</th><th>问题</th><th>针对哪项研究</th><th>问了没有</th>
+      </tr></thead><tbody>
+        ${Q.map((q) => `<tr>
+          <td class="src">${esc(q.group)}</td>
+          <td>${esc(q.q)}</td>
+          <td>${q.for === '—' ? '<span class="src">通用</span>' : `<code>${esc(q.for)}</code>`}</td>
+          <td>${q.asked ? '<span class="chip chip-ok">已问</span>' : '<span class="chip chip-warn">未问</span>'}</td>
+        </tr>`).join('')}
+      </tbody></table>
+      ${collapsible('登记页上的状态词，各自是什么意思', `
+        <table class="tbl"><thead><tr><th>原文状态</th><th>中文</th><th>说明</th></tr></thead><tbody>
+          <tr><td><code>RECRUITING</code></td><td>招募中</td><td>正在招人，可以联系问</td></tr>
+          <tr><td><code>NOT_YET_RECRUITING</code></td><td>尚未招募</td><td>还没开始招，可以关注</td></tr>
+          <tr><td><code>ACTIVE_NOT_RECRUITING</code></td><td>进行中但不再招募</td><td>已经招满了</td></tr>
+          <tr><td><code>ENROLLING_BY_INVITATION</code></td><td>受邀入组</td><td>不公开招募，通常进不去</td></tr>
+          <tr><td><code>COMPLETED</code></td><td>已完成</td><td>结束了</td></tr>
+          <tr><td><code>TERMINATED</code> / <code>WITHDRAWN</code></td><td>已终止 / 已撤回</td><td>因故停止</td></tr>
+        </tbody></table>
+        <p class="src"><b>每一个状态都不等于「你能进」。</b>
+        状态说的是这个研究招不招人，不说明你符不符合条件 —— 那是入排标准管的事。</p>`)}
+      ${collapsible('这些问题该问谁', `
+        <table class="tbl"><thead><tr><th>问题类型</th><th>适合问谁</th></tr></thead><tbody>
+          <tr><td>我符不符合入排标准</td><td>研究团队（协调员/研究者），或你的主诊医生</td></tr>
+          <tr><td>参加研究会不会打乱现在的治疗</td><td>你的主诊医生</td></tr>
+          <tr><td>检查、路费、时间成本</td><td>研究团队</td></tr>
+          <tr><td>知情同意书里的条款</td><td>研究团队，必要时问伦理委员会</td></tr>
+        </tbody></table>
+        <p class="src">工作台不替你联系任何人，也不代发消息。</p>`)}
+      ${collapsible('为什么「处境」标签要标「未逐条核对」', `
+        <p>「处境」是按标题文本自动分出来的（NMIBC / MIBC / 晚期 / 未特指），
+        它只是一条<b>线索</b>，不是入组资格。</p>
+        <p>标题里没写清楚的，自动分类只能给「未特指」。所以标签旁边永远标着
+        「未逐条核对」，鼠标停上去能看到原始值 —— 让你知道这只是个入口，不是结论。</p>`)}`);
   }
+
   return H('临床试验', '2026 年真实登记数据；登记状态 ≠ 入组资格；不构成推荐。')
     + tabsHTML('trials') + body;
 }

@@ -436,6 +436,26 @@ const QUESTIONS = [
   { group: '急症', q: '出现什么情况要当晚就去急诊？', asked: '未问', answer: '' },
 ];
 
+/* ---------- 演示：收藏的线索与入组问题 ----------
+   收藏不是报名。收藏之后的动作是「转成问题、带去门诊」，
+   所以每条收藏都要能回答「我为什么收藏它」。 */
+const TRIAL_FAVORITES = [
+  { reg: 'ChiCTR2600134528', why: '和我一样是「BCG 灌注失败」这一档', on: '2026-10-23', next: '已转成 3 个问题' },
+  { reg: 'NCT07879469', why: '题目里写的是抗体偶联药物 + 免疫治疗，想看它的入排标准', on: '2026-10-23', next: '待问主诊医生' },
+  { reg: 'NCT07865611', why: '同样是保膀胱方向，但要求 MIBC——先确认我算不算', on: '2026-10-22', next: '待核对处境标签' },
+];
+
+const TRIAL_QUESTIONS = [
+  { group: '通用资格', q: '这个研究在招的是不是我这一类（NMIBC / MIBC / 晚期）？', for: '—', asked: false },
+  { group: '通用资格', q: '我之前做过 BCG 并且失败，算不算符合条件？', for: '—', asked: false },
+  { group: '通用资格', q: '现在的肾功能（eGFR 66）会不会影响入组？', for: '—', asked: false },
+  { group: '通用资格', q: '参加研究要额外做哪些检查、多跑几趟医院？', for: '—', asked: false },
+  { group: '通用资格', q: '如果分到对照组，我会得到什么治疗？', for: '—', asked: false },
+  { group: '针对某项研究', q: '「BCG 灌注失败」你们是怎么界定的？我算吗？', for: 'ChiCTR2600134528', asked: false },
+  { group: '针对某项研究', q: '入组前要不要再做一次膀胱镜或病理复核？', for: 'NCT07879469', asked: false },
+  { group: '针对某项研究', q: '这个研究要求 MIBC，我现在是 NMIBC，还符合吗？', for: 'NCT07865611', asked: false },
+];
+
 const STOMA_SUPPLY = [
   { id: 's1', kind: '底盘', brand: '演示A', size: '45 mm', interval: 3 },
   { id: 's2', kind: '造口袋', brand: '演示A', size: '标准', interval: 1 },

@@ -700,6 +700,51 @@ async function main() {
   const mibcText = await page.innerText('#wbPage');
   assert('MIBC 看板切换成功', /肌层浸润/.test(mibcText));
 
+  /* ---- 静态不变量：不许有空的折叠块（点开什么都没有，等于骗一次点击） ---- */
+  const appSrc = await readFile(join(ROOT, 'prototypes/v0.1/app.js'), 'utf8');
+  const emptyFolds = appSrc.match(/collapsible\('[^']*',\s*''\)/g) || [];
+  assert('不存在内容为空的折叠块', emptyFolds.length === 0, emptyFolds.join(' | '));
+
+  /* ---- 没有来源的指标页必须「只留结构、不给数字」 ---- */
+  await page.evaluate(() => { location.hash = '#/metrics'; });
+  await page.waitForTimeout(280);
+  const elIdx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.tab')).findIndex((x) => x.textContent.includes('电解质')));
+  assert('指标页存在「电解质与 B12」页签', elIdx >= 0);
+  if (elIdx >= 0) {
+    await (await page.$$('.tab'))[elIdx].click();
+    await page.waitForTimeout(240);
+    const et = await page.innerText('#wbPage');
+    assert('电解质页明标「来源待补」', /来源待补/.test(et));
+    assert('电解质页说明「不填数字、不给阈值」', /不填数字/.test(et) && /不给阈值/.test(et));
+    assert('电解质页不得出现编造的正常范围数字', !/正常范围[^。]{0,20}\d/.test(et));
+  }
+
+  /* ---- 试验页：登记状态 ≠ 入组资格，且不得判断资格 ---- */
+  await page.evaluate(() => { location.hash = '#/trials'; });
+  await page.waitForTimeout(280);
+  const fvIdx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.tab')).findIndex((x) => x.textContent.trim() === '已收藏'));
+  if (fvIdx >= 0) {
+    await (await page.$$('.tab'))[fvIdx].click();
+    await page.waitForTimeout(240);
+    const ft = await page.innerText('#wbPage');
+    assert('已收藏页明写「收藏不等于报名」', /收藏不等于报名/.test(ft));
+  }
+  const qIdx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.tab')).findIndex((x) => x.textContent.trim() === '入组问题'));
+  if (qIdx >= 0) {
+    await (await page.$$('.tab'))[qIdx].click();
+    await page.waitForTimeout(240);
+    const qt = await page.innerText('#wbPage');
+    assert('入组问题页明写不判断资格', /不判断资格/.test(qt));
+    /* 状态词解释放在折叠区里 —— 折叠内容 innerText 取不到，
+       但它在 DOM 里，用 textContent 判（折叠不等于没写）。 */
+    const qtAll = await page.evaluate(() => document.querySelector('#wbPage').textContent);
+    assert('入组问题页解释各登记状态词（折叠区内，用 textContent 判）',
+      /NOT_YET_RECRUITING/.test(qtAll) && /招募中/.test(qtAll));
+  }
+
   /* ---- 事实 / 草稿分离：草稿页不得出现「已确认」这一类结论词 ---- */
   await page.evaluate(() => { location.hash = '#/records'; });
   await page.waitForTimeout(280);
