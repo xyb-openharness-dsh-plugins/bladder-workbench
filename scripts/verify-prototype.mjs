@@ -699,6 +699,34 @@ async function main() {
   await page.waitForTimeout(240);
   const mibcText = await page.innerText('#wbPage');
   assert('MIBC 看板切换成功', /肌层浸润/.test(mibcText));
+
+  /* ---- 事实 / 草稿分离：草稿页不得出现「已确认」这一类结论词 ---- */
+  await page.evaluate(() => { location.hash = '#/records'; });
+  await page.waitForTimeout(280);
+  const draftIdx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.tab')).findIndex((x) => x.textContent.trim() === '待核对草稿'));
+  assert('病情整理存在「待核对草稿」页签', draftIdx >= 0);
+  if (draftIdx >= 0) {
+    await (await page.$$('.tab'))[draftIdx].click();
+    await page.waitForTimeout(240);
+    const dt = await page.innerText('#wbPage');
+    assert('草稿页明写「不算事实」', /不算事实/.test(dt));
+    assert('草稿页明写不会进入病情档案', /不会.*进入病情档案/.test(dt));
+    assert('草稿页给出「只抄写不判断」的抽取规则', /只抄写，不判断/.test(dt));
+  }
+
+  /* ---- 照护者交接：记录人与当事人必须是两个可区分的字段 ---- */
+  await page.evaluate(() => { location.hash = '#/life'; });
+  await page.waitForTimeout(280);
+  const hoIdx = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.tab')).findIndex((x) => x.textContent.trim() === '照护者交接'));
+  if (hoIdx >= 0) {
+    await (await page.$$('.tab'))[hoIdx].click();
+    await page.waitForTimeout(240);
+    const ht = await page.innerText('#wbPage');
+    assert('照护者交接区分「记录人」与「当事人」', /本页记录人/.test(ht) && /记录的是谁/.test(ht));
+    assert('照护者交接含下次灌注与下次膀胱镜日期', /2026-10-30/.test(ht) && /2026-12-16/.test(ht));
+  }
   assert('MIBC 看板含尿流改道卡', /尿流改道/.test(mibcText));
   assert('NMIBC 专属卡（膀胱灌注周期）已不在', !/诱导 3 \/ 6 次已完成/.test(mibcText));
 

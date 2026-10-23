@@ -28,6 +28,17 @@ const src = (t) => `<span class="src src-line">${esc(t)}</span>`;
 const verify = (t) => `<span class="verify-tag">${esc(t)}</span>`;
 const chipCat = (v) => `<span class="chip chip-cat" data-state="${esc(v)}">${esc(v)}</span>`;
 
+/* 渐进披露：低频说明默认折叠。
+   用原生 <details>/<summary>，而不是自己搭 div+aria ——
+   自造的折叠十有八九漏掉 aria-expanded 和键盘操作，
+   原生元素这两样是白送的。 */
+const collapsible = (summary, inner) => `
+  <details class="fold">
+    <summary>${esc(summary)}</summary>
+    <div class="fold-body">${inner}</div>
+  </details>`;
+const qlist = (items) => `<ul class="qlist">${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+
 /* 登记库给的是英文枚举，原样端给患者等于没翻译。
    中文标签在前，原始值留在 title 里，需要追溯时仍拿得到。 */
 const TRIAL_STATUS_ZH = {
@@ -456,53 +467,181 @@ function gateHTML() {
 
 /* ================= 2. 病情整理 ================= */
 function pageRecords(tab) {
+  const F = RECORDS.files;
+  const confirmed = F.filter((f) => f.state === '已核对').length;
+  const pending = F.length - confirmed;
+
+  const libBody = () => card('资料库', `
+    <div class="notice notice-info">这里放<b>原件抄下来的东西</b>。资料进来只是「有这份东西」，
+    不等于里面的数字已经进了病情档案 —— 那要逐项核对。</div>
+    ${statStrip([
+      ['资料份数', `${F.length} 份`, '按原件计'],
+      ['已核对', `${confirmed} 份`, '数字已进病情档案'],
+      ['待核对', `${pending} 份`, '只有原件，还没逐项确认'],
+      ['最近一份', F[F.length - 1].on, F[F.length - 1].by],
+    ])}
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>资料</th><th>类型</th><th>报告日期</th><th>机构</th><th class="num">页数</th><th>核对状态</th>
+    </tr></thead><tbody>
+      ${F.map((f) => `<tr>
+        <td>${esc(f.name)}</td><td>${esc(f.kind)}</td><td>${esc(f.on)}</td>
+        <td>${esc(f.by)}</td><td class="num">${f.pages}</td>
+        <td>${f.state === '已核对' ? `<span class="chip chip-ok">${esc(f.state)}</span>` : `<span class="chip chip-warn">${esc(f.state)}</span>`}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    ${collapsible('资料可以怎么进来', `
+      <table class="tbl"><thead><tr><th>方式</th><th>适合什么</th><th>进来之后</th></tr></thead><tbody>
+        <tr><td>手动抄录</td><td>任何东西；最可靠</td><td>直接是「已核对」，因为是你照着原件打的</td></tr>
+        <tr><td>拍照 / PDF 自动抽取</td><td>页数多、字清楚</td><td>进「待核对草稿」，要你逐项点确认</td></tr>
+        <tr><td>医院公众号 / App 导出</td><td>有电子报告的医院</td><td>同上，仍要逐项确认</td></tr>
+      </tbody></table>
+      <p class="src">自动抽取把原件送出本机做识别，所以必须由你显式点一下才会发生，不会偷偷上传。
+      一期原型<b>不接通</b>这条链路，界面只留位置。</p>`)}
+    ${collapsible('为什么要给资料单独一个区', `
+      <p>因为「有这份报告」和「报告里的数字是准的」是两件事。转述会走样、复制会漏行、
+      同一份报告可能有多个版本。</p>
+      <p>把原件和事实分成两层之后，任何时候你都能回答：<b>这个数字是从哪份文件的哪一行来的？</b>
+      对不上时也能一眼看到是原件抄错了，还是你记错了。</p>`)}`);
+
+  const draftBody = () => card('待核对草稿（未经核对，不算事实）', `
+    <div class="notice notice-warn">草稿区的条目<b>不会</b>进入病情档案，也<b>不会</b>进入 AI 草稿的「已确认事实」。
+    抽出来的只是候选，逐项点过确认才算数。</div>
+    <h3 style="margin-top:16px">抽取规则：只抄写，不判断</h3>
+    <table class="tbl"><thead><tr><th>情况</th><th>怎么处理</th><th>为什么</th></tr></thead><tbody>
+      <tr><td>数字看得清</td><td>照抄</td><td>—</td></tr>
+      <tr><td>数字看不清</td><td><b>留空</b>，标出原文片段</td><td>猜一个比空着更糟</td></tr>
+      <tr><td>单位认不出</td><td>单位留空，值照样抄</td><td>单位错会让整条数据失去意义</td></tr>
+      <tr><td>「＜」「＞」这类符号</td><td>原样保留</td><td>丢掉符号就把「低于检出限」读成了具体数</td></tr>
+      <tr><td>表格行列对不齐</td><td>整行放弃</td><td>宁可少一条，不可错一条</td></tr>
+    </tbody></table>
+    <table class="tbl" style="margin-top:16px"><thead><tr>
+      <th>候选字段</th><th>抽取值</th><th>原文片段</th><th>操作</th>
+    </tr></thead><tbody>
+      ${RECORDS.drafts.map((d) => `<tr>
+        <td>${esc(d.field)}</td>
+        <td>${d.value ? esc(d.value) : '<span class="chip chip-warn">留空待手填</span>'}</td>
+        <td class="src">${esc(d.quote)}${d.why ? `<br>${esc(d.why)}` : ''}</td>
+        <td>${d.ok ? '<div class="btn-row"><button class="btn btn-sm btn-primary" data-confirm>确认</button><button class="btn btn-sm">忽略</button></div>' : '<span class="src">需手填</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    ${collapsible('为什么非要逐项确认，不能一键全收', `
+      <p>因为自动识别一定会出错 —— 特别是数字和单位。而这类错误不会报错、不会变红，
+      只会在几个月后变成一条对不上的曲线。</p>
+      <p>逐项确认是<b>你唯一能拦住它的地方</b>。所以这一步不做「全部确认」按钮，只能一条一条点。</p>`)}`);
+
+  const fileBody = () => card('病情档案（已确认事实）', `
+    <div class="notice notice-info">每条都记了<b>谁记的、记的是谁、什么时候记的</b>。
+    换一个照护者接手时，不用问患者也能对上。</div>
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>项目</th><th>内容</th><th>谁记的</th><th>记录日期</th><th>核对状态</th>
+    </tr></thead><tbody>
+      ${RECORDS.facts.map((f) => `<tr>
+        <td>${esc(f.item)}</td>
+        <td>${esc(f.value)}</td>
+        <td class="src">${esc(f.by)}</td>
+        <td>${esc(f.on)}</td>
+        <td>${f.state === '已核对' ? `<span class="chip chip-ok">${esc(f.state)}</span>` : `<span class="chip chip-warn">${esc(f.state)}</span>`}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    <p class="src" style="margin-top:10px">「已核对」只表示<b>转录没错</b>，
+    <b>不等于医学审核</b>。诊断与处置仍以你的医疗团队为准。</p>
+    <dl class="kv" style="margin-top:12px">
+      <dt>病理结论原文</dt><dd>${esc(PATHOLOGY.raw)} ${src(PATHOLOGY.source)}</dd>
+      <dt>分级（原文）</dt><dd>${esc(PATHOLOGY.gradeRaw)} <span class="src">报告未写分级体系名；不做换算</span></dd>
+      <dt>有无肌层组织</dt><dd>${esc(PATHOLOGY.musclePresent)} <span class="chip chip-warn">分期可能不完整</span></dd>
+    </dl>`);
+
+  const summaryBody = () => {
+    const bySource = ['医生记录', '本人自述', '照护者代记', '待核对草稿'];
+    return card('病情汇总', `
+      ${statStrip([
+        ['已确认事实', `${RECORDS.facts.filter((f) => f.state === '已核对').length} 条`, `共 ${RECORDS.facts.length} 条`],
+        ['资料', `${RECORDS.files.length} 份`, `${RECORDS.files.filter((f) => f.state === '待核对').length} 份待核对`],
+        ['待核对草稿', `${RECORDS.drafts.filter((d) => d.ok).length} 条`, '不参与汇总'],
+        ['时间范围', '2026-06-11 ～ 2026-10-22', '最早 / 最近一条事实'],
+      ])}
+      <h3 style="margin-top:16px">来源分布</h3>
+      <table class="tbl"><thead><tr><th>来源</th><th class="num">条数</th><th>说明</th></tr></thead><tbody>
+        <tr><td>医生记录</td><td class="num">3</td><td>报告或门诊记录上的原文</td></tr>
+        <tr><td>本人自述</td><td class="num">3</td><td>自己记的症状、感受、复查安排</td></tr>
+        <tr><td>照护者代记</td><td class="num">1</td><td>记录人与当事人不是同一个</td></tr>
+        <tr><td>待核对草稿</td><td class="num">${RECORDS.drafts.length}</td><td><b>不计入</b>已确认事实</td></tr>
+      </tbody></table>
+      ${collapsible('汇总里缺的东西，会怎么写', `
+        <p>缺项一律写「<b>没有</b>」，不补、不推测、不留空白让人以为是忘了写。</p>
+        <table class="tbl"><thead><tr><th>情况</th><th>写法</th></tr></thead><tbody>
+          <tr><td>问过但没这项检查</td><td>没有</td></tr>
+          <tr><td>做过但报告还没拿到</td><td>结果未出</td></tr>
+          <tr><td>报告上有但没看懂</td><td>照抄原文 + 标「待与医生确认」</td></tr>
+          <tr><td>属于私密项且未勾选带入</td><td>本次未带入（不写具体内容）</td></tr>
+        </tbody></table>
+        <p class="src">四种「没有」不是一回事，所以不能都写成一个「无」。</p>`)}
+      <div class="btn-row" style="margin-top:16px">
+        <button type="button" class="btn btn-primary" data-goto="visit">去生成复诊摘要</button>
+        <button type="button" class="btn" data-export>导出（原型占位）</button>
+      </div>
+      <p class="src" style="margin-top:8px">导出会得到格式真实的文件（原型阶段为占位），
+      <b>私密项默认不进导出</b>，除非你在导出前显式勾选。</p>`);
+  };
+
   const body = {
-    '资料库': () => card('已导入资料', `
-      <table class="tbl"><thead><tr><th>文件</th><th>类型</th><th>导入日期</th><th>状态</th></tr></thead><tbody>
-        <tr><td>病理报告（演示）</td><td>病理</td><td>2026-09-18</td><td><span class="chip chip-ok">已核对</span></td></tr>
-        <tr><td>血生化（演示）</td><td>化验</td><td>2026-10-22</td><td><span class="chip chip-ok">已核对</span></td></tr>
-        <tr><td>尿细胞学（演示）</td><td>化验</td><td>2026-09-18</td><td><span class="chip chip-warn">待核对</span></td></tr>
-      </tbody></table>`),
-    '待核对草稿': () => card('草稿（<b>未经核对，不算事实</b>）', `
-      <div class="notice notice-warn">草稿区的条目还没有逐项确认，<b>不会</b>进入病情档案，也<b>不会</b>进入 AI 草稿的「已确认事实」。</div>
-      <table class="tbl" style="margin-top:12px"><thead><tr><th>候选字段</th><th>抽取值</th><th>原文片段</th><th>操作</th></tr></thead><tbody>
-        <tr><td>尿细胞学结果</td><td>${chipCat('非典型')}</td><td>「查见非典型尿路上皮细胞。」</td>
-            <td><div class="btn-row"><button class="btn btn-sm btn-primary" data-confirm>确认</button><button class="btn btn-sm">忽略</button></div></td></tr>
-        <tr><td>标本类型</td><td>膀胱冲洗</td><td>「标本：膀胱冲洗液」</td>
-            <td><div class="btn-row"><button class="btn btn-sm btn-primary" data-confirm>确认</button><button class="btn btn-sm">忽略</button></div></td></tr>
-      </tbody></table>`),
-    '病情档案': () => card('已确认事实', `
-      <dl class="kv">
-        <dt>病理结论</dt><dd>${esc(PATHOLOGY.raw)} ${src(PATHOLOGY.source)}</dd>
-        <dt>分级（原文）</dt><dd>${esc(PATHOLOGY.gradeRaw)} <span class="src">报告未写分级体系名；不换算</span></dd>
-        <dt>有无肌层组织</dt><dd>${esc(PATHOLOGY.musclePresent)} <span class="chip chip-warn">分期可能不完整</span></dd>
-        <dt>核对状态</dt><dd><span class="chip chip-warn">${esc(PATHOLOGY.reviewState)}</span></dd>
-      </dl>`),
-    '指标检测': () => metricsTable(),
-    '病情汇总': () => card('汇总', `
-      <dl class="kv">
-        <dt>记录条数</dt><dd class="num">38</dd>
-        <dt>时间范围</dt><dd>2026-03-10 ～ 2026-10-22</dd>
-        <dt>待核对</dt><dd class="num">2</dd>
-        <dt>来源分布</dt><dd>医生记录 21 · 本人自述 9 · 待核对草稿 2 · 演示数据 6</dd>
-      </dl>`),
+    '资料库': libBody,
+    '待核对草稿': draftBody,
+    '病情档案': fileBody,
+    '指标检测': metricsTable,
+    '病情汇总': summaryBody,
   }[tab] || (() => '<div class="empty"><strong>该页签还没有内容</strong></div>');
-  return H('病情整理', '事实与草稿分区；草稿不算事实。') + tabsHTML('records') + body();
+  return H('病情整理', '事实与草稿分区；草稿不算事实；每条都记谁记的。') + tabsHTML('records') + body();
 }
 
 function metricsTable() {
+  const rows = METRICS.map((m) => {
+    const pts = m.points;
+    const last = pts[pts.length - 1];
+    const groups = new Set(pts.map((x) => `${x.lab || m.lab || ''}|${x.method || m.method || ''}`)).size;
+    return { m, last, n: pts.length, groups };
+  });
+  const totalPoints = rows.reduce((a, r) => a + r.n, 0);
+  const splitGroups = rows.filter((r) => r.groups > 1).length;
   return card('指标记录', `
-    <table class="tbl"><thead><tr><th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>方法</th><th>来源</th></tr></thead><tbody>
-      ${METRICS.map((m) => {
-        const last = m.points[m.points.length - 1];
-        return `<tr><td>${esc(m.name)}</td><td class="num">${CHART.fmt(last.v)}</td><td>${esc(m.unit)}</td>
-          <td>${esc(last.d)}</td><td>${esc(m.method || '—')}</td><td>${esc(m.src)}</td></tr>`;
-      }).join('')}
+    <div class="notice notice-info">同一份检测记录，同时出现在指标卡、一图秀和复诊摘要里 ——
+    只录一次，三处共用。这里看的是<b>原始记录</b>，不做趋势判断。</div>
+    ${statStrip([
+      ['指标项', `${rows.length} 项`, `共 ${totalPoints} 条检测记录`],
+      ['可比组被拆开', `${splitGroups} 项`, '机构或方法变过，不能连成一条线'],
+      ['最近一次', rows.map((r) => r.last.date).sort().slice(-1)[0], '全部指标里最新的'],
+      ['单位口径', '存原样 + 归一值', '先剥掉 $…$ 外壳再归一'],
+    ])}
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>指标</th><th class="num">最近值</th><th>单位</th><th>日期</th><th>机构</th><th>方法</th><th class="num">记录数</th><th>可比组</th>
+    </tr></thead><tbody>
+      ${rows.map((r) => `<tr>
+        <td>${esc(r.m.name)}</td>
+        <td class="num">${esc(String(r.last.v))}</td>
+        <td>${esc(r.m.unit || '')}</td>
+        <td>${esc(r.last.date)}</td>
+        <td class="src">${esc(r.last.lab || r.m.lab || '演示检验科')}</td>
+        <td class="src">${esc(r.last.method || r.m.method || '—')}</td>
+        <td class="num">${r.n}</td>
+        <td>${r.groups > 1 ? `<span class="chip chip-warn">${r.groups} 组</span>` : '<span class="src">1 组</span>'}</td>
+      </tr>`).join('')}
     </tbody></table>
-    <p class="src" style="margin-top:10px">方法或机构不同的点不会连成一条线。</p>`);
+    ${collapsible('「可比组」是什么，为什么同一项指标会被拆开', `
+      <p>同一个指标在不同医院、不同检测方法下测出来的数，<b>不能直接连成一条线</b>。</p>
+      <p>比如肌酐：换医院之后从酶法变成苦味酸法，两个数之间差一点是方法带来的，不是病情带来的。
+      如果硬连起来，你会看到一条不存在的「变化」。</p>
+      <p>所以工作台按「机构 + 方法」自动分组：<b>组内连线，组与组之间断开</b>。
+      这不是数据缺失，是刻意不连。</p>
+      <p class="src">演示档案里肌酐在 2026-10-08 换了医院，所以它被拆成两组。</p>`)}
+    ${collapsible('为什么值要存两份（原样 + 归一）', `
+      <table class="tbl"><thead><tr><th>字段</th><th>举例</th><th>用途</th></tr></thead><tbody>
+        <tr><td>原样值</td><td><code>$10^9/L$</code></td><td>回看报告时能一字对上</td></tr>
+        <tr><td>归一值</td><td><code>10⁹/L</code></td><td>排序、比较、画图时用</td></tr>
+      </tbody></table>
+      <p class="src">归一之前先剥掉 LaTeX 外壳（报告导出常见 <code>$…$</code>），
+      否则同一个单位会被当成两种，白白多出一个可比组。</p>`)}`);
 }
 
-/* ================= 3. 我的分型与分期 ================= */
 function pageStaging(tab) {
   const p = PATHOLOGY;
   const lineName = STATE.line === 'nmibc' ? '非肌层浸润（NMIBC）' : STATE.line === 'mibc' ? '肌层浸润（MIBC）' : '未定';
@@ -589,21 +728,132 @@ function pageStaging(tab) {
 
 /* ================= 4. 手术与 TURBT ================= */
 function pageSurgery(tab) {
-  const body = {
-    'TURBT 序列': () => card('TURBT（经尿道膀胱肿瘤切除术）', `
-      <div class="notice notice-info">TURBT 是<b>切除</b>肿瘤，不是「取一点组织去化验」。同一手术线上的多次操作记成一条序列。</div>
-      <table class="tbl" style="margin-top:12px"><thead><tr><th>次序</th><th>日期</th><th>完全切除</th><th>标本含肌层</th><th>穿孔</th></tr></thead><tbody>
-        <tr><td>第 1 次</td><td>2026-09-18</td><td>完全</td><td><span class="chip chip-warn">无</span></td><td>无</td></tr>
-        <tr><td>第 2 次（二次电切）</td><td><span class="src">计划中</span></td><td>—</td><td>—</td><td>—</td></tr>
+  /* 两条线的手术史不是同一件事：NMIBC 只有 TURBT（可能加一次二次电切），
+     MIBC 通常是 TURBT → 二次电切 → 根治性切除。必须按分野取数据集，
+     否则切到 MIBC 只看得到 NMIBC 的那一次 TURBT。 */
+  const C = SURGERY_CASE[STATE.line === 'mibc' ? 'mibc' : 'nmibc'];
+  const rd = C.radical;
+
+  const turbtBody = () => {
+    const last = C.turbt[C.turbt.length - 1];
+    const noMuscle = C.turbt.filter((t) => t.muscle === '无').length;
+    return card('TURBT（经尿道膀胱肿瘤切除术）', `
+      <div class="notice notice-info">TURBT 是<b>切除</b>肿瘤，不是「取一点组织去化验」。同一条手术线上的多次操作记成一条序列，不新建档案。</div>
+      ${statStrip([
+        ['已做次数', `${C.turbt.length} 次`, C.turbt.length > 1 ? '含二次电切' : '单次'],
+        ['最近一次', last.on, last.by],
+        ['完全切除', last.complete === '完全切除' ? '是' : '否', '取自手术记录原文'],
+        ['标本是否含肌层', last.muscle, noMuscle ? '有一次没取到肌肉' : '两次都有'],
+      ])}
+      <table class="tbl" style="margin-top:12px"><thead><tr>
+        <th>次序</th><th>日期</th><th>完全切除</th><th>标本含肌层</th><th>穿孔</th><th>术后导尿</th><th>病理结论（原文）</th>
+      </tr></thead><tbody>
+        ${C.turbt.map((t) => `<tr>
+          <td>第 ${t.seq} 次${t.seq > 1 ? '（二次电切）' : ''}</td>
+          <td>${esc(t.on)}</td>
+          <td>${t.complete === '完全切除' ? esc(t.complete) : chipCat(t.complete)}</td>
+          <td>${t.muscle === '有' ? esc(t.muscle) : `<span class="chip chip-warn">${esc(t.muscle)}</span>`}</td>
+          <td>${esc(t.perforation)}</td>
+          <td>${esc(t.cath)}</td>
+          <td>${esc(t.path)}</td>
+        </tr>`).join('')}
       </tbody></table>
-      <p class="src" style="margin-top:10px">「标本含肌层：无」意味着这一次取材没有取到肌肉，<b>分期可能不完整</b>。</p>`),
-    '二次电切': () => card('为什么要再电切一次', `
-      <p>第一次手术的标本里没有肌肉层，医生可能会安排再做一次，目的是把切得更深、拿到肌肉层，从而判断到底有没有浸润。</p>
-      <p class="src" style="margin-top:10px">这是「同一手术线的下一事件」，不会新建一份患者档案。</p>`),
-    '根治性切除': () => card('根治性膀胱切除', `
-      <div class="empty"><strong>还没有记录</strong>如果你走到这一步，这里会记录切除范围、淋巴结、切缘，以及尿流改道术式（不可逆，改动会留痕）。</div>`),
-  }[tab] || (() => '');
-  return H('手术与 TURBT', 'TURBT 是切除不是活检；二次电切是同一手术线的下一事件。')
+      ${noMuscle ? `<div class="notice notice-warn" style="margin-top:12px">
+        <b>「标本含肌层：无」不等于「没有浸润」。</b>它的意思是这一次切下来的组织里没有包含肌肉，
+        所以<b>分期可能不完整</b>——看不出肿瘤到底有没有长进肌肉层。这是需要带去问医生的一条，
+        不是可以放下的结论。</div>` : ''}
+      ${collapsible('「完全切除」和「不完全切除」差在哪', `
+        <p>医生说「切干净了」和「切得不完全」，指的是<b>这一次能不能用肉眼把肿瘤都拿掉</b>，不是指治好了。</p>
+        <ul>
+          <li><b>完全切除</b>：这次手术把所有看得见的肿瘤都拿掉了。</li>
+          <li><b>不完全切除</b>：还有看得见的残留，或者肿瘤太大、位置不好切，通常会安排再做一次。</li>
+        </ul>
+        <p class="src">两者的区别会影响下一步安排，但都不代表「好了」或「没救了」。</p>`)}
+      ${collapsible('这一次手术具体做了什么', `
+        <table class="tbl"><thead><tr><th>项目</th><th>说明</th></tr></thead><tbody>
+          <tr><td>麻醉</td><td>通常需要麻醉，方式由麻醉医生决定</td></tr>
+          <tr><td>是否取肌层</td><td>标准做法要切到肌肉层，取到肌肉才能判断分期</td></tr>
+          <tr><td>术后导尿</td><td>多数会短暂留置导尿管，冲走血块</td></tr>
+          <tr><td>术后血尿</td><td>术后一段时间尿里有血是常见的，量多少要记</td></tr>
+        </tbody></table>
+        <p class="src">来源：演示档案 · 未核对。具体做法以你的手术记录为准。</p>`)}`);
+  };
+
+  const reBody = () => {
+    const hasRe = !!C.reTurbt;
+    return card('二次电切', hasRe ? `
+      <div class="notice notice-info">这是<b>同一条手术线的下一事件</b>，不新建一份档案。第 1 次标本没取到肌肉层，所以需要再来一次。</div>
+      ${statStrip([
+        ['是否已安排', hasRe ? '已计划' : '未记录', hasRe ? esc(C.reTurbt.plannedOn) : ''],
+        ['原因', hasRe ? C.reTurbt.reason : '—', '取自手术记录'],
+        ['这次的目标', '切得更深、拿到肌肉层', '用来判断有没有浸润'],
+      ])}
+      ${collapsible('为什么非要再切一次', `
+        <p>第一次取材没有肌肉层，就没办法回答「肿瘤到底长进肌肉了没有」。
+        而这个问题的答案，直接决定后面走保膀胱还是根治——所以医生宁可再做一次把它问清楚。</p>
+        <p class="src">这是「同一手术线的下一事件」，不会新建一份患者档案，也不用重新录一遍基本资料。</p>`)}
+      <h3 style="margin-top:16px">这次要问医生的问题</h3>
+      <ul class="qlist">
+        <li>这一次取到肌肉层的把握有多大？</li>
+        <li>两次之间隔多久做，为什么是这个时间？</li>
+        <li>如果这次还是没取到肌肉，下一步怎么办？</li>
+        <li>做完之后多久能知道结果？</li>
+      </ul>
+      <p class="src" style="margin-top:8px">工作台只帮你把问题记下来，不替你判断该不该做。</p>` : `
+      <div class="empty"><strong>本档案没有二次电切记录</strong>
+      这条线只在「第一次标本没取到肌肉层」时才会出现。本演示档案的两次取材都含肌层，所以这里空着。</div>`);
+  };
+
+  const radicalBody = () => {
+    if (!rd) {
+      return card('根治性膀胱切除', `
+        <div class="empty"><strong>本档案没有这一项</strong>
+        这条线属于<b>肌层浸润（MIBC）</b>。当前演示档案在保膀胱线上，所以没有根治性切除的记录。
+        把左上角档案切换到「DEMO-2 · MIBC 根治与改道线」，这里会长出完整记录。</div>
+        ${collapsible('什么情况下会走到这一步', `
+          <p>当肿瘤已经长进肌肉层（分期到了 T2 或更深），医生会和你讨论要不要把整个膀胱切掉。
+          这是<b>需要你和医生一起决定的</b>——工作台不替你判断该不该切，只帮你把这件事记清楚。</p>
+          <p class="src">切除范围、要不要保留神经、淋巴结清扫到什么程度，都因人而异，以你的手术记录为准。</p>`)}`);
+    }
+    return card('根治性膀胱切除', `
+      <div class="notice notice-info">手术记录是<b>不可逆事实</b>：改动只追加新版本、不覆盖旧版本，这样回看时才说得清「什么时候改的口径」。</div>
+      ${statStrip([
+        ['手术日期', esc(rd.on), esc(rd.by)],
+        ['切除范围', esc(rd.scope), esc(rd.organs)],
+        ['淋巴结', esc(rd.nodes), '取自病理报告'],
+        ['切缘', esc(rd.margin), rd.lvi],
+      ])}
+      <h3 style="margin-top:16px">病理要点</h3>
+      <table class="tbl"><thead><tr><th>项目</th><th>结果</th><th>这是什么</th></tr></thead><tbody>
+        <tr><td>分期</td><td>${esc(rd.stage)}</td><td>p 表示来自切下来的标本；N1 表示淋巴结里查到癌细胞</td></tr>
+        <tr><td>淋巴结</td><td>${esc(rd.nodes)}</td><td>切下来的淋巴结里，有几枚查到癌细胞</td></tr>
+        <tr><td>切缘</td><td>${esc(rd.margin)}</td><td>切下来的边缘有没有癌细胞。阴性表示边缘干净</td></tr>
+        <tr><td>脉管侵犯</td><td>${esc(rd.lvi)}</td><td>有没有在血管或淋巴管里看到癌细胞</td></tr>
+      </tbody></table>
+      <p class="src" style="margin-top:8px">来源：演示档案 · 未核对。以上只是把报告原文抄下来，<b>不等于医学结论</b>。</p>
+      ${collapsible('切掉的范围包含什么', `
+        <p>根治性膀胱切除不只是把膀胱拿掉，通常还包括：</p>
+        <ul>
+          <li><b>膀胱</b>——整个器官</li>
+          <li><b>盆腔淋巴结</b>——取下来做病理，看有没有转移</li>
+          <li><b>相邻器官</b>——男性常含前列腺，女性常含子宫与部分阴道；具体范围因人而异</li>
+          <li><b>尿流改道</b>——膀胱没了，尿要另找出路，这就是改道术式</li>
+        </ul>
+        <p class="src">切除范围以你的手术记录为准。手术当天切了什么，这里应该能逐条对上。</p>`)}
+      ${collapsible('手术后住院那段要记什么', `
+        <table class="tbl"><thead><tr><th>项目</th><th>为什么要记</th></tr></thead><tbody>
+          <tr><td>住院天数</td><td>${esc(rd.stay)}（演示）。后续复诊时医生会问</td></tr>
+          <tr><td>引流管与支架管</td><td>什么时候拔、拔的时候有没有问题</td></tr>
+          <tr><td>造口或新膀胱的第一次使用</td><td>什么时候开始排尿/排便，顺不顺</td></tr>
+          <tr><td>出院时的交代</td><td>出院记录里的注意事项，原样抄下来</td></tr>
+        </tbody></table>`)}
+      <div class="notice notice-warn" style="margin-top:12px">
+        尿流改道术式是<b>不可逆事实</b>，记录在「尿流改道与造口」页。本档案采用的是
+        <b>${esc(rd.diversion)}</b>。改动只追加版本、不覆盖。</div>`);
+  };
+
+  const body = { 'TURBT 序列': turbtBody, '二次电切': reBody, '根治性切除': radicalBody }[tab] || (() => '');
+  return H('手术与 TURBT', 'TURBT 是切除不是活检；二次电切是同一手术线的下一事件；根治性切除不可逆。')
     + tabsHTML('surgery') + body();
 }
 
@@ -890,30 +1140,123 @@ function pageDiversion(tab) {
 
 /* ================= 7. 治疗历程 ================= */
 function pageTreatment(tab) {
-  const body = {
-    '治疗线': () => card('治疗线（容器，不是属性）', `
-      <table class="tbl"><thead><tr><th>线次</th><th>方案</th><th>开始</th><th>状态</th><th>挂载</th></tr></thead><tbody>
-        <tr><td>一线</td><td>BCG 膀胱灌注</td><td>2026-10-02</td><td><span class="chip chip-brand">进行中</span></td>
-            <td>周期 4 · 疗效 1 · 不良事件 2</td></tr>
+  const C = TREATMENT_CASE[STATE.line === 'mibc' ? 'mibc' : 'nmibc'];
+  const running = C.lines.filter((l) => l.status === '进行中').length;
+
+  const linesBody = () => card('治疗线（是一个容器，不是属性）', `
+    <div class="notice notice-info">「一线、二线」说的是<b>第几套方案</b>，不是病情轻重。
+    换线时上一线的周期、疗效、不良事件<b>整体留在原地</b>，不会被覆盖。</div>
+    ${statStrip([
+      ['已记录线数', `${C.lines.length} 线`, running ? `${running} 线进行中` : '暂无进行中'],
+      ['当前方案', (C.lines.find((l) => l.status === '进行中') || {}).regimen || C.lines[C.lines.length - 1].regimen,
+       (C.lines.find((l) => l.status === '进行中') || {}).from || ''],
+      ['挂载记录', C.lines.map((l) => l.mounted).filter((m) => m !== '—').length + ' 组', '周期 / 疗效 / 不良事件'],
+    ])}
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>线次</th><th>方案</th><th>开始</th><th>结束</th><th>状态</th><th>为什么这样安排</th><th>挂载</th>
+    </tr></thead><tbody>
+      ${C.lines.map((l) => `<tr>
+        <td>${esc(l.no)}</td><td>${esc(l.regimen)}</td>
+        <td>${l.from ? esc(l.from) : '<span class="src">—</span>'}</td>
+        <td>${l.to ? esc(l.to) : '<span class="src">—</span>'}</td>
+        <td>${l.status === '进行中' ? `<span class="chip chip-brand">${esc(l.status)}</span>` : chipCat(l.status)}</td>
+        <td>${esc(l.why)}</td><td class="src">${esc(l.mounted)}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    ${collapsible('为什么「线」要单独做成一层', `
+      <p>因为治疗会换方案，但每一次换都发生在<b>上一次的结果之上</b>。如果直接把方案当患者属性，
+      换线时旧数据要么被覆盖，要么散落各处对不上。</p>
+      <p>做成容器之后：切到二线，一线的灌注记录、当时的疗效评估、出现过的不良事件都还在原来那条线上，
+      回看时能说清「为什么换」。</p>`)}`);
+
+  const drugsBody = () => card('用药与周期', `
+    <table class="tbl"><thead><tr>
+      <th>药物</th><th>单次剂量</th><th>途径</th><th>计划节奏</th><th>已完成</th><th>下次</th><th>剂量来源</th>
+    </tr></thead><tbody>
+      ${C.drugs.map((d) => `<tr>
+        <td>${esc(d.name)}</td><td>${esc(d.dose)}</td><td>${esc(d.route)}</td>
+        <td>${esc(d.plan)}</td><td class="num">${esc(d.done)}</td>
+        <td>${d.next === '已结束' ? '<span class="src">已结束</span>' : esc(d.next)}</td>
+        <td class="src">${esc(d.src)}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    <p class="src" style="margin-top:10px">写「待核验」的剂量，表示本机资料里没有查到原文出处。
+    <b>没有出处就不编一个数字。</b>实际剂量一律以医嘱与方案原文为准。</p>
+    ${collapsible('膀胱灌注和静脉化疗不是一回事', `
+      <table class="tbl"><thead><tr><th></th><th>膀胱灌注</th><th>静脉化疗</th></tr></thead><tbody>
+        <tr><td>药到哪里</td><td>只进膀胱，靠憋尿让药泡着膀胱壁</td><td>进全身血流</td></tr>
+        <tr><td>常见感受</td><td>尿频、尿急、尿痛、血尿；BCG 还可能发烧</td><td>乏力、恶心、血象下降</td></tr>
+        <tr><td>记录重点</td><td>憋了多久、有没有尿出去、灌注后当天的情况</td><td>第几天打、打之前的血象与肾功能</td></tr>
       </tbody></table>
-      <p class="src" style="margin-top:10px">周期、疗效、不良事件都挂在治疗线上；切到下一线时上一线数据整体保留。</p>`),
-    '用药与周期': () => card('用药与周期', `
-      <table class="tbl"><thead><tr><th>药物</th><th>单次剂量</th><th>计划周期</th><th>已完成</th></tr></thead><tbody>
-        <tr><td>BCG（卡介苗）</td><td>120 mg</td><td>诱导 6 次 + 维持</td><td class="num">3 / 6</td></tr>
+      <p class="src">所以这两类在界面上用<b>不同的记录模板</b>：字段集不一样，不能共用一张表单。</p>`)}`);
+
+  const evalBody = () => card('疗效评估', `
+    <div class="notice notice-info">评估结论<b>照抄医生给的原文</b>，工作台不做换算、不推算变化趋势。</div>
+    ${C.evals.length ? `
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>日期</th><th>怎么评的</th><th>结论（原文）</th><th>备注</th></tr></thead><tbody>
+        ${C.evals.map((e) => `<tr><td>${esc(e.on)}</td><td>${esc(e.how)}</td><td>${esc(e.result)}</td><td class="src">${esc(e.note)}</td></tr>`).join('')}
+      </tbody></table>` : `
+      <div class="empty" style="margin-top:12px"><strong>还没有评估记录</strong>
+      等复查之后，把医生给的结论原文记进来。这里不会替你推算「有效没效」。</div>`}
+    ${collapsible('「有没有效」是靠哪几件事看出来的', `
+      <table class="tbl"><thead><tr><th>方式</th><th>能看到什么</th><th>看不到什么</th></tr></thead><tbody>
+        <tr><td>膀胱镜</td><td>膀胱内壁有没有长东西、原来的位置怎么样了</td><td>肌肉层里面、膀胱外面</td></tr>
+        <tr><td>尿细胞学</td><td>尿里有没有异常的细胞</td><td>异常细胞从哪来、有多少</td></tr>
+        <tr><td>影像</td><td>膀胱壁厚度、上尿路、淋巴结、远处器官</td><td>细胞层面的变化</td></tr>
+        <tr><td>取组织做病理</td><td>到底是不是癌、有没有浸润肌层</td><td>需要先取到组织才能做</td></tr>
       </tbody></table>
-      <p class="src" style="margin-top:10px">剂量口径来源：2021 灌注共识（国产 BCG 每次 120 mg，1 年共 19 次）。</p>`),
-    '疗效评估': () => card('疗效评估', `
-      <div class="empty"><strong>还没有评估记录</strong>复查后按医生给的结论原文记录，不做推算。</div>`),
-    '肾功能门槛': () => card('肾功能与顺铂门槛', `
-      <table class="tbl"><thead><tr><th>日期</th><th class="num">eGFR</th><th class="num">肌酐</th><th>方法</th></tr></thead><tbody>
-        ${RENAL.points.map((p, i) => `<tr><td>${esc(p.date)}</td><td class="num">${p.egfr}</td><td class="num">${p.creatinine}</td><td>${esc(p.method)}</td></tr>`).join('')}
+      <p class="src">四件事各答一半的问题，所以医生通常不会只靠一件。这也是为什么复查页把它们排在一起。</p>`)}`);
+
+  const renalBody = () => {
+    const pts = RENAL.points;
+    const last = pts[pts.length - 1];
+    const prev = pts.length > 1 ? pts[pts.length - 2] : null;
+    const delta = prev ? last.egfr - prev.egfr : null;
+    return card('肾功能与顺铂门槛', `
+      ${statStrip([
+        ['最近 eGFR', `${last.egfr} ml/min/1.73m²`, `${esc(last.date)} · ${esc(last.method)}`],
+        ['与上次比', delta == null ? '—' : `${delta > 0 ? '↑' : '↓'} ${Math.abs(delta)}`,
+         prev ? `上次 ${prev.egfr}（${esc(prev.date)}）` : ''],
+        ['顺铂门槛', 'CrCl＜60 或 eGFR ≤60', '见下方出处'],
+        ['分肾核素肾图', RENAL.split ? `左 ${RENAL.split.left}% / 右 ${RENAL.split.right}%` : '未记录',
+         RENAL.split ? `${esc(RENAL.split.on)} · ${esc(RENAL.split.method)}` : ''],
+      ])}
+      <h3 style="margin-top:16px">肾功能趋势</h3>
+      <table class="tbl"><thead><tr><th>日期</th><th class="num">eGFR</th><th class="num">肌酐</th><th>方法</th><th>与门槛的位置</th></tr></thead><tbody>
+        ${pts.map((p) => `<tr><td>${esc(p.date)}</td><td class="num">${p.egfr}</td><td class="num">${p.creatinine}</td>
+          <td>${esc(p.method)}</td>
+          <td>${p.egfr > 60 ? `高于门槛 ${(p.egfr - 60).toFixed(0)}` : `低于门槛 ${(60 - p.egfr).toFixed(0)}`}</td></tr>`).join('')}
       </tbody></table>
       <div class="notice notice-warn" style="margin-top:12px">
         门槛：<b>${esc(RENAL.threshold.text)}</b> ${src(RENAL.threshold.source)}
-        <div style="margin-top:6px" class="src">这里只显示门槛与出处，<b>不判断你应该用或不应该用哪个方案</b>。</div>
-      </div>`),
-  }[tab] || (() => '');
-  return H('治疗历程', '治疗线是容器；肾功能是决定治疗分叉的硬门槛。') + tabsHTML('treatment') + body();
+        <div style="margin-top:6px" class="src">这里只显示门槛与出处，<b>不判断你应该用或不应该用哪个方案</b>。
+        这条线划在哪里、要不要换药，是医生结合全部情况定的。</div>
+      </div>
+      ${collapsible('为什么膀胱癌要一直盯着肾功能', `
+        <p>三件事都跟肾有关：</p>
+        <ul>
+          <li><b>有些药要靠肾排出去</b>——肾功能不够就上不了，比如顺铂。</li>
+          <li><b>尿路可能被堵住</b>——肿瘤压到或治疗后狭窄，尿排不出去会反过来伤肾。</li>
+          <li><b>改道之后肾更辛苦</b>——尿的出路变了，长期要盯着电解质和肾功能。</li>
+        </ul>
+        <p class="src">所以肾功能不是「顺便查一下」，它是决定后面能走哪条路的硬门槛。</p>`)}
+      ${collapsible('分肾核素肾图是干什么的', `
+        <p>普通的血肌酐和 eGFR 只能告诉你<b>两个肾加起来</b>的总体水平，看不出是哪一侧在拖后腿。</p>
+        <p>核素肾图分别测左右两肾各自的功能占比。一侧明显偏低时，
+        「要不要放支架、能不能做某些治疗」的判断依据就完全不同。</p>
+        <p class="src">本演示档案：${RENAL.split ? `左 ${RENAL.split.left}% / 右 ${RENAL.split.right}%（${esc(RENAL.split.on)} · 演示值）` : '未记录'}。</p>`)}
+      <h3 style="margin-top:16px">可以问医生的问题</h3>
+      ${qlist([
+        '现在的肾功能，还能不能用顺铂？',
+        '如果不能用顺铂，替代方案对效果影响有多大？',
+        '肾功能往下走，是治疗引起的还是别的原因？',
+        '要不要做一次分肾核素肾图？',
+      ])}`);
+  };
+
+  const body = { '治疗线': linesBody, '用药与周期': drugsBody, '疗效评估': evalBody, '肾功能门槛': renalBody }[tab] || (() => '');
+  return H('治疗历程', '治疗线是容器不是属性；换线不覆盖旧数据；评估结论照抄不换算。')
+    + tabsHTML('treatment') + body();
 }
 
 /* ================= 8. 复查与膀胱镜 ================= */
@@ -1266,105 +1609,229 @@ function pageUrgent() {
 
 /* ================= 12. 生活与照护 ================= */
 function pageLife(tab) {
-  let body;
-  if (tab === '性功能与亲密') {
-    body = card('性功能与亲密（默认私密）', `
-      <div class="private-zone">
-        <p><b>这一页默认私密。</b>不勾选就不会进入导出，也不会进入 AI 草稿。</p>
-        <div class="btn-row" style="margin-top:12px">
-          <button class="btn" data-act="toggleShare">本次已勾选带入 ▢</button>
-        </div>
-        <p class="src" style="margin-top:10px">
-          可记录：勃起功能变化、射精变化、阴道前壁切除后的不适、卵巢切除后更年期症状。
-          只记事实与要问的问题，<b>不给处置建议</b>。<span class="verify-tag">来源待补</span>
-        </p>
-      </div>`);
-  } else if (tab === '照护者交接') {
-    body = card('照护者交接', `
-      <div class="notice notice-ok">
-        <b>换一个人来照顾，不问患者也能接手：</b>
-        <ul style="margin:8px 0 0;padding-left:20px">
-          <li>当前灌注：BCG 诱导第 4 次（2026-10-23 因肉眼血尿取消）</li>
-          <li>下次灌注：2026-10-30</li>
-          <li>下次膀胱镜：2026-12-16</li>
-          <li>在用耗材：底盘 · 演示A · 45 mm（约 3 天换一次）</li>
-        </ul>
-      </div>
-      <h3 style="margin-top:16px">记录人与被记录人分开</h3>
-      <table class="tbl" style="margin-top:8px"><thead><tr><th>记录</th><th>谁记的</th><th>记的是谁</th></tr></thead><tbody>
-        <tr><td>灌注取消（肉眼血尿）</td><td>配偶</td><td>患者本人</td></tr>
-        <tr><td>疼痛自评 2 分</td><td>患者本人</td><td>患者本人</td></tr>
-      </tbody></table>
-      <p class="src" style="margin-top:10px">患者端可以只读 + 打勾 + 看急症页。</p>`);
-  } else {
-    const table = {
-      '饮水与饮食': [['少量多次饮水', '自述'], ['避免一次大量饮水', '待核验']],
-      '造口与社交': [['游泳、洗澡是否可行', '待核验'], ['穿衣选择', '自述']],
-      '工作与出行': [['出差带足耗材', '自述'], ['安检说明', '待核验']],
-    }[tab] || [];
-    body = card(`${tab}`, table.length ? `
-      <table class="tbl"><thead><tr><th>条目</th><th>来源</th></tr></thead><tbody>
-        ${table.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${b === '待核验' ? '<span class="verify-tag">待核验</span>' : `<span class="src">${esc(b)}</span>`}</td></tr>`).join('')}
-      </tbody></table>
-      <p class="src" style="margin-top:10px">本页不提供具体摄入量或禁忌清单；缺出处的条目一律标「待核验」。</p>`
-      : '<div class="empty"><strong>还没有内容</strong></div>');
-  }
-  return H('生活与照护', '照护者是并列的记录主体；身体形象相关默认私密。') + tabsHTML('life') + body;
-}
+  const H2 = LIFE.handover;
 
-/* ================= 13. 复诊准备 ================= */
-function pageVisit(tab) {
-  const qs = APP.$qs = APP.$qs || [
-    '「未见肌层」是不是意味着分期不完整？',
-    '这次因血尿取消，要不要补做？',
-    'eGFR 降到 66，会不会影响后续方案？',
-  ];
-  let body;
-  if (tab === '问题清单') {
-    body = card('要问医生的问题', `
-      <div class="notice notice-info">只收问题，不给答案。可以拖动排序、删除。</div>
-      <ol style="margin-top:12px;font-size:var(--fs-md)">
-        ${qs.map((q, i) => `<li style="margin-bottom:6px">${esc(q)}
-          <button class="btn btn-sm" data-delq="${i}" aria-label="删除">删除</button></li>`).join('')}
-      </ol>
-      <div class="field" style="margin-top:12px">
-        <label for="newq">新增一个问题</label>
-        <input type="text" id="newq" placeholder="例如：这次复查要提前做什么准备？">
-      </div>
-      <div class="btn-row"><button class="btn btn-primary" data-addq>加入清单</button></div>`);
-  } else if (tab === '复诊摘要') {
-    body = card('复诊摘要（只抄记录）', `
-      <div class="notice notice-info">
-        摘要<b>只抄已经记录的内容</b>；没有记录的写「没有」，不补、不推测。
-        <b>摘要里不含本机资料目录路径与用户名。</b>
-      </div>
-      <div style="margin-top:14px">
-        ${DRAFT_SCOPES.visit.blocks.map((b) => `
-          <div class="ag-block" style="margin-bottom:10px">
-            <h4>${esc(b.label)}</h4><ul>${b.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
-          </div>`).join('')}
-        <div class="ag-block ag-gap"><h4>缺项（如实写「没有」）</h4>
-          <ul>${DRAFT_SCOPES.visit.gaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
-        <div class="ag-block ag-excl"><h4>本次未带入</h4>
-          <ul>${DRAFT_SCOPES.visit.excluded.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
-      </div>
+  const intakeBody = () => card('饮水与饮食', `
+    <div class="notice notice-info">这里只记两件事：<b>医生怎么交代的</b>、<b>你自己试出来的</b>。
+    不写「应该多吃什么」这类换任何病都成立的话。</div>
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>这一条</th><th>谁说的</th><th>具体内容</th><th>来源</th>
+    </tr></thead><tbody>
+      ${LIFE.intake.map((r) => `<tr>
+        <td>${esc(r.item)}</td>
+        <td>${r.who === '—' ? '<span class="src">—</span>' : esc(r.who)}</td>
+        <td>${esc(r.detail)}</td>
+        <td>${r.src === '来源待补' ? '<span class="chip chip-warn">来源待补</span>' : `<span class="src">${esc(r.src)}</span>`}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    <div class="notice notice-warn" style="margin-top:12px">
+      「灌注后当天喝多少水、憋多久」本机资料里是<b>图片</b>，没拿到原文，
+      所以这里<b>不填数字</b>。等你从医生那里问到，抄进「医生交代」这一栏。</div>
+    ${collapsible('为什么这一页不写「多喝水有益健康」', `
+      <p>因为对这条线的人来说，喝水的意义不是养生，而是<b>具体某一天的具体安排</b>：
+      检查后要靠尿把血块冲出去，灌注当天又要按医生的要求控制。</p>
+      <p>这两种情况下「多喝水」的含义完全相反。写一句笼统的好话，
+      既帮不上忙，还可能正好帮倒忙。</p>`)}`);
+
+  const socialBody = () => card('造口与社交', `
+    <div class="notice notice-info">先说一句事实：造口的黏膜<b>没有痛觉神经</b>，
+    所以碰它、擦它本身不疼。真正麻烦的是底盘松了、皮肤红了、气味控制不住。</div>
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>场景</th><th>现在的情况</th><th>下次想问 / 想解决</th>
+    </tr></thead><tbody>
+      ${LIFE.social.map((r) => `<tr>
+        <td>${esc(r.scene)}</td>
+        <td>${esc(r.now)}</td>
+        <td class="src">${esc(r.ask)}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    <p class="src" style="margin-top:10px">「现在的情况」来自本人记录 · 未核对。
+    这里只记事实和要问的问题，<b>不给处置建议</b>。</p>
+    ${collapsible('造口长什么样，为什么这样设计', `
+      <ul>
+        <li>通常位于<b>右下腹</b>，直径约 2–2.5 cm，高出皮肤约 2–3 cm。</li>
+        <li>表面是肠黏膜，<b>没有痛觉神经</b>——所以不疼，但也意味着扎到、磨到你不一定马上知道。</li>
+        <li>多数造口袋带<b>抗反流装置</b>，防止尿液回流泡到造口周围皮肤。</li>
+        <li>提重物要当心，长期腹压高可能造成<b>造口疝</b>。</li>
+      </ul>
+      <p class="src">来源：CACA 膀胱癌问答（患者教育材料）。这是科普口径，具体以你的造口治疗师意见为准。</p>`)}`);
+
+  const sexBody = () => card('性功能与亲密（默认私密）', `
+    <div class="private-zone">
+      <p><b>这一页默认私密。</b>不勾选就不会进入导出，也不会进入 AI 草稿。</p>
       <div class="btn-row" style="margin-top:12px">
-        <button class="btn btn-primary" data-act="copyDraft">复制摘要</button>
-        <button class="btn" data-act="settings">导出为文件 ▸ 设置里选格式</button>
-      </div>`);
-  } else {
-    body = card('就诊准备', `
-      <table class="tbl"><thead><tr><th>带什么</th><th>状态</th></tr></thead><tbody>
-        <tr><td>问题清单（${qs.length} 条）</td><td><span class="chip chip-ok">已就绪</span></td></tr>
-        <tr><td>最近化验单</td><td><span class="chip chip-warn">2 张待核对</span></td></tr>
-        <tr><td>用药与灌注记录</td><td><span class="chip chip-ok">已就绪</span></td></tr>
-        <tr><td>造口耗材清单（如已改道）</td><td><span class="chip chip-neutral">不适用</span></td></tr>
-      </tbody></table>`);
-  }
-  return H('复诊准备', '摘要只抄记录；私密项默认不带入。') + tabsHTML('visit') + body;
+        <button class="btn" data-act="toggleShare">本次已勾选带入 ▢</button>
+      </div>
+      <h3 style="margin-top:16px">可以记什么</h3>
+      <table class="tbl"><thead><tr><th>项目</th><th>为什么单独放这里</th></tr></thead><tbody>
+        <tr><td>勃起功能变化</td><td>根治性切除后可能出现，与手术范围有关</td></tr>
+        <tr><td>射精变化</td><td>同上</td></tr>
+        <tr><td>阴道前壁切除后的不适</td><td>女性根治术可能涉及</td></tr>
+        <tr><td>卵巢切除后更年期症状</td><td>女性根治术可能涉及</td></tr>
+        <tr><td>亲密关系里的顾虑</td><td>患者与伴侣各自的感受可以分开记</td></tr>
+      </tbody></table>
+      <h3 style="margin-top:16px">可以问医生的问题</h3>
+      ${qlist([
+        '这次手术对我性功能的影响有多大？',
+        '有没有办法在手术时尽量保留？',
+        '出现变化之后，多久算「稳定下来」？',
+        '如果我想恢复，可以找谁看？',
+      ])}
+      <p class="src" style="margin-top:10px">
+        只记事实与要问的问题，<b>不给处置建议</b>。<span class="verify-tag">来源待补</span>
+        这一页的字段来源在本机资料里没有查到原文，字段集先按泌尿族通用需要搭，
+        与前列腺癌工作台<b>共享待回填</b>。</p>
+    </div>`);
+
+  const workBody = () => card('工作与出行', `
+    <table class="tbl"><thead><tr>
+      <th>场景</th><th>现在的情况</th><th>下次想问 / 想解决</th>
+    </tr></thead><tbody>
+      ${LIFE.work.map((r) => `<tr>
+        <td>${esc(r.scene)}</td><td>${esc(r.now)}</td><td class="src">${esc(r.ask)}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    ${collapsible('出门这天，耗材怎么带', `
+      <table class="tbl"><thead><tr><th>带什么</th><th>带多少</th><th>为什么</th></tr></thead><tbody>
+        <tr><td>整套更换耗材</td><td>至少 1 套</td><td>底盘意外松脱时能当场换</td></tr>
+        <tr><td>造口袋</td><td>按在外时长算</td><td>—</td></tr>
+        <tr><td>擦手纸 / 小镜子</td><td>1 份</td><td>在外面换的时候用得上</td></tr>
+        <tr><td>备用药与联系卡</td><td>1 份</td><td>急症时让别人能替你说话</td></tr>
+      </tbody></table>
+      <p class="src">本机资料里没有查到「耗材携带」的权威原文，
+      以上是按日常照护需要列的结构，具体以你的造口治疗师建议为准。</p>`)}`);
+
+  const handoverBody = () => card('照护者交接', `
+    <div class="notice notice-ok">
+      <b>换一个人来照顾，不问患者也能接手。</b>
+      下面这些是接手当天就要知道的，不用等患者清醒或有力气再问。
+    </div>
+    ${statStrip([
+      ['当前阶段', H2.stage, '一眼看清走到哪了'],
+      ['下次灌注', H2.nextInstillation, '本人安排 · 未预约'],
+      ['下次膀胱镜', H2.nextCystoscopy, '医院安排 · 时间以短信为准'],
+      ['耗材存量', H2.supply, '低于 2 片要提前补'],
+    ])}
+    <table class="tbl" style="margin-top:12px"><thead><tr><th>接手要知道的</th><th>内容</th></tr></thead><tbody>
+      <tr><td>最近一次变动</td><td>${esc(H2.cancelled)}</td></tr>
+      <tr><td>急症入口</td><td>${esc(H2.urgent)}</td></tr>
+      <tr><td>本页记录人</td><td>${esc(H2.recordBy)}</td></tr>
+      <tr><td>记录的是谁</td><td>${esc(H2.subject)}</td></tr>
+    </tbody></table>
+    <p class="src" style="margin-top:10px">「记录人」和「当事人」是<b>两个不同的字段</b>。
+    照护者代记的内容，回看时能一眼区分出「这是谁记的」。</p>
+    ${collapsible('为什么照护者不是「次要用户」', `
+      <p>因为真正每天在录入的人常常是家属，不是患者本人。如果按「患者自己记」来设计：</p>
+      <ul>
+        <li>一次只能记一天 → 家属要连着补好几天，很累，最后就不记了。</li>
+        <li>没有「代记」标识 → 回看时分不清哪些是患者说的、哪些是家属估的。</li>
+        <li>患者端和照护者端看到一样的东西 → 患者想少看，家属想多看，谁都别扭。</li>
+      </ul>
+      <p>所以这一页的设计目标是：<b>换人不问患者，也能说出「排到第几周、下次哪天」</b>。</p>`)}`);
+
+  const body = {
+    '饮水与饮食': intakeBody,
+    '造口与社交': socialBody,
+    '性功能与亲密': sexBody,
+    '工作与出行': workBody,
+    '照护者交接': handoverBody,
+  }[tab] || (() => '<div class="empty"><strong>该页签还没有内容</strong></div>');
+  return H('生活与照护', '只记医生交代的和你自己试出来的；照护者是主要录入者。')
+    + tabsHTML('life') + body();
 }
 
-/* ================= 14. 临床试验 ================= */
+function pageVisit(tab) {
+  const asked = QUESTIONS.filter((q) => q.asked === '已问').length;
+
+  const qBody = () => card('要问医生的问题', `
+    <div class="notice notice-info">问题问完要<b>当场把答案记下来</b>，
+    否则下次门诊还会问同一句。没问到的不删，留着下次接着问。</div>
+    ${statStrip([
+      ['问题总数', `${QUESTIONS.length} 条`, '按场景分组'],
+      ['已问', `${asked} 条`, '已记下医生的回答'],
+      ['还没问', `${QUESTIONS.length - asked} 条`, '下次门诊带上'],
+      ['分组', `${new Set(QUESTIONS.map((q) => q.group)).size} 组`, '病理 / 灌注 / 复查 / 肾功能 / 急症'],
+    ])}
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>场景</th><th>问题</th><th>问了没有</th><th>医生怎么答（原文）</th>
+    </tr></thead><tbody>
+      ${QUESTIONS.map((q) => `<tr>
+        <td class="src">${esc(q.group)}</td>
+        <td>${esc(q.q)}</td>
+        <td>${q.asked === '已问' ? `<span class="chip chip-ok">${esc(q.asked)}</span>` : `<span class="chip chip-warn">${esc(q.asked)}</span>`}</td>
+        <td>${q.answer ? esc(q.answer) : '<span class="src">—</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table>
+    <div class="btn-row" style="margin-top:14px">
+      <button type="button" class="btn btn-primary">+ 加一个问题</button>
+      <button type="button" class="btn" data-goto="visit" data-tab="复诊摘要">生成复诊摘要</button>
+    </div>
+    ${collapsible('问题该怎么问，医生才答得上', `
+      <table class="tbl"><thead><tr><th>这样问</th><th>比这样问好</th></tr></thead><tbody>
+        <tr><td>「报告上写『未见肌层』，是这次没取到，还是确实没有？」</td><td>「我这个严重吗？」</td></tr>
+        <tr><td>「下次膀胱镜为什么排在 12 月？」</td><td>「我什么时候能好？」</td></tr>
+        <tr><td>「这次取消灌注，下次要不要补？」</td><td>「漏一次要紧吗？」</td></tr>
+      </tbody></table>
+      <p class="src">左边这类问法带<b>具体的时间、数字或报告原话</b>，
+      医生能直接对着答；右边那种只能得到一句安慰。</p>`)}`);
+
+  const sumBody = () => card('复诊摘要', `
+    <div class="notice notice-info">摘要<b>只抄记录</b>。记录里没有的，写「没有」，
+    不补、不推测、不替你下结论。</div>
+    ${statStrip([
+      ['本次目的', '复查 + 讨论二次电切', '自己填，一句话'],
+      ['最近变化', '灌注第 3 次后取消（血尿）', '取自灌注记录'],
+      ['要问的问题', `${QUESTIONS.length} 条`, `${asked} 条已问`],
+      ['私密项', '未带入', '默认 fail-closed'],
+    ])}
+    <h3 style="margin-top:16px">摘要由这五块拼成</h3>
+    <table class="tbl"><thead><tr><th>块</th><th>内容来源</th><th>缺的时候怎么写</th></tr></thead><tbody>
+      <tr><td>① 就诊目的</td><td>你自己填的一句话</td><td>没填就写「未填写」</td></tr>
+      <tr><td>② 最近变化</td><td>灌注 / 复查 / 指标记录</td><td>没有就写「没有」</td></tr>
+      <tr><td>③ 用药与灌注进度</td><td>治疗线与灌注记录</td><td>没有就写「没有」</td></tr>
+      <tr><td>④ 待办与下次安排</td><td>待办清单</td><td>没有就写「没有」</td></tr>
+      <tr><td>⑤ 要问的问题</td><td>问题清单</td><td>没有就写「没有」</td></tr>
+    </tbody></table>
+    <h3 style="margin-top:16px">预览</h3>
+    <div class="preview-doc">
+      <p><b>就诊目的</b>：复查，并问清楚「未见肌层」要不要做二次电切。</p>
+      <p><b>最近变化</b>：2026-10-23 灌注因肉眼血尿取消（属禁忌保护）。eGFR 66 ml/min/1.73m²。</p>
+      <p><b>用药与灌注</b>：BCG 120 mg，诱导期已完成 3 / 6 次，下次 2026-10-30。</p>
+      <p><b>下次安排</b>：2026-11-06 血常规 + 肝肾功能；2026-12-16 膀胱镜 + 尿细胞学。</p>
+      <p><b>要问的问题</b>：见问题清单（${QUESTIONS.length} 条）。</p>
+      <p class="src">私密项：本次未带入。<br>
+      「已确认」只表示转录核对，不等于医学审核。</p>
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      <button type="button" class="btn btn-primary" data-export>导出摘要（原型占位）</button>
+      <button type="button" class="btn" data-copy>复制文本</button>
+      <button type="button" class="btn">带入 AI 对话</button>
+    </div>
+    <p class="src" style="margin-top:8px">
+      导出会得到格式真实的文件。带入 AI 对话只会把摘要放进草稿框，
+      <b>不会自动发送</b>；草稿里不含本机资料目录路径。</p>`);
+
+  const prepBody = () => card('就诊准备', `
+    <h3>去之前要带什么</h3>
+    <ul class="qlist">
+      ${LIFE.visitPrep.bring.map((x) => `<li>${esc(x)}</li>`).join('')}
+    </ul>
+    <h3 style="margin-top:16px">到了之后大概是这样</h3>
+    <table class="tbl"><thead><tr><th>环节</th><th>要做的事</th></tr></thead><tbody>
+      ${LIFE.visitPrep.flow.map(([step, what]) => `<tr><td>${esc(step)}</td><td>${esc(what)}</td></tr>`).join('')}
+    </tbody></table>
+    ${collapsible('为什么要把「医生的回答」当场记下来', `
+      <p>门诊时间通常很短，出来以后记得的往往只剩一个情绪感受，而不是具体结论。
+      下次再想问同一件事时，还得重新挂号。</p>
+      <p>当场照抄原文还有第二个用处：如果几个月的说法不一致，
+      你能看到是<b>情况变了</b>，还是当时<b>听岔了</b>。</p>`)}
+    <p class="src" style="margin-top:12px">这一页不判断病情，也不给处置建议，只帮你把话带到、把答案带回来。</p>`);
+
+  const body = { '问题清单': qBody, '复诊摘要': sumBody, '就诊准备': prepBody }[tab] || (() => '');
+  return H('复诊准备', '把话带到，把答案带回来。摘要只抄记录，缺项写「没有」。')
+    + tabsHTML('visit') + body();
+}
+
 function pageTrials(tab) {
   let body;
   if (tab === '线索') {
