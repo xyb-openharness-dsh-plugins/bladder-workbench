@@ -690,9 +690,20 @@ function pageStaging(tab) {
           <tr><td>有没有取到肌层</td><td>${muscleCell}</td><td class="src">这一项决定分期完不完整</td></tr>
           <tr><td>伴随原位癌（CIS）</td><td>${p.concurrentCis === '未提及' ? '<span class="src">报告未提及</span>' : esc(p.concurrentCis)}</td><td class="src">未提及 ≠ 没有</td></tr>
           <tr><td>淋巴血管侵犯</td><td>${p.lvi === '未提及' ? '<span class="src">报告未提及</span>' : esc(p.lvi)}</td><td class="src">未提及 ≠ 没有</td></tr>
+          <tr><td>组织学变异型</td><td>${p.variantRaw ? esc(p.variantRaw) : '<span class="src">报告未提及</span>'}</td><td class="src">${p.variantRaw ? '这几个字要单独拿去问医生' : '未提及 ≠ 没有；也<b>不要自己写成「无」</b>'}</td></tr>
           <tr><td>核对状态</td><td><span class="chip chip-warn">${esc(p.reviewState)}</span></td><td class="src">「已核对」只表示抄录无误，不是医学审核</td></tr>
         </tbody></table>
-        <p class="src" style="margin-top:10px">报告原文里没有的项，这里一律写「未提及」，<b>不写成「无」</b>。</p>`),
+        <p class="src" style="margin-top:10px">报告原文里没有的项，这里一律写「未提及」，<b>不写成「无」</b>。</p>`)
+      + card('报告里出现「微乳头」这类词时', `
+        <p>尿路上皮癌除了最常见的类型，还有几种写法叫<b>组织学变异型</b>——比如微乳头、腺样、鳞状、巢状分化。
+        病理报告里可能写成「伴微乳头分化」这样的形式。</p>
+        <p style="margin-top:8px">这几个字值得单独拎出来问医生，原因是权威共识把它列进了<b>极高危的构成</b>：
+        2024 版保膀胱共识原文写「<b>BCG 无应答、血管淋巴管侵犯、变异组织类型、前列腺尿道侵犯患者，应首选根治性膀胱切除术</b>」。
+        也就是说它和另外三项一起，属于「要专门讨论是否做根治手术」的那一档。</p>
+        <blockquote class="raw-quote">2024 版保膀胱共识：BCG 无应答、血管淋巴管侵犯、变异组织类型、前列腺尿道侵犯患者，应首选根治性膀胱切除术。</blockquote>
+        <p class="src" style="margin-top:10px">本工作台只做两件事：<b>把报告原文照录下来</b>，<b>提醒你它需要单独问医生</b>。
+        这里不说它严不严重、也不替你判断要不要手术——那是医生要跟你谈的事。</p>
+        <div class="btn-row" style="margin-top:12px"><button class="btn" data-act="toVisit">把它加进要问的问题</button></div>`),
     '分期断言': () => card('分期（多条并列，不覆盖）', `
       <table class="tbl"><thead><tr><th>类型</th><th>原文</th><th>日期</th><th>状态</th></tr></thead><tbody>
         <tr><td>病理分期</td><td>浸润固有层（T1）</td><td>2026-09-18</td><td><span class="chip chip-ok">现行</span></td></tr>
@@ -951,6 +962,40 @@ function pageInstillation(tab) {
         </div>
         <p class="src" style="margin-top:10px">原型阶段只给联系路径，不判断你的具体情况，也不给处置建议。
           分级表原文补齐后，这里会显示「对照哪一版共识 · 第几级」。</p>`),
+    '应答与极高危': () => card('BCG 应答状态', `
+      <div class="notice notice-info">
+        「无应答」这四个字<b>是医生给出的判断</b>，不是你哪里没做好，也不是一句治疗评价。
+        因此在工作台里，它<b>必须有医生原话才能存成这个状态</b>；没有原话时，这里只能停在「未判定」。
+      </div>
+      <dl class="kv" style="margin-top:12px">
+        <dt>当前状态</dt><dd><span class="chip chip-warn">${esc(BCG_RESPONSE.status)}</span>
+          <span class="src">未判定 ≠ 有应答，也 ≠ 无应答</span></dd>
+        <dt>判定日期</dt><dd>${BCG_RESPONSE.judgedOn ? esc(BCG_RESPONSE.judgedOn) : '<span class="src">还没有记录</span>'}</dd>
+        <dt>医生原话</dt><dd>${BCG_RESPONSE.doctorQuote ? esc(BCG_RESPONSE.doctorQuote) : '<span class="src">还没有记录</span>'}</dd>
+        <dt>历史判定</dt><dd>${BCG_RESPONSE.history.length ? BCG_RESPONSE.history.map((h) => `<span class="chip">${esc(h)}</span>`).join(' ') : '<span class="src">暂无（判定会逐次追加，旧判定标「已被替代」，不删除）</span>'}</dd>
+      </dl>
+      <p class="src" style="margin-top:10px">这里<b>没有「设为无应答」的按钮</b>：判定不是患者能自己勾的选项。
+        录入时只做一件事——把医生说的话照录下来，然后由医生确认这个状态。</p>`)
+      + card('为什么要把这件事单独记一栏', `
+        <p>因为「BCG 无应答」在权威共识里不是一句感慨，它<b>属于极高危的构成之一</b>，
+        会直接影响后面怎么跟你谈（详见下一张卡）。</p>
+        <p style="margin-top:8px">把它单独记下来，下一次复诊时你能说清三件事：
+        什么时候医生说的、原话是什么、当时的复查结果是什么。这三件事实说清楚了，讨论才不用从头再问一遍。</p>
+        <p class="src" style="margin-top:10px">工作台不判断「我还有多少保膀胱空间」——
+        这要医生结合你的复查结果与病理来谈。</p>`)
+      + card('极高危的构成（共识原文四项）', `
+        <p>2024 版保膀胱共识在正文里直白列出了一组情形。原文照录：</p>
+        <blockquote class="raw-quote">BCG 无应答、血管淋巴管侵犯、变异组织类型、前列腺尿道侵犯患者，应首选根治性膀胱切除术。</blockquote>
+        <table class="tbl" style="margin-top:12px"><thead><tr><th>构成项</th><th>报告 / 医生有没有说过</th><th>一般在哪找</th></tr></thead><tbody>
+          ${HIGH_RISK_MARKERS.map((m) => `<tr><td>${esc(m.key)}</td><td><span class="src">还没有记录</span></td><td class="src">${esc(m.note)}</td></tr>`).join('')}
+        </tbody></table>
+        <p class="src" style="margin-top:10px">
+          ${src('2024 膀胱癌保膀胱治疗多学科诊治协作专家共识')}。这四项<b>一个都没有少</b>。
+        </p>
+        <div class="notice notice-warn" style="margin-top:12px">
+          上表里的「还没有记录」<b>不等于「没有命中」</b>。没查过、和查过没有，是两件不同的事。
+          工作台不会替你判断你命中了几项——那是医生看完报告要下的结论。
+        </div>`),
   }[tab] || (() => '');
   return H('膀胱灌注', '两段结构（即刻 → 诱导 → 维持）；取消＝禁忌保护；漏做不给建议。')
     + tabsHTML('instillation') + body();
@@ -2293,6 +2338,14 @@ function bindPage() {
       saveState(); renderNav(); renderPage(); toast('已回到分野选择，可以重新选');
     }
     else if (a === 'batchAdd') toast('已加入本批（原型不写入）');
+    else if (a === 'toVisit') {
+      /* 把「这个词要问医生」变成一条待问项：跳到复诊准备的问题清单。
+         注意 hash 只带路由，不带页签 —— 页签走 STATE.tab。 */
+      STATE.route = 'visit'; STATE.tab = '问题清单';
+      location.hash = '#/visit';
+      saveState(); renderNav(); renderPage();
+      toast('已跳到「复诊准备 › 问题清单」，可以把它写成一条要问的问题');
+    }
     else if (a === 'setDiversion') toast('术式是不可逆事实：改动会留痕，不覆盖旧值');
     else if (a === 'copyDraft') copyDraft();
     else if (a === 'toggleShare') {

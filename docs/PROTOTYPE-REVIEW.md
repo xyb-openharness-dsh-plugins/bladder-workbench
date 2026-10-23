@@ -17,11 +17,11 @@
 | `index.html` | `cbcd779f4ae644bc815f8b15393988cf9f5495374d7bfc2eac187e63207ec095` |
 | `tokens.css` | `8b36dfac64f14e418ad9f6f84bd34bc0cd4fec8e6eb92ee273be1759a8b87d8d` |
 | `shell.css` | `8f7046919ae5f2950db979355f56502cfac4dae31308f49349e1636474e6a266` |
-| `data.js` | `885bbba26e1f54a80c33fc72df386ea88c5c93ba8abad7cb5c9781cfd69fcd04` |
+| `data.js` | `2307488c87747a15ec2bee5162fa3d519261c641e9402650d070b3092d2e3cad` |
 | `charts.js` | `d0af60e59a8ed0f3475497b980dd2f435826c7ea629125725e18c1892cee2982` |
-| `app.js` | `e54c16df13ba712c6a187b53ae18326ca2605b66d422a3c8287ba4d3babb4d50` |
+| `app.js` | `9635def9ee41b5fd49864a2c15342ec058059b2fe8d0048c816beab639b9d8b9` |
 
-六件顺序拼接总哈希：`bf0ed94f3284aaeb970b986f2ec9b8574327dc1941eabe480be52467275cf2e3`
+六件顺序拼接总哈希：`3dff302d1c7c3304289a4244f42951d5c97efb641a1baad1a9f669b30885e18f`
 
 **当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S16）、`docs/SCHEMA.md`（**草案，未冻结**）
 
@@ -37,7 +37,7 @@
 
 ## 二、自检结果（自动，非「用户确认」）
 
-`node scripts/verify-prototype.mjs` → **断言 150 条，通过 150，失败 0**
+`node scripts/verify-prototype.mjs` → **断言 155 条，通过 155，失败 0**
 
 覆盖到的关键项：
 - 15 个一级页 + 二级页签**逐页打开无异常**；浏览器控制台**零 error**
@@ -78,7 +78,7 @@
 
 | 模块/功能ID | 对应 HTML/行为 | 实际走查证据 | 用户明确确认依据/人/日期 | 未确认项 | 允许实施的范围 |
 |---|---|---|---|---|---|
-| — | — | 自检 150/150（机器） | **无** | 全部 | **无（G2 未签，不得开发对应业务）** |
+| — | — | 自检 155/155（机器） | **无** | 全部 | **无（G2 未签，不得开发对应业务）** |
 
 ## 五、P1 发布可见性
 

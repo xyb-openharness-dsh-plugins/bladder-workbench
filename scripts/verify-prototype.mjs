@@ -816,6 +816,32 @@ async function main() {
   assert('「未见肌层」标为分期可能不完整', /分期可能不完整|分期不完整/.test(stg));
   await shot('21-分型与分期-MIBC');
 
+  /* --- S18 组织学变异型：报告没提就不写「无」 --- */
+  await page.click('.tab:has-text("病理与分级")');
+  await page.waitForTimeout(200);
+  const pathText = await page.innerText('#wbPage');
+  assert('S18 病理页有「组织学变异型」一行，报告未提时不写成「无」',
+    /组织学变异型/.test(pathText) && /报告未提及/.test(pathText),
+    pathText.replace(/\s+/g, ' ').slice(0, 46));
+  assert('S18 变异型提示「单独问医生」，且不解释预后',
+    /单独(拿去)?问医生/.test(pathText) && /微乳头/.test(pathText) && !/预后/.test(pathText));
+  await shot('22-病理-组织学变异型');
+
+  /* --- S17 BCG 应答与极高危构成 --- */
+  await nav('膀胱灌注');
+  await page.click('.tab:has-text("应答与极高危")');
+  await page.waitForTimeout(200);
+  const rspText = await page.innerText('#wbPage');
+  assert('S17 无医生原话时只能停在「未判定」，且不提供自设按钮',
+    /未判定/.test(rspText) && /医生原话/.test(rspText) && /设为无应答/.test(rspText)
+    && /没有「设为无应答」的按钮/.test(rspText),
+    rspText.replace(/\s+/g, ' ').slice(0, 46));
+  assert('S17 极高危四项一个都不少（E1 原文）',
+    ['BCG 无应答', '血管淋巴管侵犯', '变异组织类型', '前列腺尿道侵犯'].every((k) => rspText.includes(k)));
+  assert('S17 「还没有记录」不得被读成「没有命中」',
+    /不等于「没有命中」/.test(rspText));
+  await shot('23-灌注-应答与极高危');
+
   /* --- console 错误 --- */
   console.log('\n【运行时错误】');
   assert('浏览器控制台零 error', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | ') || '零 error');
