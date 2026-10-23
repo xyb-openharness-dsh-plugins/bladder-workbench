@@ -1592,6 +1592,7 @@ function metricCardHTML(m, i) {
   const dir = delta == null ? '' : delta > 0 ? 'up' : delta < 0 ? 'down' : '';
   return `
   <div class="metric-card" data-flipped="false" data-metric="${esc(m.code)}" role="group" tabindex="0"
+       aria-pressed="false"
        aria-label="${esc(m.name)} 最近值 ${CHART.fmt(last.v)} ${esc(m.unit)}，按回车翻转查看趋势">
     <div class="metric-inner">
       <div class="metric-face metric-front">
@@ -2243,6 +2244,9 @@ function bindPage() {
     const flip = () => {
       const on = c.dataset.flipped !== 'true';
       c.dataset.flipped = String(on);
+      /* 视觉上翻了，读屏也要知道翻了 —— 只改 aria-hidden 不够，
+         卡片自身的状态要用 aria-pressed 说出来。 */
+      c.setAttribute('aria-pressed', String(on));
       const back = $('.metric-back', c), front = $('.metric-front', c);
       back.setAttribute('aria-hidden', String(!on));
       front.setAttribute('aria-hidden', String(on));

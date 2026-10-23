@@ -29,11 +29,11 @@ cd /Users/qinxiaoqiang/Downloads/bladder-workbench/prototypes/v0.1 && python3 -m
 | `shell.css` | 布局与组件：顶栏、导航、卡片、表格、弹窗、Agent 面板、窄屏覆盖 | `8f7046919ae5f295` |
 | `data.js` | 演示数据（**全部为演示用假数据，不含任何真实病历**）+ 指标目录 + 2026 试验真实样本 | `885bbba26e1f54a8` |
 | `charts.js` | 一图秀渲染（C1–C12）与折线动画；按容器**实测宽度 1:1** 渲染 | `d0af60e59a8ed0f3` |
-| `app.js` | 15 个一级页 + 二级页签、状态持久化、分级与提醒、草稿生成 | `34b745cf880467b7` |
+| `app.js` | 15 个一级页 + 二级页签、状态持久化、分级与提醒、草稿生成 | `e54c16df13ba712c` |
 
 **版本号**：`v0.1.0`（顶上角版本 chip 与页脚两处同源，均由 `app.js` 的 `APP_VERSION` 注入）。
 
-**截图**：`prototypes/v0.1/_shots/`（22 张，由自检脚本自动生成）。
+**截图**：`prototypes/v0.1/_shots/`（32 张，由自检脚本自动生成）。
 
 **自检**：
 
@@ -41,7 +41,7 @@ cd /Users/qinxiaoqiang/Downloads/bladder-workbench/prototypes/v0.1 && python3 -m
 cd /Users/qinxiaoqiang/Downloads/bladder-workbench && node scripts/verify-prototype.mjs
 ```
 
-结果：**断言 116 条，通过 116，失败 0**（含真浏览器 Chromium 驱动、`390px` 横向不溢出、零控制台 error，以及图表真实几何对齐）。
+结果：**断言 150 条，通过 150，失败 0**（含真浏览器 Chromium 驱动、`390px` 横向不溢出、零控制台 error，以及图表真实几何对齐）。
 
 ## 三、2026 临床试验数据（`research/bladder-cancer/`）
 

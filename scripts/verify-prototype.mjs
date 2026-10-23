@@ -320,6 +320,22 @@ async function main() {
   const totalPts = await page.evaluate(() => METRICS.reduce((a, m) => a + m.points.length, 0));
   assert('演示数据够厚（指标记录 ≥ 45 条，跨 ≥ 12 个月）', totalPts >= 45,
     `${totalPts} 条`);
+  /* 视觉上翻转了，读屏也必须知道 —— 只改 aria-hidden 不够，卡片自身状态要能读出来。
+     这是 C1–C12 实测（scripts/verify-one-chart.mjs）暴露的缺口，锁在这里防回退。 */
+  {
+    const a0 = await page.getAttribute('.metric-card', 'aria-pressed');
+    await page.click('.metric-card');
+    await page.waitForTimeout(650);
+    const a1 = await page.getAttribute('.metric-card', 'aria-pressed');
+    const others = await page.$$eval('.metric-card', (els) =>
+      els.slice(1).map((e) => e.getAttribute('aria-pressed')));
+    assert('卡片用 aria-pressed 说出翻转状态，且只改自己一张',
+      a0 === 'false' && a1 === 'true' && others.every((v) => v === 'false'),
+      `翻转前=${a0} 翻转后=${a1} 其余=${others.join(',')}`);
+    await page.click('.metric-card');
+    await page.waitForTimeout(650);
+  }
+
   const before = await page.getAttribute('.metric-card', 'data-flipped');
   const persistStyle = await page.evaluate(() => {
     const inner = document.querySelector('.metric-inner');
