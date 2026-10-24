@@ -19,7 +19,7 @@
 | M3 | 数据模型 | `schema/0001_initial.sql` **44 表 · 8 索引**可执行；约束探针 **37/37**；`schema/freeze-contract.md` 落 sha256 `86e5a3e5…`；校验器能拒绝「篡改已冻结迁移」与「新增未登记迁移」（两者均实测退出码 1） | ✅ 2026-10-24 |
 | M4 | 临床库 | 2026 年 **295** 条（ClinicalTrials.gov 212 + ChiCTR 83）；`trials-2026.jsonl` / sqlite / manifest 三方计数一致；4 个视图；声明 sha256 与实算一致；PII **17 类**模式剥除 + `assertNoPii` fail-closed，54 字段终检 **0 命中**；manifest 十条 limitations 随数据呈现 | ✅ 2026-10-23 |
 | M5 | 开发版 | **判据（2026-10-24 用户「原型确认通过，继续M5开发」后写定）**：① 六步移植完成（`dsh/` 六件 + `lib/` 三件 + `public/` 四件 + `scripts/` 检查器 + `test/` 三层）；② `readmodels` 还原的行与 `prototypes/v0.1/data.js` **形状逐字符一致**（parity 是这一层唯一验收标准）；③ 真实 SQLite 落盘且**迁移幂等**（重跑不重复建表）；④ `demo.js` 播种**幂等**（有 subjects 整批跳过）、单事务、失败整体回滚；⑤ customFrame 右侧可拖面板：`businessSide=left`、`businessWidth=0.65` 与 `AGENT_PANE.def=0.35` **互补且只有一份来源**、splitter `role=separator`+键盘+localStorage 夹取、<760px 覆盖式抽屉；⑥ `NODE_OPTIONS= npm run check` 全绿；⑦ `npm start` 无头实测**出数字**（导航数 / 面板宽度开-宽-收 / `bodyScrollW` vs `innerWidth` / error 与 4xx 计数）并截图。**MinerU 与指南桥接不在 M5 判据内**（一期只留接口与设置页骨架） | ✅ 2026-10-24（证据见下） |
-| M6 | 装机 | `dsh-wb-cli pack` 产出 tgz 且无生命周期脚本；安装到目标 Desktop 活动 profile（`~/Library/Application Support/dsh-desktop/harness/profiles/web`）；三层验收（配置层 / 加载层 / 交互层）；`probe-install` 类探针全过 | ⬜ 未开始 |
+| M6 | 装机 | `dsh-wb-cli pack` 产出 tgz 且无生命周期脚本；安装到目标 Desktop 活动 profile（`~/Library/Application Support/dsh-desktop/harness/profiles/web`）；三层验收（配置层 / 加载层 / 交互层）；`probe-install` 类探针全过 | 🔵 已执行未验证（**45/46**，1 项未验证见下） |
 | M7 | 发布 | 仓库 push + tag；LICENSE / NOTICE 复核；**市场投稿需单独授权**，未授权即写「未提交」 | ⬜ 未开始 |
 | M8 | 状态回填 | 组织 `BACKLOG.md` 对应行（**膀胱癌 #35，T1 / NCCN 1.2025 / 波次 W3**）状态与版本同步；须 V1+V2+V3 三层都过 | ⬜ 未开始 |
 | M9 | 回流闭环 | 从 `LESSONS` / 变更记录抽出**可执行**的脚手架闸门（不是再写一篇文档）；新项目 `init` 后自动生效；有反向回归。本项目已有候选素材：见 [LESSONS.md](LESSONS.md) | ⬜ 未开始 |
@@ -66,7 +66,7 @@
 | ③ 真实落盘 + 迁移幂等 | `workspace/xyb-bladder.sqlite` 由 `npm start` 起真实服务落盘；**重启前后行数逐表相同** | 44 表 · `schema_migrations` version 1；subjects 3 / pathology_reports 4 / instillation_events 14 / stoma_logs 2 / trials 6 / observations 96 / metric_definitions 8 |
 | ④ 播种幂等 | 同上重启对比；`test/store.test.mjs` 9 条（迁移幂等 / 两次播种行数不变 / 单事务注入必败行后整体回滚 / 空库安全 / 原始值保真） | **9/9** |
 | ⑤ 面板（customFrame） | `node scripts/probe-headless.mjs` 实测 | 默认 **35** / 夹取 **25–45** / 拖到最左 **45** / 拖到最右 **25** / Home 25 / End 45 / ArrowLeft 25→27 / 收起后隐藏 / 分隔条 `display=block 5×1272px` 可聚焦 |
-| ⑥ `npm run check` | `check:version → :client → :public → :syntax → :schema → :wording → :package → test` | **exit 0**（21 test 全过） |
+| ⑥ `npm run check` | `check:version → :client → :public → :demo → :syntax → :schema → :wording → :package → test` | **exit 0**（21 test 全过） |
 | ⑦ 无头实测出数字 | `probe-headless` **25/25 全达标**（数字取自真实渲染，非目测） | 一级导航 **14** · 二级页签 **48** · 390px `scrollWidth === 390` · console error **0** · 4xx/5xx **0** · 网络失败 **0** |
 
 **顺带修掉两个真缺陷**（都是「不报错但静默失效」那类）：
@@ -80,6 +80,29 @@
 
 ---
 
+## M6 装机证据（2026-10-24）
+
+> 同样是三类分开写：**已完成有证据** / **已执行未验证** / **未做**。
+
+| 判据 | 证据 | 结果 |
+| --- | --- | --- |
+| 打包 | `node scripts/install-local.mjs`（内部走 `npm pack`） | tgz 无 `prepack`/`postinstall` 等生命周期脚本 |
+| 安装到活动 profile | 目标 `~/Library/Application Support/dsh-desktop/harness/profiles/web/node_modules/@xyb-community/bladder-workbench` | 版本 `0.1.0`，`isInstallCopy: true` |
+| 配置层 | profile `package.json` 的 `dsh.profile.bundles` 含本包（装机脚本自动补，不靠人记得第二步） | ✅ |
+| 加载层 | 装机副本内 `import { loadPrototypeData } from './dsh/demo.js'` | 返回 **27** 个键（NAV 14 一级页 / METRICS 7 / TRIALS 6） |
+| 交互层 | `node scripts/probe-install.mjs`（**在装机副本里跑**，非仓库根） | **46 项：45 通过 / 0 失败 / 1 未验证**，console error **0**，网络失败 **0**，390px `scrollWidth === 390`，AI 面板 35% 开-宽-收全达标 |
+| **未验证（不写通过）** | 授权闸（`UROPAL_AUTH`）拒绝路径 | **未设置 `UROPAL_AUTH`，本轮未验**。要验必须改宿主进程环境变量，而 AGENTS.md 明令不得在会话内重启宿主——留待用户完整退出重开 Desktop 后补验 |
+
+**装机才暴露的 P0（已修，详见 [LESSONS.md](LESSONS.md)）**：`dsh/demo.js` 原来在**运行期**用 `node:vm` 回读
+`prototypes/v0.1/data.js`，而该目录不在 `files` 白名单里 → 装机副本缺此目录 → `apply()` 抛 `ENOENT`
+→ **一条路由都不注册、界面开不出来**。仓库内所有检查都读得到那个路径，所以全绿也抓不到。
+修法：构建期生成零损副本 `demo/demo-data.js`（原文照搬 + 一行 export），运行期只 import 它，
+`npm run check:demo` 守漂移。修后在装机副本内直调 `loadPrototypeData()` 返回 27 个键，探针 46 项跑通。
+
+**未做（不冒充）**：M7 push/tag 与市场投稿（**均需单独授权**）。
+
+---
+
 ## 复现命令（判据都可自己跑一遍）
 
 ```bash
@@ -89,6 +112,9 @@ node scripts/verify-metric-trend.mjs   # 期望 15/15（另 2 条未实现）
 node scripts/check-schema.mjs          # 期望 冻结合同 1/1 + 探针 37/37
 node scripts/check-wording.mjs         # 期望 界面面 0 违规；文档面 0 违规
 node scripts/check-wording.mjs --self-test   # 期望 9/9（规则不空转）
+npm run check:demo                     # 期望 demo/demo-data.js 与原型 data.js 同步
+node scripts/install-local.mjs         # 期望装进活动 profile 并自动补 bundles
+node scripts/probe-install.mjs         # 期望 45 通过 / 0 失败 / 1 未验证（授权闸）
 dsh-wb-cli check .                     # 期望 staticPass: true
 git status --short                     # 期望 空
 ```

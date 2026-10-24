@@ -7,7 +7,8 @@
  * 让开发版从 SQLite 读出来的东西和原型渲染结果一致。
  *
  * 三条硬原则（照家族 glioblastoma-workbench/dsh/demo.js 的结构，数据形状换成本项目的）：
- *   1) 演示内容**只有一份来源**：prototypes/v0.1/data.js。用 node:vm 把它读出来复用，
+ *   1) 演示内容**只有一份来源**：prototypes/v0.1/data.js。构建期由
+ *      `demo/build-demo-data.mjs` 生成零损副本 `demo/demo-data.js`，本模块 import 它，
  *      不复制成第二份常量。同一份数据写两处必然漂移（docs/LESSONS.md 已踩过两次）。
  *   2) 一个档案一整套：DEMO-1（NMIBC 张先生）与 DEMO-2（MIBC 李先生）各自成行，
  *      不是「一份全局数据 + 一个 line 开关」。原型「切档案只影响看板、子页数据相同」
@@ -24,44 +25,42 @@
  *
  * 本文件不做：迁移（store.js 的事）、读模型（readmodels.js 的事）、任何 UPDATE/DELETE。
  */
-import { readFileSync } from 'node:fs';
-import { createContext, runInContext } from 'node:vm';
 import { createHash } from 'node:crypto';
 import { nowISO } from './store.js';
+import * as PROTOTYPE_DATA from '../demo/demo-data.js';
 
 /* ------------------------------------------------------------------ *
- * 一、唯一数据源：在 Node 里把原型那批全局 const 读出来
+ * 一、唯一数据源：`demo/demo-data.js`（原型的零损副本，构建期生成）
  * ------------------------------------------------------------------ */
 
-const DATA_URL = new URL('../prototypes/v0.1/data.js', import.meta.url);
-
 /**
- * data.js 是普通脚本，顶层是 `const`。vm 里顶层 const 进的是脚本的词法作用域，
- * 不会挂到 context 对象上（`sandbox.NAV` 是 undefined）。所以给源码尾部追加一句
- * 显式导出，再把整包取回来 —— 这样既不改原型文件，也不用正则去抠它的源码。
+ * 2026-10-24 装机探针抓到的 P0，改法记在这里（避免有人再改回去）：
+ *
+ * 原来这里是 `new URL('../prototypes/v0.1/data.js', import.meta.url)` + `node:vm` 读盘。
+ * 仓库里跑得好好的，**装机副本里必然崩**：`prototypes/` 不在 `package.json` 的
+ * `files` 白名单里（那是开发目录，不该随包分发），副本里没有这个目录，
+ * `apply()` 在播种时抛 ENOENT，结果是插件在 Desktop 里整个挂不上
+ * （apply 抛异常 → 一条路由都不注册 → 界面空白）。
+ *
+ * 现在改为 import `demo/demo-data.js`：它是构建期从原型 data.js **原文照搬 + 一行 export**
+ * 生成的（见 `demo/build-demo-data.mjs`），原文一个字节没改，所以求值结果与 vm 版一致；
+ * 而 `demo` 在 `files` 白名单里，装机副本必然带着它。
+ * 漂移由 `npm run check:demo` 兜住（生成结果与磁盘不一致即失败）。
+ *
+ * 数据仍然只有一份来源：`prototypes/v0.1/data.js`。本模块只是它的派生物。
  */
-const DATA_EXPORTS = [
-  'NAV', 'STATE', 'PATHOLOGY', 'BCG_RESPONSE', 'HIGH_RISK_MARKERS', 'INSTILLATION',
-  'CONTRA', 'FOLLOWUP', 'RENAL', 'METRICS', 'CATEGORICAL', 'DIVERSION', 'DIVERSION_CASE',
-  'SURGERY_CASE', 'TREATMENT_CASE', 'RECORDS', 'LIFE', 'QUESTIONS', 'TRIAL_FAVORITES',
-  'TRIAL_QUESTIONS', 'STOMA_SUPPLY', 'STOMA_LOG', 'URGENT', 'TRIALS', 'TRIALS_STATS',
-  'WORDING_REDLINES', 'DRAFT_SCOPES',
-];
-
 let dataCache = null;
 
-/** 读原型的演示数据（带缓存；只读文件，不写任何东西） */
+/**
+ * 读演示数据（带缓存）。
+ *
+ * 返回**普通对象副本**而不是模块命名空间：模块命名空间是冻结的、且属性是 getter，
+ * 万一后续有代码想就地加工（例如补一条演示记录）会静默失败或抛 TypeError。
+ * 这里的浅拷贝只发生一次，成本可以忽略。
+ */
 export function loadPrototypeData() {
   if (dataCache) return dataCache;
-  const source = readFileSync(DATA_URL, 'utf8');
-  const sandbox = {};
-  createContext(sandbox);
-  runInContext(
-    `${source}\n;globalThis.__UROPAL_DATA__ = { ${DATA_EXPORTS.join(', ')} };`,
-    sandbox,
-    { filename: 'prototypes/v0.1/data.js' },
-  );
-  dataCache = sandbox.__UROPAL_DATA__;
+  dataCache = { ...PROTOTYPE_DATA };
   return dataCache;
 }
 

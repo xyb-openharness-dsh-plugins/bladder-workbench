@@ -49,6 +49,20 @@ const SELF_EXEMPT = /^scripts\/(check|verify)-[^/]*\.mjs$/;
 
 const rel = (p) => relative(ROOT, p).split('\\').join('/');
 
+/**
+ * 红线扫描按文件跳过（**语法检查不跳**：生成物也该过 node --check）。
+ *
+ * `demo/demo-data.js` 是 `prototypes/v0.1/data.js` 的逐字节副本（见
+ * `demo/build-demo-data.mjs`），而 `prototypes/` 本来就在 SKIP_DIRS 里——
+ * 它属于界面面，红线归 `scripts/check-wording.mjs` 管（那边对
+ * `WORDING_REDLINES` 这张"我们不用的词"词表有明确豁免）。
+ * 扫这份副本不会多查出一个字，只会把同一张词表再报一次。
+ *
+ * 收紧条件：只放行这一个生成物，不放行整个 `demo/` 目录——
+ * `demo/build-demo-data.mjs` 是真正手写的源码，必须照常扫。
+ */
+const WORDING_SKIP_FILES = new Set(['demo/demo-data.js']);
+
 /** 递归收集待检查文件（按路径排序，保证输出稳定可比）。 */
 function collectFiles(dir, out = []) {
   let entries;
@@ -92,6 +106,7 @@ function checkWording(files) {
   for (const file of files) {
     const r = rel(file);
     if (SELF_EXEMPT.test(r)) continue;
+    if (WORDING_SKIP_FILES.has(r)) continue;
 
     let text;
     try {

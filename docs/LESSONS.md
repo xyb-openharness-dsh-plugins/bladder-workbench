@@ -262,3 +262,67 @@ Agent 面板拖宽（防抖 90ms），因为面板宽度会改容器宽度。
   凡是 `page*(tab)` 这种按名字分发的页面，都要有一条「每个名字都有非空分支」的检查。
 - 本轮还有一条同源教训：**登记库的英文枚举（`NOT_YET_RECRUITING`、`nmibc-or-intravesical`）
   原样端给患者等于没翻译。** 中文标签在前、原值留在 `title` 里可追溯，并加断言禁止英文枚举出现在表体。
+
+## 2026-10-24 · 装机三坑：宿主环境变量、import 即执行、装了不等于会加载（M6）
+
+**坑一：`DSH_PROFILE` 是 profile 的「名字」，不是路径。**
+家族参考实现（`install-local.mjs`）写的是 `resolve(process.env.DSH_PROFILE || 默认路径)`。
+在 Agent 会话里跑时，宿主会注入 `DSH_PROFILE=desktop`，于是 `resolve('desktop')` 求出
+`<当前目录>/desktop`，脚本报「profile 不存在」——而且报得像环境没装 Desktop，完全看不出是变量撞车。
+更危险的是同一个宿主还注入 `DSH_PROFILE_DIR=~/.dsh/profiles/desktop`，**那是 CLI 侧的 harness，
+DSH Desktop 根本不读它**：如果照着它装，包会装进一个界面永远加载不到的地方，
+`check-install` 之外的所有检查还都会说「装好了」。
+
+**修法**：装机脚本只认带项目后缀的 `UROPAL_PROFILE`（强制绝对路径），
+**不读宿主的 `DSH_PROFILE` / `DSH_PROFILE_DIR`**。默认路径写死 Desktop 的实际位置
+（macOS `~/Library/Application Support/dsh-desktop/harness/profiles/web`）。
+
+**坑二：`import()` 一个有顶层副作用的脚本 = 把它真跑了一遍。**
+为「验证路径解析对不对」，我用了 `node -e "await import('./scripts/install-local.mjs')"`。
+这个脚本的 `process.argv.slice(2)` 在 `node -e` 下是空的，于是 `--dry-run` / `--no-probe` 都没生效，
+它**完整地装了一次机**（备份 + pnpm add + 重链），我直到看见 profile 下多出一个时间戳早一分钟的
+`package.json.bak-*` 才发现跑了两遍。
+
+**可迁移的纪律**：脚本要么把副作用包在 `main()` 里由 `import.meta.main` 式判断触发，
+要么**永远不要 import 它来做检查**——要检查解析结果就单独写一行 `node -p` 或复制那段表达式。
+「这个命令只是看看」和「这个命令会改共享环境」必须一眼能分清。
+
+**坑三：`pnpm add` 进 `node_modules` ≠ 会被加载。**
+DSH Desktop 只加载 profile `package.json` 里 `dsh.profile.bundles` 数组列出的包。
+家族四个仓的 `check-install.mjs` 都核对这一项（`bundled`），但**都只在失败时提示用户手工加**，
+没有一个安装脚本自己加。结果是：`node_modules` 里躺着新包、界面里什么也不出现，
+而版本号、依赖、文件全都对得上。
+
+**修法**：`install-local.mjs` 在 `pnpm add` 之后自动把包名补进 `dsh.profile.bundles`
+（已存在则不动），改前已备份 `package.json` 与 `pnpm-lock.yaml`。
+对「装上但没加载」这类故障，**装机脚本必须自己闭环到 bundles，不能靠人记得第二步**。
+
+## 2026-10-24 · 装机才暴露的 P0：运行期回读开发目录（M6）
+
+**症状**：仓库里 `npm run dev` 一切正常，装进 Desktop 后插件**整个挂不上**——
+不是某页空白，是一条路由都没注册、界面开不出来。本地怎么点都复现不出来。
+
+**根因**：`dsh/demo.js` 用 `node:vm` 在**运行期**读 `../prototypes/v0.1/data.js` 来取演示数据。
+`prototypes/` 不在 `package.json` 的 `files` 白名单里（那是开发目录，本就不该随包分发），
+所以装机副本里没有这个目录，`apply()` 在播种时抛 `ENOENT`。而 `apply()` 抛异常 =
+插件初始化失败 = 一条路由都不注册。
+
+**为什么这类 bug 特别值得记**：它**只**在「按发布形态装配」的环境里出现。
+开发时 `import.meta.url` 指向仓库内的真实路径，永远能读到；测试跑在仓库里，也永远能读到。
+所有「本地全绿」的证据在这一类故障面前都是无效证据。
+
+**修法**（不是把 `prototypes/` 塞进白名单——那会把整个 HTML 原型也发出去）：
+构建期用 `demo/build-demo-data.mjs` 生成**零损副本** `demo/demo-data.js`（原文照搬 + 一行 export），
+运行期只 import 这个包内文件；`npm run check:demo` 保证副本与源不漂移。
+
+**为什么是「原文照搬」而不是 `JSON.stringify`**：`JSON.stringify` 会**静默丢掉值为 `undefined` 的键**。
+原型数据里存在未填的占位字段，丢一个键，`readmodels` 还原出的形状就差一格，
+逐字符 parity 会挂——而挂的现象看起来像「readmodels 写错了」，排查方向会被带偏。
+原文照搬是零损的，一个字节都不改。
+
+**可迁移的纪律**：
+1. **运行期代码不许回读开发目录**。凡是被 `files` 白名单排除的目录（`prototypes/`、`test/`、
+   `docs/`、`scripts/`），运行期一律不能依赖——本地能读到只说明你站在仓库里。
+2. 装机探针必须真的**从装机副本**跑，不能从仓库根跑。这次的 46 项探针就是在副本里跑的，
+   所以它抓到了；此前所有仓库内检查都没抓到。
+3. 派生数据进包就**必须**有 `check` 守漂移，否则「一份数据两处落地」这条老坑会以新形式回来。
