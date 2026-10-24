@@ -1,7 +1,7 @@
 # 实施任务与当前交接 · 小泉宝 UroPal · 膀胱癌
 
 规格版本：`docs/SPEC.md` v0.1.0（**草案，G1 未签**）
-原型总哈希：`030c7bc61896f897debc6ccef97adfd138a64d7a288cf375343ba3010fb64b25`
+原型总哈希：`4d9e1b4b6b5c6e7ecbb6a4877ad1ab094095d64683b6229f326d7ff028a38949（由 `node scripts/hash-prototype.mjs` 生成）`
 当前分支/包版本：`master` · `@xyb-community/bladder-cancer-workbench@0.1.0`
 最后更新：2026-10-24
 

@@ -21,7 +21,7 @@
 | `charts.js` | `d0af60e59a8ed0f3475497b980dd2f435826c7ea629125725e18c1892cee2982` |
 | `app.js` | `dc204237017d3798c7140eecd674f82a052c99db3fe0d237acc426c4fdbea291` |
 
-六件顺序拼接总哈希：`030c7bc61896f897debc6ccef97adfd138a64d7a288cf375343ba3010fb64b25`
+六件顺序拼接总哈希：`4d9e1b4b6b5c6e7ecbb6a4877ad1ab094095d64683b6229f326d7ff028a38949（由 `node scripts/hash-prototype.mjs` 生成）`
 
 **当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S18）、`docs/SCHEMA.md`（**草案，未冻结**）
 

@@ -17,7 +17,7 @@ MT01–MT15 实测结果见本文末（由 `scripts/verify-metric-trend.mjs --wr
 | 卡片高/字阶/2列→1列阈值/大字 | 标准档 **276px**、大字档 **340px**（正反一致，`scrollHeight <= clientHeight` 实测不裁切）；容器 ≥700px 两列、<700px 单列，**不做三列以上**；字号三档 12.5 / 15 / 17.5px。 |
 | 3D翻面、来源点命中、键盘/读屏 | `perspective: 1100px` 外卡 + `transform-style: preserve-3d` 内层 + 两面 `position:absolute; inset:0` + `backface-visibility: hidden` + 背面预转 180°；翻面＝`[data-flipped=true]` 时 `rotateY(180deg)`，**是固定高度 3D 翻转，不是上下展开**。键盘：卡片 `tabindex=0` + `Enter`/`Space` 翻面。读屏：`role="group"` + `aria-label` + **`aria-pressed` 说出翻转态**（这是实测暴露后补的缺口），隐藏面 `aria-hidden` + `inert` 不进 Tab 序。来源点：背面迷你折线的圆点带 `<title>`，**点圆点只弹来源、不翻回正面**（实测发现点击冒泡会把卡翻回去，已修）。减少动效：系统开启时直接给终态。 |
 | 0/1/多条及跨方法测试数据 | 合成数据**不入演示数据**（`CHART.render` 直接喂合成指标，跑完 `METRICS.length` 还原），避免污染 demo。覆盖：单点（`path=0`、1 个圆点、文案「仅一次记录，无法比较」）｜空窗口（`empty=true`、`svg` 长度 0、「所选时间窗内没有记录」）｜多条（演示档案 7 项，各 2–8 点）｜跨方法（肌酐拆 2 组）。**所有演示数据在界面上标「演示数据」「全部为模拟资料」。** |
-| HTML版本/路径/hash/截图 | `prototypes/v0.1/index.html`（`file://` 直开，无构建、无 CDN）。六件文件 sha256 与总哈希记录在 `docs/PROTOTYPE-REVIEW.md`；截图 34 张在 `prototypes/v0.1/_shots/`。**⚠️ 任何一件改动都要重算 hash 并作废既有确认。** |
+| HTML版本/路径/hash/截图 | `prototypes/v0.1/index.html`（`file://` 直开，无构建、无 CDN）。六件文件（总哈希由 `node scripts/hash-prototype.mjs` 生成，不手算） sha256 与总哈希记录在 `docs/PROTOTYPE-REVIEW.md`；截图 34 张在 `prototypes/v0.1/_shots/`。**⚠️ 任何一件改动都要重算 hash 并作废既有确认。** |
 | 开发者确认版本、日期、模块范围 | **未确认**。不默认签认。 |
 | MT01–MT15结果/证据/偏差 | 见文末实测表。**通过 15 / 未通过 0 / 未实现 2**（MT11 报告 ID 聚合、MT14 压力数据）。**未实现不等于通过。** |
 | Desktop app/profile/RC与人工验收 | **未实机验证**。未接入 DSH，P2 发布可见性只能写「未验证」。 |
