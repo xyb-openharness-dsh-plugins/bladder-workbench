@@ -2189,7 +2189,7 @@ function openSettings() {
 
         <h4 style="margin:16px 0 8px">关于</h4>
         <dl class="kv">
-          <dt>版本</dt><dd><b>v${APP_VERSION}</b>（与 package.json / VERSION / workbench.json 同源）</dd>
+          <dt>版本</dt><dd><b>v${APP_VERSION}</b>（与 VERSION / package.json 一致；<b>workbench.json 尚未建立</b>，本原型为手工同步、无构建注入）</dd>
           <dt>性质</dt><dd>设计原型，数据为演示用；<b>不构成诊断或治疗建议</b></dd>
           <dt>Agent 面板</dt><dd>未接入 DSH（未验证）</dd>
         </dl>

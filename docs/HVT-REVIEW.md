@@ -295,15 +295,20 @@ grep -rn '终身\|一辈子\|2–5%\|2-5%' --include='*.md' . | grep -v _archive
 
 | 项 | 对象 | 结果 | 证据 |
 | --- | --- | --- | --- |
-| **P1 HTML 首页** | `prototypes/v0.1/index.html` | **1** | 首屏三处可见：演示条 `交互原型 v0.1.0`、顶栏 `#versionChip` `v0.1.0`（`title` 标明「与 package.json / VERSION / workbench.json 同源」）、页脚 `#footVersion` `0.1.0`。窄屏页脚常驻。设置页「关于」有版本/性质/Agent 状态 |
-| **P2 应用首页** | 装进 DSH 后 | **未验证** | 未接入 DSH。设置页已如实写「Agent 面板 未接入 DSH（未验证）」 |
-| **P3 单一来源** | `VERSION` | **0** | **无 `VERSION` 文件**（`ls VERSION` 不存在）。`publish_check.py` 报「未找到 VERSION 单一来源文件；版本可能手写在多处」。**且原型「关于」却写着「与 package.json / VERSION / workbench.json 同源」——这是一句假声明**。另 `workbench.json` 亦不存在 |
-| **P4 可追溯** | 版本 chip / 关于 | **0** | `grep -onE '构建\|渠道\|生成于' prototypes/v0.1/index.html` → **0 命中**。「关于」只有版本与性质，**无构建日期、无渠道、无来源** |
-| **P5 状态如实** | README / 发布记录 | **1** | 演示条写「交互原型 v0.1.0 · 全部为模拟资料」；页脚写「本页为设计原型，数据为演示用；不构成诊断或治疗建议」；`docs/RELEASE.md` 未见夸大。**未发布即写未发布** |
+| **P1 HTML 首页** | `prototypes/v0.1/index.html` | **1** | 首屏三处可见：演示条 `交互原型 v0.1.0`、顶栏 `#versionChip` `v0.1.0`、页脚 `#footVersion` `0.1.0`。`publish_check.py` 复核 3 处 zone=comment/footer（版本号以**界面**为准，不以 README 为准） |
+| **P2 应用首页** | 装进 DSH 后 | **未验证** | 未接入 DSH。设置页已如实写「Agent 面板 未接入 DSH（未验证）」。**不写通过** |
+| **P3 单一来源** | `VERSION` + `package.json` | **1**（2026-10-24 补） | `VERSION` = `0.1.0`、`package.json` = `0.1.0`，`publish_check.py` 已能读出来源 `VERSION`。**但 `workbench.json` 仍不存在** —— 原型原先声称「与 package.json / VERSION / workbench.json 同源」是**假声明**，已改为「与 VERSION / package.json 一致；workbench.json 尚未建立」，并写明本原型是**手工同步、无构建注入**（因此 P4 只到「接近」） |
+| **P4 可追溯** | 版本 chip / 关于 | **0**（未改善） | `publish_check.py` 提示「未发现版本常量或 meta 版本标记，疑似手写字面量」；`grep -onE '构建\|渠道\|生成于' prototypes/v0.1/index.html` → **0 命中**。构建日期/渠道/来源三项一项都没有，**如实记 0** |
+| **P5 状态如实** | README / 发布记录 | **1** | 演示条写「交互原型 v0.1.0 · 全部为模拟资料」；页脚写「本页为设计原型，数据为演示用；不构成诊断或治疗建议」；设置页如实标 MinerU 未配置、Agent 面板未接入 |
 
-**发布门槛：P1–P5 全 1 才可写「可发布」→ 当前 P3、P4 = 0，P2 未验证，不可写。**
+**发布门槛：P1–P5 全 1 才可写「可发布」→ 当前 P4 = 0、P2 未验证，仍**不可写可发布**。**
 
-> **P3 的修法很便宜**：新建 `VERSION` 文件（内容 `0.1.0`），或在 `scripts/` 加一个校验脚本同时核对三处；**并且必须把那句「与 VERSION 同源」改成真实成立的表述**——否则这属于"拿不存在的单一来源冒充已核对"，比不写更糟。
+> **P3 已改善但未完全满足**：`VERSION` 文件已补（`0.1.0`），单一来源成立；
+> 而 `workbench.json` 仍缺，且原型版本号是**手写字面量**而非构建注入 ——
+> 家族口径的「六处同源」目前只做到**三处**（`VERSION` / `package.json` / 界面）。
+> 剩下的要等 V1 业务实现引入构建注入，**phase1 止点内不做**（`DESIGN-07`）。
+
+> **P3 已按此修法执行**（2026-10-24）：`VERSION` 已建，`publish_check.py` 可读出单一来源。
 
 ---
 

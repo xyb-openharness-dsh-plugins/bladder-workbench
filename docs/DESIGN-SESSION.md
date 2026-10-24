@@ -118,7 +118,7 @@
 | 闸口 | 冻结内容 | 凭据 |
 | --- | --- | --- |
 | **G1 需求确认** | `docs/BRIEF.md`、`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S18）、`docs/DIFF-MATRIX.md`、`docs/DESIGN-SESSION.md`（DESIGN-01…31）、`docs/HVT-REVIEW.md`（B 级 0） | 用户原话见上；HVT 五层检查已跑，B 级 2→0 |
-| **G2 HTML 原型** | `prototypes/v0.1/` 六件文件，**以签认时的总哈希为准**：`4d9e1b4b6b5c6e7ecbb6a4877ad1ab094095d64683b6229f326d7ff028a38949`（index.html `cbcd779f4ae6`｜tokens.css `8b36dfac64f1`｜shell.css `075da3fd4e66`｜data.js `2307488c8774`｜charts.js `d0af60e59a8e`｜app.js `dc204237017d`） | 实测：`verify-prototype` **155/155**、`verify-one-chart` **12/12**、`verify-metric-trend` **15/15**（另 2 条未实现，如实记录不计入通过）、`check-wording` 界面面 0 违规 |
+| **G2 HTML 原型** | `prototypes/v0.1/` 六件文件，**以签认时的总哈希为准**：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`（index.html `85eb59008326`｜tokens.css `8b36dfac64f1`｜shell.css `075da3fd4e66`｜data.js `2307488c8774`｜charts.js `d0af60e59a8e`｜app.js `43facdd88539`） | 实测：`verify-prototype` **155/155**、`verify-one-chart` **12/12**、`verify-metric-trend` **15/15**（另 2 条未实现，如实记录不计入通过）、`check-wording` 界面面 0 违规 |
 | **G3 数据契约** | `schema/0001_initial.sql` **44 张表 · 8 个索引**，转正为 `schema/0001_initial.sql` 并冻结 sha256 | 实测：`check-schema-draft` **37/37**（含反向探针）；`docs/SCHEMA.md` |
 
 > **G2 哈希即实现合同。** 此哈希之后对 `prototypes/v0.1/` 的任何改动都会使本次 G2 签认失效，
@@ -143,3 +143,27 @@
 用户签认时，被签文档里有 8 处计数自相矛盾（一级导航写 12 实为 14、断言写 150 实为 155、S01–S16 实为 S18…）。
 带错数字签认等于签了一份不准的合同，因此**签认后第一件事是回读源文件把数字改对**，再落签认记录。
 这与 `DESIGN-31` 同源：**凡是能回读源文件的值，都以源文件为准。**
+
+### 签认后的一处改动（须用户确认范围）
+
+签认后、在收尾检查中修掉一句**不实声明**：
+
+| 位置 | 改前 | 改后 |
+| --- | --- | --- |
+| `prototypes/v0.1/index.html` 版本 chip 的 `title` | 「与 package.json / VERSION / workbench.json **同源**」 | 「与 VERSION / package.json 一致（本原型**手工同步，无构建注入**）」 |
+| `prototypes/v0.1/app.js` 设置页「关于」 | 同上，且未提 workbench.json 不存在 | 「workbench.json **尚未建立**，本原型为手工同步、无构建注入」 |
+
+**为什么改**：`workbench.json` 在仓库里**不存在**，原型却向用户声称版本与它同源 —— 这是审查 P3/P4 抓出的假声明一类。
+用户看得见的地方不能有一句不成立的保证。
+
+**代价（如实说明）**：这处改动使 `index.html` 与 `app.js` 的哈希变化，**G2 签认的哈希随之失效**：
+
+- 签认时总哈希：`4d9e1b4b6b5c6e7ecbb6a4877ad1ab094095d64683b6229f326d7ff028a38949`
+- 当前总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`
+- 变化文件：`index.html`（`cbcd779f4ae6` → `85eb59008326`）、`app.js`（`dc204237017d` → `43facdd88539`）
+
+**按 `DESIGN-32`，G2 的签认范围需要用户重新确认。** 两条路明说：
+1. **接受这处改动**（本文档记录的当前哈希即新范围），无需重新过一遍原型；
+2. **维持签认时的版本**，我把这处文案改回去，哈希回到 `4d9e1b4b…`。
+
+**这件事本身就是「手算哈希会失效」的最佳例证** —— 所以哈希从此由 `scripts/hash-prototype.mjs` 生成，不进人工编辑。

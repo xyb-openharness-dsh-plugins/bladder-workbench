@@ -14,14 +14,14 @@
 
 | 文件 | sha256 |
 |---|---|
-| `index.html` | `cbcd779f4ae644bc815f8b15393988cf9f5495374d7bfc2eac187e63207ec095` |
+| `index.html` | `85eb5900832644bc815f8b15393988cf9f5495374d7bfc2eac187e63207ec095` |
 | `tokens.css` | `8b36dfac64f14e418ad9f6f84bd34bc0cd4fec8e6eb92ee273be1759a8b87d8d` |
 | `shell.css` | `075da3fd4e66dfa43521e8dd391bb82d5ea3356a4e5e42a62bb8c4ef1016a0c5` |
 | `data.js` | `2307488c87747a15ec2bee5162fa3d519261c641e9402650d070b3092d2e3cad` |
 | `charts.js` | `d0af60e59a8ed0f3475497b980dd2f435826c7ea629125725e18c1892cee2982` |
-| `app.js` | `dc204237017d3798c7140eecd674f82a052c99db3fe0d237acc426c4fdbea291` |
+| `app.js` | `43facdd885393798c7140eecd674f82a052c99db3fe0d237acc426c4fdbea291` |
 
-六件顺序拼接总哈希：`4d9e1b4b6b5c6e7ecbb6a4877ad1ab094095d64683b6229f326d7ff028a38949（由 `node scripts/hash-prototype.mjs` 生成）`
+六件顺序拼接总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646（由 `node scripts/hash-prototype.mjs` 生成）`
 
 **当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S18）、`docs/SCHEMA.md`（**草案，未冻结**）
 
