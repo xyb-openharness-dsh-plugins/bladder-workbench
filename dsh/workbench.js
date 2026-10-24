@@ -14,7 +14,7 @@ import { API_PREFIX_NAME, HOST_BASE, UI_ENTRY, HEALTH_PATH } from '../lib/routes
 import { createWorkbenchServer, DEFAULT_DB } from './server.js';
 
 /** 必须与 cordis.patch.yml 里的 id 逐字一致（宿主按它认插件身份） */
-export const PLUGIN_ID = 'bladder-cancer-workbench-main';
+export const PLUGIN_ID = 'bladder-workbench-main';
 /** 接口命名空间：与 DB_FILE 的短名一致，供 STATUS / 诊断文案使用 */
 export const API_PREFIX = API_PREFIX_NAME;
 export { HOST_BASE, UI_ENTRY, HEALTH_PATH };

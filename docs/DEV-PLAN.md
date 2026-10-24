@@ -72,7 +72,7 @@
 **顺带修掉两个真缺陷**（都是「不报错但静默失效」那类）：
 
 1. `dsh/server.js` 的 `buildBootstrap(db, { today })` 传的是**函数**而读模型要**字符串** → `meta.today` 被 `JSON.stringify` 丢掉变 `undefined`；改为 `{ today: today() }`，实测 `meta.today = "2026-10-24"`。
-2. `cordis.patch.yml` 缺 `config.root` → `dsh-wb-cli check` `staticPass: false`，且**装机后每次宿主重启都会换成新的内存库**（错误原文：`installs fine but resets to an in-memory DB on every restart`）；补 `root: !!js dshHomePath('bladder-cancer-workbench')` 后 `staticPass: true`、`errors: []`。
+2. `cordis.patch.yml` 缺 `config.root` → `dsh-wb-cli check` `staticPass: false`，且**装机后每次宿主重启都会换成新的内存库**（错误原文：`installs fine but resets to an in-memory DB on every restart`）；补 `root: !!js dshHomePath('bladder-workbench')` 后 `staticPass: true`、`errors: []`。
 
 **用户可见差异（有意，非缺陷）**：开发版页脚与原型不同（「开发版 / 数据只在本机」vs「原型 / 数据为演示用」），因此 parity 的比较范围是**面包屑 + 业务区**，页脚由独立规则断言，不参与逐字符比对。
 

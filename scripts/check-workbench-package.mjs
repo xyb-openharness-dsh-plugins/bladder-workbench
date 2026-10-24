@@ -16,7 +16,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 
 // 本项目的身份常量：写死在这里是有意的——契约检查的价值就在"期望值不许跟着实测走"，
 // 如果从被检对象里读期望值，改坏了包名也能"通过"。
-const EXPECTED_NAME = '@xyb-community/bladder-cancer-workbench';
+const EXPECTED_NAME = '@xyb-community/bladder-workbench';
 const EXPECTED_MAIN = './dsh/index.js';
 const EXPECTED_PLATFORM = 'web';
 // files 白名单必须覆盖的项目符号（任务 §2.4 交付清单）。

@@ -32,7 +32,7 @@
 | DESIGN-02 | NMIBC 与 MIBC 覆盖范围 | **两条线都做，MIBC 做厚**；NMIBC 做全但页签略薄（灌注+膀胱镜+复发恐惧+细胞学）（m00145） | 建议同选：分野是本癌种最大结构特点，缺一条就退化成普通工作台 | 两条线的页数配比 | 用户 / 2026-10-23 | F-分野、F-灌注、F-膀胱镜、F-改道 |
 | DESIGN-03 | 尿流改道深度 | **三种术式都做，各自独立页签**（回肠造口 / 原位新膀胱 / 输尿管皮肤造口）（m00145） | 建议同选：三种是三种不同的生活，合成一个"造口"页会被患者认为"分类细节几乎一样" | 新膀胱与输尿管皮肤造口的字段深度 | 用户 / 2026-10-23 | F-改道、F-造口日常 |
 | DESIGN-04 | 品牌 | **小泉宝 · UroPal**（m00145） | 提议 小泉宝/UroPal：取尿路意象、不与"尿"字撞、英文直指泌尿 | logo 占位与主色 | 用户 / 2026-10-23 | 品牌、tokens、顶栏 |
-| DESIGN-05 | 项目根目录 | 原选"用户改名后 init"；**实际因沙箱禁止写 `Downloads/`、且改名会使会话工作区失效，改为就地 init 于 `/Users/qinxiaoqiang/Downloads/Bladder-workbench`**，文件夹可日后自行 `mv`（137 个生成文件随目录整体移动，无需改路径） | 建议就地 init：`dsh-wb-cli init` 目标即 cwd，文件夹名不参与任何生成物；身份来自 `packageName`/`slug`/`repository` 三字段 | 是否最终改名为 `bladder-cancer-workbench` | Agent 说明 / 2026-10-23 | 工程，无业务影响 |
+| DESIGN-05 | 项目根目录 | 原选"用户改名后 init"；**实际因沙箱禁止写 `Downloads/`、且改名会使会话工作区失效，改为就地 init 于 `/Users/qinxiaoqiang/Downloads/Bladder-workbench`**，文件夹可日后自行 `mv`（137 个生成文件随目录整体移动，无需改路径） | 建议就地 init：`dsh-wb-cli init` 目标即 cwd，文件夹名不参与任何生成物；身份来自 `packageName`/`slug`/`repository` 三字段 | ~~是否最终改名为 `bladder-cancer-workbench`~~ | **已由 `DESIGN-34` 关闭**：定为 `bladder-workbench` | Agent 说明 / 2026-10-23 | 工程，无业务影响 |
 | DESIGN-06 | 2026 临床试验数据口径 | **2026 全年 + CT.gov API v2 主通道 + 中国通道，目标 300–500 条**（m00145） | 对标：ATTR 434 / 胃癌 236 / 结直肠 480 / 肛管 224 条 | CDE 中国通道 Cookie 可得性 | 用户 / 2026-10-23 | F-临床试验、M4 临床库 |
 | DESIGN-07 | 本轮止点 | **严格停在 phase1**；MinerU 本轮只留接口与设置页骨架，不跑真实解析（m00145） | 建议同选：符合 ZERO-TO-DEV 阶段 3.1，HTML 是唯一视觉基准 | MinerU Token 何时给 | 用户 / 2026-10-23 | 全部；F-设置、F-报告导入 |
 | DESIGN-08 | 两条线并列时的首屏默认面孔 | **先问一次分野，再进看板**：首屏一张「你在哪条线」引导卡（Ta/T1/Tis 与是否浸润肌层的白话解释 + 「我还不确定」选项），选定后才长出专属看板（m00282） | 建议同选：分野不清则一切不清；双栏并列会让两块都做浅，且新患者被不属于自己的内容干扰 | 引导卡的措辞与「还不确定」分支的落点 | 用户 / 2026-10-23 | F-分野、F-看板、导航默认展开组 |
@@ -167,3 +167,19 @@
 2. **维持签认时的版本**，我把这处文案改回去，哈希回到 `4d9e1b4b…`。
 
 **这件事本身就是「手算哈希会失效」的最佳例证** —— 所以哈希从此由 `scripts/hash-prototype.mjs` 生成，不进人工编辑。
+
+---
+
+## DESIGN-34 · 包名与 slug 对齐已建仓库（`bladder-cancer-workbench` → `bladder-workbench`）
+
+| 项 | 内容 |
+| --- | --- |
+| 时间 | 2026-10-24 |
+| 触发 | 用户指令（逐字）：「2改 package.json 就着已建的仓库」 |
+| 背景 | 仓库 `xyb-openharness-dsh-plugins/bladder-workbench` 已由用户创建（private，2026-10-24 17:01），而 `package.json` / `project.config.json` 写的是 `bladder-cancer-workbench`；组织 `BACKLOG.md:100` 也把本项目记作「膀胱癌 · 本地 `bladder-workbench`」 |
+| 决定 | 身份字符串统一为 **`bladder-workbench`**：`package.json` 的 `name` 与 `repository.url`、`project.config.json` 的 `packageName`/`repository`/`slug`、`cordis.patch.yml` 的 `id`/`name`/`dshHomePath('bladder-workbench')`、`dsh/workbench.js` 的 `PLUGIN_ID`、`dsh/index.js` 的 `pluginId`、`dsh/readmodels.js` 的 `PACKAGE_NAME`、`scripts/check-workbench-package.mjs` 的 `EXPECTED_NAME`、`test/server.test.mjs` 的越界断言字符串，以及 5 份文档的当前身份描述 |
+| 理由 | 仓库已建且 `BACKLOG.md` 指向现名；不改则**装机包名与仓库对不上**，M8 状态回填也会踩 |
+| 连带 | `lib/client.js` 由 `scripts/build-client.mjs` 从 `package.json` 注入（`src/client.js` 里没有包名字面量），已重跑生成自动同步；`lib/version.js` 同步重生成 |
+| 未改 | `API_PREFIX_NAME = 'bladder'`、`HOST_BASE = /api/bladder-workbench`、`DB_FILE = 'xyb-bladder.sqlite'` 本就与仓库名无关，保持不动（改它们会让**已落盘的库换名字**，属无谓风险） |
+| 保留为历史 | `docs/DESIGN-SESSION.md:35/47` 与 `_intake/wb-init.config.json` 里的原值**不追改**——决策日志与 init 素材记的是当时事实 |
+| 影响面 | 装机包名变化 → **M6 装机必须用新包名**；`DESIGN-05` 遗留的「是否最终改名」一问就此关闭 |

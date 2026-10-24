@@ -25,7 +25,7 @@ HTML与模型约束：先制作本地可打开、可交互的HTML工作台，用
 
 > 本节由 Agent 依 `prompts/NEW-CANCER-WORKBENCH.md` 与用户七项已确认决策维护；用户可直接改写。上面通用段落与本节的结论冲突时，**以本节为准**。
 
-**项目身份**：包名 `@xyb-community/bladder-cancer-workbench`，slug `bladder-cancer-workbench`，品牌 **小泉宝 UroPal**，目标仓 `https://github.com/xyb-openharness-dsh-plugins/bladder-cancer-workbench`（**尚未建仓**，按组织规则 G1 通过后才建）。组织侧认领见 Issue #11。
+**项目身份**：包名 `@xyb-community/bladder-workbench`，slug `bladder-workbench`，品牌 **小泉宝 UroPal**，目标仓 `https://github.com/xyb-openharness-dsh-plugins/bladder-workbench`（**仓库已建**，2026-10-24；原计划 G1 通过后建，实际已先行创建）。组织侧认领见 Issue #11。
 
 **我代表谁**：膀胱癌患者本人（NMIBC 保膀胱线 + MIBC 根治线**并列**，非一主一次）与主要照护者（代记主体，**不是配角**）。完整章程见 `docs/DESIGNER-BRIEF.md`，决策记录见 `docs/DESIGN-SESSION.md`。
 

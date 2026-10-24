@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import { loadPrototypeData } from './demo.js';
 import { todayISO } from './store.js';
 
-const PACKAGE_NAME = '@xyb-community/bladder-cancer-workbench';
+const PACKAGE_NAME = '@xyb-community/bladder-workbench';
 
 /** 静态目录键：这些不是患者事实，不入库。 */
 const CATALOG_KEYS = ['NAV', 'CATEGORICAL', 'DIVERSION', 'CONTRA', 'URGENT', 'DRAFT_SCOPES', 'WORDING_REDLINES'];

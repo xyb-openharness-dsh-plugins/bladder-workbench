@@ -1,8 +1,8 @@
 - insert:
-    - id: bladder-cancer-workbench-main
-      name: "@xyb-community/bladder-cancer-workbench"
+    - id: bladder-workbench-main
+      name: "@xyb-community/bladder-workbench"
       config:
-        root: !!js dshHomePath('bladder-cancer-workbench')
+        root: !!js dshHomePath('bladder-workbench')
 # 说明（本仓库 checker 以文件首字符为 `- insert:` 判定，注释一律放条目之后）：
 # 1. name 必须写 npm 包名（相对/绝对路径 Node 解析不到）；空 patch 写 `[]`。
 # 2. id / config.root 与 dsh/workbench.js 的 PLUGIN_ID、HOST_BASE 同值，别手改。

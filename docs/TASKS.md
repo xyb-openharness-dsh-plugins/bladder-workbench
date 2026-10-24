@@ -2,7 +2,7 @@
 
 规格版本：`docs/SPEC.md` v0.1.0（**G1/G2/G3 已签**，2026-10-24；见 [SIGNOFF-2026-10-24.md](SIGNOFF-2026-10-24.md)）
 原型总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`（由 `node scripts/hash-prototype.mjs` 生成）
-当前分支/包版本：`main` · `@xyb-community/bladder-cancer-workbench@0.1.0`
+当前分支/包版本：`main` · `@xyb-community/bladder-workbench@0.1.0`
 最后更新：2026-10-24（M5 开发版）
 
 > **一句话现状**：phase1 五件（调研、SPEC、原型、数据模型、临床库）+ **M5 开发版**已交付并通过自检；

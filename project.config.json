@@ -1,9 +1,9 @@
 {
-  "packageName": "@xyb-community/bladder-cancer-workbench",
+  "packageName": "@xyb-community/bladder-workbench",
   "title": "小泉宝 UroPal · 膀胱癌工作台",
-  "repository": "https://github.com/xyb-openharness-dsh-plugins/bladder-cancer-workbench",
+  "repository": "https://github.com/xyb-openharness-dsh-plugins/bladder-workbench",
   "description": "面向膀胱癌患者与照护者的本机优先工作台：NMIBC/MIBC 分野读懂、TURBT 与二次电切、膀胱灌注周期、膀胱镜复查与复发恐惧、尿流改道三术式与造口日常、肾功能与上尿路长期监测、复诊准备与临床试验档案",
-  "slug": "bladder-cancer-workbench",
+  "slug": "bladder-workbench",
   "layoutMode": "business-first",
   "businessWidth": 0.72,
   "targetUsers": "新确诊或正在长期随访的膀胱癌患者本人，以及代记资料的配偶/子女照护者。两条主线人群并列：① NMIBC 非肌层浸润、正在做膀胱灌注与终身膀胱镜复查的保膀胱患者（中老年为主）；② MIBC 肌层浸润、已做或即将做根治性膀胱切除与尿流改道的患者及其主要照护者（造口日常需要照护者接手）",

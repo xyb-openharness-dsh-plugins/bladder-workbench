@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 包名 | `@xyb-community/bladder-cancer-workbench` |
+| 包名 | `@xyb-community/bladder-workbench` |
 | 版本 | `0.1.0`（草案期） |
 | 阶段 | **Phase1（设计）**：调研 → SPEC → schema 草案 → HTML demo |
 | 闸口 | `G1` `G2` `G3` **均未签认** |

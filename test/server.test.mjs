@@ -115,7 +115,7 @@ test('静态服务越界拦截：编码过的 ../ 也必须被拒', async () => 
         `越界路径 ${p} 应当被拒（403/404），实际 ${res.status}`,
       );
       const text = await res.text();
-      assert.ok(!text.includes('"name"') || !text.includes('bladder-cancer-workbench'),
+      assert.ok(!text.includes('"name"') || !text.includes('bladder-workbench'),
         `越界路径 ${p} 竟然读到了 package.json 的内容`);
     }
   } finally { await s.close(); }

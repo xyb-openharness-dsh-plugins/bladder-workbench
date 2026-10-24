@@ -47,7 +47,7 @@ export const STATUS = Object.freeze({
   channelLabel,
   build,
   commit,
-  pluginId: 'bladder-cancer-workbench-main',
+  pluginId: 'bladder-workbench-main',
   apiPrefix: 'bladder',
   dbFile: 'xyb-bladder.sqlite',
   hostAdapter: 'implemented',
