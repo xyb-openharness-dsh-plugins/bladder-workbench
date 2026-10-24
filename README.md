@@ -8,11 +8,31 @@
 
 先共创SPEC和候选数据关系，再交付HTML交互工作台；由用户确认对应版本/模块后，复核SCHEMA/API并实现生产功能。确认记录见docs/PROTOTYPE-REVIEW.md；模型不依赖前端Tab/流程。模板骨架不是业务已确认。
 
+## 当前进度（phase1，2026-10-24）
+
+**已完成** M0 骨架 → M1 调研·SPEC → M2 原型 → M3 数据模型草案 → M4 临床库；
+**未开始** M5 开发版 → M6 装机 → M7 发布；**G1/G2/G3 三个闸口全部未签**。详见 [TASKS](docs/TASKS.md)。
+
+| 交付物 | 位置 | 规模 |
+| --- | --- | --- |
+| 调研 · 场景 · 差异化 | `docs/USER-RESEARCH.md` · `SCENARIOS.md`(S01–S18) · `DIFF-MATRIX.md` | 18 场景 · 15 行矩阵 |
+| 规格 · HVT 审核 · 验收 | `docs/SPEC.md` · `HVT-REVIEW.md` · `ACCEPTANCE.md` | AC-01…AC-54 · HVT B 级 0 |
+| HTML 交互原型 | [`prototypes/v0.1/`](prototypes/v0.1/) | 14 一级页 + 48 二级页签 + 设置 · 自检 155/155 |
+| 数据模型草案 | `schema/draft/0001_initial.sql` | 44 表 8 索引 · 探针 37/37（**G3 前不进 `schema/`**） |
+| 2026 临床试验库 | [`research/bladder-cancer/`](research/bladder-cancer/) | 295 条（CT.gov 212 + ChiCTR 83）· SQLite + 4 视图 |
+
+自检：`verify-prototype` 155/155 · `verify-one-chart` 12/12 · `verify-metric-trend` 15/15(2 未实现) ·
+`check-schema-draft` 37/37 · `check-wording` 双面 0 · `dsh-wb-cli check` staticPass。
+
 ## 当前能力
 
 - 一个 DSH 工作台注册、认证的健康接口、版本展示与标准/大字切换。
 - 已明确选择布局：business-first。business-first 使用 customFrame；模板不创建会话或复制聊天。需要 AI 协助时按官方合同接入原生 conversation 和会话管理。
-- 无业务数据库、无演示患者、无真实密钥；所有业务页按确认 spec 逐项实现。
+- **HTML 原型可 `file://` 直接打开**，含 14 个一级页与全部二级页签，数据**全部为演示用假数据**（不含任何真实病历）。
+- **业务代码一行未写**（一期止点）：无业务数据库接线、无真实密钥、未接 DSH Desktop。所有业务页按 G1/G2/G3 签认后的 spec 逐项实现。
+
+**已知未实现**：主体/角色切换（照护者视角）· MT14/MT16 · 原生 AI 面板真实接入 · DSH Desktop 实测。
+**最大证据缺口**：本项目无真实用户访谈（用户已裁定跳过）。
 
 ## 开发与本地验收
 
