@@ -23,7 +23,7 @@
 
 六件顺序拼接总哈希：`030c7bc61896f897debc6ccef97adfd138a64d7a288cf375343ba3010fb64b25`
 
-**当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S16）、`docs/SCHEMA.md`（**草案，未冻结**）
+**当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S18）、`docs/SCHEMA.md`（**草案，未冻结**）
 
 **预览环境 / 容器尺寸 / 日期**
 - Chromium（Playwright 1.62.1）无头渲染，`1440×960` 与 `390×844` 两档
@@ -40,7 +40,7 @@
 `node scripts/verify-prototype.mjs` → **断言 155 条，通过 155，失败 0**
 
 覆盖到的关键项：
-- 15 个一级页 + 二级页签**逐页打开无异常**；浏览器控制台**零 error**
+- 14 个一级页 + 二级页签**逐页打开无异常**；浏览器控制台**零 error**
 - 分野闸门：未选线**不出现**任一线的专属卡；NMIBC 与 MIBC 的专属卡**不并存**
 - 一图秀 C1–C12：每条线按**该指标全期** min/max 归一化、**末点每序列只标一次**、单点不连线、治疗条独立层、`390px` 下横向滚动**只发生在 `.chart-wrap` 内**
 - 指标卡：固定高 `276px`、`perspective` + `preserve-3d` + `backface-visibility`、隐藏面 `inert`

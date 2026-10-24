@@ -22,8 +22,8 @@
 - **研究方法**：证据分层 `E1 权威原文 > E2 官方注册库 > E3 患者教育材料 > E4 设计假设`。**⚠️ 本项目无真实患者访谈、无病历、无患者侧材料**（`DESIGN-10`，m00282）；患者教育材料**不等于**真实用户验证。
 - **成功判据**：①患者能说出三个要问医生的问题；②换一个照护者接手**不用问患者**就知道灌注排到第几周与下次膀胱镜日期；③急症 30 秒内找到判据与联系入口。
 - **追踪链**：`证据 E → 需求 N → 场景 S → 功能 F → 数据/交互 → 验收 A`（见 `docs/SCENARIOS.md §4` 抽样）。
-- **证据文件**：`docs/research/中文权威共识-事实提取.md`（11 份共识，约 200 条事实）、`docs/research/2025-2026-膀胱癌治疗格局-事实提取.md`（9 份 FDA/III 期）、CACA 膀胱癌 QA（48 问答）、ADC 临床应用安全共识（2022）。
-- **独立 review**：**未做**（`docs/DESIGN-REVIEW.md` 待写）。不得写成"已通过"。
+- **证据文件**：`docs/research/中文权威共识-事实提取.md`（6 份共识文献，约 200 条事实）、`docs/research/2025-2026-膀胱癌治疗格局-事实提取.md`（9 份 FDA/III 期）、CACA 膀胱癌 QA（48 问答）、ADC 临床应用安全共识（2022）。
+- **独立 review**：第 1 轮**已做**（`docs/DESIGN-REVIEW.md`，同模型+独立会话；**异模型审查仍未做**）。高优先级 10 条已处置，中优先级 15 条处置中。
 
 ## 问题、用户与最小闭环
 
@@ -60,7 +60,7 @@
 
 链接 `docs/FEATURE-INVENTORY.csv`（待生成，phase1 末）。
 
-**一级导航（12）**：
+**一级导航（14）**：
 
 ```
 看板
@@ -88,11 +88,49 @@
 
 ## 数据与 API
 
-实体/关系见 `docs/SCHEMA.md` 与 `schema/draft/0001_initial.sql`（草案，**`G3` 前不执行不冻结**）。
+实体/关系见 `docs/SCHEMA.md` 与 `schema/0001_initial.sql`（草案，**`G3` 前不执行不冻结**）。
 
 **实体清单（21 组）**：
 
 通用 `workspace` / `subject` / `document`(sha256) / `source_ref` / `record` / `viewpoint`(is_private 默认 1) / `question` / `task` / `saved_result` / `export_job` / `change_log`；导入 `import_file` / `parse_job` / `candidate`；**膀胱癌专属** `line_selection`（分野，带版本链） / `pathology_report`+`pathology_finding` / `staging_assertion`（`clinical`/`pathological`/`post_neoadjuvant` 三态并列） / `surgery_event` / `instillation_course`+`instillation_event`+`contraindication_flag` / **`bcg_response`（S17）** / **`high_risk_marker`（S17）** / `diversion_fact` / `stoma_supply`+`stoma_log`+`continence_log` / `followup_schedule`+`cystoscopy_record`+`cystoscopy_experience` / `urine_cytology` / `upper_tract_surveillance` / `renal_function`+`split_renal_function`+`drainage` / `urgent_symptom` / `private_note` / `treatment_line`+`regimen_drug`+`cycle`+`response`；指标 `metric_definition`(版本化 code+version) / `observation` / `measurement` / `symptom_entry`。
+
+### 实体名对照（SPEC 概念名 → schema 物理表）
+
+**命名约定**：SPEC 用**单数概念名**，`schema/` 用**复数物理表名**。这层差异不是缺陷，
+但会让人误以为「SPEC 里的表不存在」（独立审查 #20 就是这么被绊到的），所以在此列全。
+
+**① 常规单数 → 复数（30 组，无歧义）**
+`bcg_response→bcg_responses`、`continence_log→continence_logs`、
+`contraindication_flag→contraindication_flags`、`cycle→cycles`、
+`cystoscopy_experience→cystoscopy_experiences`、`cystoscopy_record→cystoscopy_records`、
+`diversion_fact→diversion_facts`、`document→documents`、`followup_schedule→followup_schedules`、
+`high_risk_marker→high_risk_markers`、`instillation_course→instillation_courses`、
+`instillation_event→instillation_events`、`line_selection→line_selections`、
+`metric_definition→metric_definitions`、`observation→observations`、
+`pathology_finding→pathology_findings`、`pathology_report→pathology_reports`、
+`question→questions`、`record→records`、`regimen_drug→regimen_drugs`、`response→responses`、
+`source_ref→source_refs`、`staging_assertion→staging_assertions`、`stoma_log→stoma_logs`、
+`stoma_supply→stoma_supplies`、`subject→subjects`、`surgery_event→surgery_events`、
+`task→tasks`、`treatment_line→treatment_lines`、`urgent_symptom→urgent_symptoms`、
+`symptom_entry→symptom_entries`、`viewpoint→viewpoints`
+
+**② 真差异（不是复数问题）**
+
+| SPEC 概念名 | schema 实际 | 说明 |
+| --- | --- | --- |
+| `renal_function` | `renal_thresholds` + `split_renal_function` | 拆成「门槛对照」与「分肾核素」两张，不是一张 |
+| `measurement` | `observations` | 并入观察记录，不单建 |
+| `clinical` / `pathological` / `post_neoadjuvant` | `staging_assertions.kind` 的**枚举值** | 它们是值，不是实体 |
+| `workspace` | — | **未落地**：一期单工作区，无多工作区需求 |
+| `private_note` | — | **未落地**：私密内容落在各事实表的 `is_private` 列上，不另建表 |
+| `import_file` / `parse_job` / `export_job` / `saved_result` | — | **未落地**：导入/解析/导出/保存结果一期只留接口，未建表 |
+
+**③ schema 有、SPEC 实体清单漏列（5 张）**
+`trials` / `trial_bookmarks`（临床试验页 S16）、`metric_definitions` / `observations`（M13 指标）、
+`metabolic_observations`（P2 来源待补期专用，见 schema 注释）、`demo_meta`（演示档案标记）。
+
+> **G3 已签，本对照表即冻结口径。** 此后新增表只能加迁移，不能改名。
+
 
 **事实与候选分离**：`candidate` **永远只是候选**，逐项确认才进事实层。接受 ≠ 审核；审核字段保持 NULL 直到人工确认。
 
@@ -190,7 +228,7 @@ Phase3 实现  阶段6 系统开发（parity >98%）→ 阶段7 测试修复
 
 ## 互动设计与确认关口
 
-引用 `docs/DESIGN-SESSION.md`（已写 DESIGN-01…10）与 `docs/UI-DESIGN.md`（待写）。
+引用 `docs/DESIGN-SESSION.md`（已写 DESIGN-01…10）与 `docs/UI-DESIGN.md`（已写，含页面树/断点/token/顶栏/3D 卡/一图秀/十种状态）。
 
 **当前状态**：模板已就绪、部分已填写、**G1/G2/G3 均待确认**。未决项：HTML 原型签认、schema 签认、HVT 五层检查、独立 review、资料目录最终确认。
 
@@ -414,8 +452,8 @@ HTML 路径/版本/hash：prototypes/v0.1/  —— hash 待补（G2 时记录）
 | 2 | BCG 不良反应分级表 + 「必须立即就医」原文 | 灌注共识表3（**图片**） | 待补采；急症页先用保守表述 + 标「待核验」 |
 | 3 | 灌注后膀胱内保留（憋尿）时间、灌注后饮水排尿要求 | 灌注共识表4（**图片**） | 待补采；字段默认空，**不给建议值** |
 | 4 | 2024 版随访计划表 | 保膀胱共识表2/表7（**图片**） | 待补采；间隔暂用 2022 版口径并标版本 |
-| 5 | HER2 IHC / FISH 判读表 | HER2 共识表2/表3（**图片**） | 待补采；HER2 只表示「检测了/结果原文」 |
-| 6 | B12 / 代谢性酸中毒 / 结石 的权威来源 | **11 份共识中查不到** | 补来源，否则降二期 |
+| 5 | HER2 IHC / FISH 判读表 | HER2 共识表2/表3（**图片**） | 待补采。**注意：schema 里没有 HER2 字段，也没有对应页面与场景**（审查 #17）—— 只加字段不加入口等于造一个永远填不上的空列，因此列为**二期候选**，一期不做「字段留位」 |
+| 6 | B12 / 代谢性酸中毒 / 结石 的权威来源 | **6 份共识文献中查不到** | 补来源，否则降二期 |
 | 7 | 性功能与生育具体字段的来源 | **同上** | 补来源，否则降二期 |
 | 8 | 尿细胞学四态（阴性/非典型/可疑/阳性）的权威口径 | 原文只说「是常规随访项」 | 找权威分级，否则标 `E4` |
 | 9 | **真实患者访谈** | — | **无**；本项目最大证据缺口 |

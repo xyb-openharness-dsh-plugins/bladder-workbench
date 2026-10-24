@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 /**
- * schema/draft/0001_initial.sql 约束探针
- * 用法：node scripts/check-schema-draft.mjs
+ * schema/*.sql 约束探针 + 冻结合同校验
+ * 用法：node scripts/check-schema.mjs
+ *
+ * G3 签认后本脚本有两个职责：
+ *   A. 约束探针 —— 一条一条插非法值，看 CHECK 是不是真在拦人。
+ *   B. 冻结合同 —— 逐个迁移文件比对 sha256，并对未登记在 freeze-contract.md
+ *      里的 *.sql 直接失败。理由是：迁移一旦被改过，就没人能判断线上库是哪一版。
+ *      **失败即停，不许警告放行。**
  *
  * 为什么要有这个脚本：
  *   草案 DDL 里那些 CHECK 不是装饰 —— 它们就是 docs/SPEC.md 里「不许换算」
@@ -11,12 +17,45 @@
  * 纪律：只用内存库（:memory:），不落盘、不依赖 os.tmpdir()、不用固定路径。
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 
 const ROOT = resolve(new URL('.', import.meta.url).pathname, '..');
-const DDL_PATH = join(ROOT, 'schema/draft/0001_initial.sql');
+const SCHEMA_DIR = join(ROOT, 'schema');
+const CONTRACT = join(SCHEMA_DIR, 'freeze-contract.md');
+
+// ---- A. 约束探针：用第一个迁移（0001_initial.sql）建库
+const MIGRATIONS = readdirSync(SCHEMA_DIR).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+if (MIGRATIONS.length === 0) { console.error('❌ schema/ 下没有迁移文件'); process.exit(1); }
+const DDL_PATH = join(SCHEMA_DIR, MIGRATIONS[0]);
 const DDL = readFileSync(DDL_PATH, 'utf8');
+
+// ---- B. 冻结合同校验（先跑，最便宜且最该 fail-closed）
+const contractText = readFileSync(CONTRACT, 'utf8');
+const frozen = new Map();
+for (const line of contractText.split('\n')) {
+  const m = line.match(/^\|\s*`(\d{4}_[^`]+\.sql)`\s*\|[^|]*\|[^|]*\|[^|]*\|[^|]*\|\s*`([0-9a-f]{64})`\s*\|/);
+  if (m) frozen.set(m[1], m[2]);
+}
+const contractFails = [];
+if (frozen.size === 0) contractFails.push('freeze-contract.md 里没有解析到任何已冻结迁移');
+for (const [file, want] of frozen) {
+  let got;
+  try { got = createHash('sha256').update(readFileSync(join(SCHEMA_DIR, file))).digest('hex'); }
+  catch { contractFails.push(`${file} 在合同里登记了但文件不存在`); continue; }
+  if (got !== want) contractFails.push(`${file} 内容已被改动（合同 ${want.slice(0, 16)}… / 实际 ${got.slice(0, 16)}…）`);
+}
+for (const file of MIGRATIONS) {
+  if (!frozen.has(file)) contractFails.push(`${file} 未登记在 freeze-contract.md（新增迁移必须同时登记 sha256）`);
+}
+if (contractFails.length) {
+  console.log('== 冻结合同校验 ==');
+  contractFails.forEach((f) => console.log(`  ❌ ${f}`));
+  console.log('\n失败即停：冻结后的迁移只增不改。要改 schema 请新增 0002_*.sql。');
+  process.exit(1);
+}
+console.log(`== 冻结合同校验 ==  ${frozen.size} 个迁移 sha256 全部匹配 ✅`);
 
 /* 每条探针：往内存库灌 DDL + 前置数据 + 这条 SQL，看它是通过还是被拦。
    期望 error 的，说明约束真的在拦人；期望 ok 的，说明合法值没被误伤。 */

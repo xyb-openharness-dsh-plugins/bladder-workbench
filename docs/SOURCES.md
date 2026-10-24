@@ -66,7 +66,7 @@ U01：[hhx465453939/agent-taste-seed-system](https://github.com/hhx465453939/age
 | 2021 灌注共识 表 3 | BCG 不良反应分级 + 必须立即就医原文 | 急症分级判据 | 现用保守表述 |
 | 2021 灌注共识 表 4 | 灌注后憋尿时间 / 饮水排尿要求 | `retention_minutes` 默认空 | **不得给建议值** |
 | 2024 保膀胱共识 表 2/表 7 | 2024 版随访计划 | 复查间隔口径 | 间隔按 2022 版标注 |
-| HER2 共识 表 2/表 3 | IHC / FISH 判读 | HER2 检测项 | 字段留位，判读不做 |
+| HER2 共识 表 2/表 3 | IHC / FISH 判读 | （**无对应实体**） | **未落地**（审查 #17）：无字段、无页面、无场景；二期候选 |
 
 ### B.2 原文根本没写的内容（**不是漏读，是原文没有**）
 
@@ -178,7 +178,7 @@ ChiCTR 详情页共 **54 个字段名**，按**模式规则**剥除 **17 类** P
 # 2026 临床试验库（双源；ChiCTR 需先起本机 sidecar）
 cd /Users/qinxiaoqiang/Downloads/chictr_trials && node dist/cli/setup-cli.js sidecar   # 后台
 node scripts/fetch-bladder-trials-2026.mjs                                             # 生成本目录三件
-node scripts/check-schema-draft.mjs      # 数据模型约束探针 28 条
+node scripts/check-schema.mjs      # 数据模型约束探针 28 条
 node scripts/check-wording.mjs           # 文案红线（界面面零容忍）
 node scripts/verify-prototype.mjs        # 原型几何自检 150 条
 node scripts/verify-one-chart.mjs        # 一图秀 C1–C12

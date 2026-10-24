@@ -17,7 +17,7 @@
 | 轮次 | 1 |
 | 阶段/文档版本 | phase1 全部产物（原型 `v0.1`）；审查跨越本轮正在进行的原型修改，**审查者已自行声明 hash 可能过期** |
 | 实际模型/推理档位/审查Agent | 与本项目同一模型；**独立会话独立上下文**，产物清单输入、无推理过程输入 |
-| 时间与输入范围 | 2026-10-24 04:10–04:20；`docs/*`（33 份）+ `schema/draft/0001_initial.sql` + `prototypes/v0.1/*` + `scripts/*` |
+| 时间与输入范围 | 2026-10-24 04:10–04:20；`docs/*`（33 份）+ `schema/0001_initial.sql` + `prototypes/v0.1/*` + `scripts/*` |
 | 发现及优先级 | 高 10 条 / 中 15 条（见 §2、§3） |
 | 建议/讨论项 | 见每条"建议"栏 |
 | 用户决定与修改证据 | **待用户裁决**。本轮只做完审查，尚未逐条处置 |
@@ -32,7 +32,7 @@
 | # | 问题 | 位置 | 为什么是问题 | 建议 | 优先级 | 处置 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | **原型 hash 已失效，G2 会签错版本** | `docs/PROTOTYPE-REVIEW.md §一`、`docs/UI-PARITY.md §1` | 记录的 app.js `9635def9…`／shell.css `8f704691…`／总哈希 `3dff302d…` 与磁盘不一致；任何基于该 hash 的用户确认都指向一个不存在的版本 | 改文件即重算 hash 并作废既有确认；hash 由脚本生成而非手写 | 高 | **已处理**：六件哈希重算（shell.css `075da3fd` / app.js `dc204237`，总哈希 `030c7bc6`），已回写 `PROTOTYPE-REVIEW.md` 与 `DEMO-INDEX.md`；`UI-PARITY.md §1` 同步 |
-| 2 | **私密项在数据层没有 fail-closed** | `docs/SCENARIO-PATHS.md` S08、`docs/SPEC.md` M05 vs `schema/draft/0001_initial.sql` | 声称 `stoma_log.privacy` 默认 private，实测**无 privacy 列**；`worry_note` 也无 `is_private`；全库只有 `viewpoints.is_private` 默认 1 | 统一 visibility 列或单一 `privacy_policy` 表 + 默认值 `CHECK`；探针补进 `check-schema-draft.mjs` | 高 | 待办 |
+| 2 | **私密项在数据层没有 fail-closed** | `docs/SCENARIO-PATHS.md` S08、`docs/SPEC.md` M05 vs `schema/0001_initial.sql` | 声称 `stoma_log.privacy` 默认 private，实测**无 privacy 列**；`worry_note` 也无 `is_private`；全库只有 `viewpoints.is_private` 默认 1 | 统一 visibility 列或单一 `privacy_policy` 表 + 默认值 `CHECK`；探针补进 `check-schema.mjs` | 高 | 待办 |
 | 3 | **`recorded_by` 未落地，照护者代记无处存** | `docs/SPEC.md` M10 / AC-38 vs schema | `recorded_by` 在 schema 出现 **0 次**；只有 `records` 审计表与 `stoma_logs.actor`（自由文本、非 `subjects` 外键） | 事实表统一加 `recorded_by`，或统一事件层 | 高 | 待办 |
 | 4 | **ADR-02 选的 `diagnosis_assertion` 没实现，验收仍指向它** | `docs/SPEC.md:41/262`、`docs/ACCEPTANCE.md:84`(AC-04) vs schema `line_selections`(`:46/:52/:56`) | ADR 未修订，AC-04 **不可执行** | 改 ADR/字段，或改验收，二选一并同步 | 高 | **已处理**：以 schema 为准改文档。`docs/SPEC.md` ADR-02 / 实体清单 / M01 字段改为实际三表（`line_selections` / `staging_assertions` / `pathology_findings`），`AC-04` 的落点改 `line_selections.supersedes_id`。三表拆分优于原单表 `diagnosis_assertion`（分野/分期/病理形态是三件事） |
 | 5 | **第 4 个自检脚本失败且结果无落点** | `scripts/verify-metric-trend.mjs`；`docs/METRIC-TREND-SPEC.md` | 审查时脚本 exit 1；MT 结果在 `PARITY.csv`/`UI-PARITY.md`/`ACCEPTANCE.md` **零命中** | 结果登记进 `ACCEPTANCE.md §3`，未实现项写进 `PARITY.csv` | 高 | **已处理**：`ACCEPTANCE.md` 新增 `ACC-36`（MT 15/15，另 2 条如实记未实现）；`PARITY.csv` 新增 `PAR-030` 记 MT14/MT16 未实现 |
@@ -40,7 +40,7 @@
 | 7 | **E4 假设被挂上 E1 来源** | S07(P1)、`docs/FEATURE-INVENTORY.csv:20`、`docs/SCHEMA.md:22` | 写「来源：质控 BT-16-01/02/03」，但原文那三条只是**术式比例指标**，不含生活向对比；`docs/USER-RESEARCH.md:64` B2 自己写「生活向对比是 E4」 | 来源列与界面同改标 **E4** | 高 | **已处理**：`SCENARIOS.md` S07 来源列、`FEATURE-INVENTORY.csv` FI-019、`SCHEMA.md` 三处同改 —— E1 只支持「三种术式是三个独立类别」，日常生活对比改标 **E4 设计假设** |
 | 8 | **S14（P1）在原型里走不通** | `docs/SCENARIO-PATHS.md` S14 vs `prototypes/v0.1/app.js:136-139` | 文档称"首页顶部档案切换器承担我的/患者的资料"；原型只有 `#selDemo`（DEMO-1/DEMO-2 **分野**切换），无主体切换、无照护者视角 | 明确一期做不做；不做就改文档 | 高 | **已处理（按未实现登记，未粉饰）**：`SCENARIO-PATHS.md` S14 删掉不成立的切换器说法并标「原型缺口」，§5 补条目；`PARITY.csv` `PAR-025` 状态记 **未实现**。一期倾向只做交接页+记录人字段 |
 | 9 | **处置指令与「不写处置」自相矛盾** | `prototypes/v0.1/app.js:1722`、`:957` vs S10 锚点③ | 同屏既写「不告诉你怎么处理」又写「请尽快联系…或就近急诊」；`check-wording.mjs` 只查 7 个禁词，**语义越界无覆盖** | 把「不写处置」变成可判定断言（禁祈使句） | 高 | **已处理**：急症页/灌注页改为「共识列出的固定情形 + 转接」，删掉「也不告诉你怎么处理」与「不要等到下次门诊」；`check-wording.mjs` 新增 7 条处置指令规则（自行用药/可以等/先吃点/热敷/不用去医院/不要等到），界面面零命中 |
-| 10 | **声称的约束没防住，探针还恒真** | schema `instillation_events.cancel_reason` vs `docs/SCHEMA.md:126`/AC-10 | 无 `CHECK`；`check-schema-draft.mjs` 那条只验「带原因的取消能写」，**没有反向验证"不带原因必须被拒"** | 加 `CHECK(status<>'cancelled' OR cancel_reason IS NOT NULL)`，探针**反向**测 | 高 | **已处理**：`instillation_events` 加表级 `CHECK(status<>'cancelled' OR 非空 cancel_reason)`；探针 **28 → 37**，含 6 条反向探针（只验「合法值能写」是恒真的） |
+| 10 | **声称的约束没防住，探针还恒真** | schema `instillation_events.cancel_reason` vs `docs/SCHEMA.md:126`/AC-10 | 无 `CHECK`；`check-schema.mjs` 那条只验「带原因的取消能写」，**没有反向验证"不带原因必须被拒"** | 加 `CHECK(status<>'cancelled' OR cancel_reason IS NOT NULL)`，探针**反向**测 | 高 | **已处理**：`instillation_events` 加表级 `CHECK(status<>'cancelled' OR 非空 cancel_reason)`；探针 **28 → 37**，含 6 条反向探针（只验「合法值能写」是恒真的） |
 
 ---
 
@@ -55,7 +55,7 @@
 | 15 | `docs/ACCEPTANCE.md` M15 节 | 写「入口…（待原型补）」，原型已有该页签 + 3 条断言 | 改 | 中 |
 | 16 | `docs/ACCEPTANCE.md` M05 节 | 把 S12 归给 M05，S12 实属 **M13** | 改映射 | 中 |
 | 17 | `docs/SPEC.md:413` / `docs/UI-PARITY.md:67` / `docs/SOURCES.md:69` | 三处称「HER2 判读字段留位」，schema 无该字段、无页无场景 | 真建或删 | 中 |
-| 18 | `docs/SOURCES.md:47` | 实际「11 个文件 → 6 份文献」，却被约 20 处写成「11 份共识」支撑"零覆盖" | 统一口径 | 中 |
+| 18 | `docs/SOURCES.md:47` | 实际「11 个文件 → 6 份文献」，却被约 20 处写成「6 份共识文献」支撑"零覆盖" | 统一口径 | 中 |
 | 19 | `docs/SCENARIOS.md` S04 / `docs/USER-RESEARCH.md` A8 | 自认"最危险假设"却放 **P1**；§1.2 无「记录让我更难受」的退出 | 加心理风险降级路径 | 中 |
 | 20 | `docs/SPEC.md:95` vs schema | 9 个 SPEC 实体名不存在；schema 另有 9 张表未被 SPEC 提及 | 出名称对照表 | 中 |
 | 21 | schema `demo_meta` | 注释称"模拟数据不进库"却建演示元数据表 | 删或改注释 | 中 |

@@ -11,3 +11,9 @@ output/
 *.sqlite-wal
 *.sqlite-shm
 *.db
+
+# 家族约定（与组织其他仓一致）：密钥目录、工作台运行时目录、打包产物不进仓库
+.secrets/
+_secrets/
+.workbuddy/
+dist/

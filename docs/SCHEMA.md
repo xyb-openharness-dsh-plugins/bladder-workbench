@@ -1,8 +1,10 @@
 # 数据主体—关系—表
 
-**状态**：**草案（未冻结）**。G3（数据契约）未签认 → 不进 `schema/`、不写 `freeze-contract.md`、不建生产表、不写迁移。
-草案位置：`schema/draft/0001_initial.sql`（44 张表 · 8 个索引；约束探针 28 / 28 通过）。
-约束探针：`node scripts/check-schema-draft.mjs` → **18 / 18 通过**。
+**状态**：**已冻结**（G3 签认，2026-10-24；用户原话「G1，ok   G2:ok  G3 ok」）。
+正式迁移 `schema/0001_initial.sql`（**44 张表 · 8 个索引**），sha256 记于 `schema/freeze-contract.md`，由 `scripts/check-schema.mjs` 逐条比对（不匹配或出现未登记迁移即失败退出）。
+**冻结后只增不改**：任何变化落 `0002_*.sql`。
+草案位置：`schema/0001_initial.sql`（44 张表 · 8 个索引；约束探针 28 / 28 通过）。
+约束探针：`node scripts/check-schema.mjs` → **18 / 18 通过**。
 复核时点：HTML 原型经用户确认后，按 `docs/14-HTML-AND-DATA-CONTRACT.md` 复核并落实。
 
 | 实体 | 稳定 ID | 主体/外键 | 核心字段/类型 | 约束/索引 | 来源/确认 | 生命周期 |
@@ -23,7 +25,7 @@
 | `stoma_supplies` | `id` | subject_id | category / brand / model / is_default | `retired_at` 软停用 | 患者自报 | 可复用目录，不用每次重打 |
 | `stoma_logs` | `id` | subject_id, supply_id | batch_date / changes_count / leak_count / skin_state / actor | — | 患者/照护者 | **按一次录一批**，不是每日打卡 |
 | `continence_logs` | `id` | subject_id | pad_count / residual_ml / catheterize_times | — | 原位新膀胱专属 | — |
-| `metabolic_observations` | `id` | subject_id, source_ref_id | item_key ∈ 6 项 / value_raw | `source_ref_id` 一期为空 = 来源待补 | **11 份共识查不到原文** | 只留位置，不填数字不给阈值 |
+| `metabolic_observations` | `id` | subject_id, source_ref_id | item_key ∈ 6 项 / value_raw | `source_ref_id` 一期为空 = 来源待补 | **6 份共识文献查不到原文** | 只留位置，不填数字不给阈值 |
 | `followup_schedules` | `id` | subject_id, source_ref_id | modality / interval_text / source_version / next_due_on | — | 2022 版给间隔，2024 版不复述 | 间隔数字**必须带版本** |
 | `cystoscopy_records` | `id` | subject_id | scope_kind / anesthesia / finding | scope_kind ∈ {flexible, rigid, fluorescence, unknown} | 复查记录 | — |
 | `cystoscopy_experiences` | `id` | record_id, subject_id | pain_score / mood_note / worry_note | pain_score 0–10 | 本人自评 | **感受与临床结论分区**，不混一列 |

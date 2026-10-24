@@ -18,7 +18,7 @@
 | 调研 · 场景 · 差异化 | `docs/USER-RESEARCH.md` · `SCENARIOS.md`(S01–S18) · `DIFF-MATRIX.md` | 18 场景 · 15 行矩阵 |
 | 规格 · HVT 审核 · 验收 | `docs/SPEC.md` · `HVT-REVIEW.md` · `ACCEPTANCE.md` | AC-01…AC-54 · HVT B 级 0 |
 | HTML 交互原型 | [`prototypes/v0.1/`](prototypes/v0.1/) | 14 一级页 + 48 二级页签 + 设置 · 自检 155/155 |
-| 数据模型草案 | `schema/draft/0001_initial.sql` | 44 表 8 索引 · 探针 37/37（**G3 前不进 `schema/`**） |
+| 数据模型草案 | `schema/0001_initial.sql` | 44 表 8 索引 · 探针 37/37（**G3 前不进 `schema/`**） |
 | 2026 临床试验库 | [`research/bladder-cancer/`](research/bladder-cancer/) | 295 条（CT.gov 212 + ChiCTR 83）· SQLite + 4 视图 |
 
 自检：`verify-prototype` 155/155 · `verify-one-chart` 12/12 · `verify-metric-trend` 15/15(2 未实现) ·

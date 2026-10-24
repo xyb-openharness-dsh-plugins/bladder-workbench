@@ -17,7 +17,7 @@
 | **M0** | 骨架 | ✅ 完成 | 脚手架 `dsh-wb-cli 1.4.3` 生成 137 文件；`dsh-wb-cli check` `staticPass: true` |
 | **M1** | 调研 · SPEC | ✅ 完成 | `USER-RESEARCH.md` / `SCENARIOS.md`(S01–S18) / `DIFF-MATRIX.md`(15 行) / `CORE-MODULES.md` / `SPEC.md` / `HVT-REVIEW.md` |
 | **M2** | 原型 | ✅ 完成 | `prototypes/v0.1/` 六件 · 14 一级页 + 48 二级页签 + 设置 · 34 张截图 · 自检 155/155 |
-| **M3** | 数据模型 | ✅ 草案完成 | `schema/draft/0001_initial.sql` 44 表 8 索引 · 探针 37/37 · **G3 未签，未进 `schema/`、无迁移** |
+| **M3** | 数据模型 | ✅ 草案完成 | `schema/0001_initial.sql` 44 表 8 索引 · 探针 37/37 · **G3 未签，未进 `schema/`、无迁移** |
 | **M4** | 临床库 | ✅ 完成 | 2026 试验 **295** 条（CT.gov 212 + ChiCTR 83）· SQLite + 4 视图 · manifest 十条 limitations |
 | **M5** | 开发版 | ⬜ 未开始 | **phase1 止点**（`DESIGN-07`）：业务代码一行不写，MinerU 只留接口与设置页骨架 |
 | **M6** | 装机 | ⬜ 未开始 | 未打包、未安装、未接 DSH Desktop |
@@ -27,13 +27,13 @@
 
 | 闸口 | 含义 | 状态 | 阻塞原因 |
 | --- | --- | --- | --- |
-| **G1** | 需求确认 | ⬜ **待签** | HVT 五层检查已跑，**B 级已清零**；待签 `BRIEF`/`SPEC`/`SCENARIOS`/`DESIGN-SESSION` |
-| **G2** | HTML 原型确认 | ⬜ **待签** | 原型可打开可交互，但**用户尚未对具体版本/hash 与范围签字** |
-| **G3** | 数据契约 | ⬜ **待签** | schema 仍是 `schema/draft/`，无 `freeze-contract.md`、无冻结 sha256 |
+| **G1** | 需求确认 | ✅ **已签**（2026-10-24） | 用户原话「G1，ok   G2:ok  G3 ok」；HVT 五层检查已跑，**B 级 2 → 0**；P1–P6 补丁已执行；冻结 `BRIEF`/`SPEC`(M01–M15)/`SCENARIOS`(S01–S18)/`DESIGN-SESSION`(DESIGN-01…33) |
+| **G2** | HTML 原型确认 | ✅ **已签**（2026-10-24） | 冻结 `prototypes/v0.1/` 六件，**总哈希 `4d9e1b4b…`**；实测 155/155 · 12/12 · 15/15 · 文案 0 违规 |
+| **G3** | 数据契约 | ✅ **已签**（2026-10-24） | `schema/0001_initial.sql` 44 表 · 8 索引，已冻结 sha256 `86e5a3e5…`；`schema/freeze-contract.md` 已建，`check-schema.mjs` 逐个比对 |
 
-> **G1 的 B 级已清零**（独立审查第 1 轮后）：原 2 条阻塞（BL-02 组织学变异型、BL-08 BCG 无应答）
-> 已补为 S18 / S17 + 模块 M15，HVT 报告中 B 级 2 → 0。
-> 但 G1 另需 `HVT-REVIEW.md` 的 P1–P7 补丁与**用户签字**，签字人/原话/日期待补。
+> **三个闸口已于 2026-10-24 由用户签认**（原话「G1，ok   G2:ok  G3 ok」），签认范围与当时**已知未决项**逐条记于
+> `docs/DESIGN-SESSION.md` 末尾「闸口签认记录」。P1–P6 补丁已执行，P7 留待 G2 后讨论。
+> **签认 ≠ phase1 止点解除**（`DESIGN-32`）：V1 业务实现仍须用户明确指示。
 
 ---
 
@@ -42,7 +42,7 @@
 | ID | 业务单元 | 前置依赖 | 拥有文件/模块 | 实现/检查要求 | 证据 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
 | T01 | 接入基线 | BRIEF/SPEC | `package.json` / `cordis.patch.yml` / `dsh/index.js` | 实际包可被目标宿主加载 | `dsh-wb-cli check` staticPass | **未开始**（phase1 止点） |
-| T02 | 数据/API | T01 + 合同 | `schema/` / store / migrations | 旧库兼容与读写闭环 | 草案 44 表 + 探针 37/37（`schema/draft/`） | **草案完成，待 G3** |
+| T02 | 数据/API | T01 + 合同 | `schema/` / store / migrations | 旧库兼容与读写闭环 | 44 表 + 探针 37/37 + 冻结合同校验（`schema/`） | **G3 已签，schema 已冻结** |
 | T03 | 共享 UI | 原型冻结 / API 合同 | `prototypes/v0.1/` | 翻面 / 图表 / 弹窗 / 状态 | 自检 155/155 · 一图秀 12/12 · MT 15/15 | **原型完成，待 G2** |
 | T04 | 完整 Tab | T02/T03 | 按页面分配 | 输入→操作→结果→回顾 | `FEATURE-INVENTORY.csv` 52 行 · `PARITY.csv` 30 行 | **原型已覆盖，业务待 V1** |
 | T05 | 跨页/安装验收 | T04 | 集成 / 发布记录 | 官方自测、实际包/版本 | — | **未开始** |
@@ -58,7 +58,7 @@
 | `node scripts/verify-prototype.mjs` | **155 / 155** | 真浏览器几何、390px 不溢出、逐页非空、3D 卡正反面不裁切、零控制台 error |
 | `node scripts/verify-one-chart.mjs` | **12 / 12** | 一图秀 C1–C12（UI 级 8 条 + 契约级 4 条） |
 | `node scripts/verify-metric-trend.mjs` | **15 通过 / 0 失败 / 2 未实现** | MT01–MT15；MT14/MT16 如实记未实现 |
-| `node scripts/check-schema-draft.mjs` | **37 / 37**（44 表 8 索引） | 含 6 条**反向探针**（非法值必须被拒） |
+| `node scripts/check-schema.mjs` | **37 / 37**（44 表 8 索引） | 含 6 条**反向探针**（非法值必须被拒） |
 | `node scripts/check-wording.mjs` | **界面面 0 / 文档面 0** | 14+7 条红线；处置指令新增 7 条 |
 | `dsh-wb-cli check .` | `staticPass: true` | 包结构 |
 
@@ -71,7 +71,7 @@
 - [x] 高优先级 **10 / 10 已处置**，逐条证据见 [DESIGN-REVIEW.md](DESIGN-REVIEW.md) §2
 - [ ] 中优先级 **2 / 15**（#20 部分、#21 已办），剩 **13 条**：
       计数过期（#11/#12/#14/#15）、实体名对照表（#20）、HER2 字段三处声称但未建（#17）、
-      「11 份共识」口径不一（#18）、S12 模块映射错（#16）、HVT 报告快照标注（#13）、
+      「6 份共识文献」口径不一（#18）、S12 模块映射错（#16）、HVT 报告快照标注（#13）、
       S04 心理风险降级路径（#19）、同语义两处落地（#22）等
 
 ### 4.2 HVT 报告补丁
@@ -128,7 +128,7 @@
 node scripts/verify-prototype.mjs
 node scripts/verify-one-chart.mjs
 node scripts/verify-metric-trend.mjs
-node scripts/check-schema-draft.mjs
+node scripts/check-schema.mjs
 node scripts/check-wording.mjs
 dsh-wb-cli check .
 
@@ -136,7 +136,7 @@ dsh-wb-cli check .
 #    签字落点：docs/DESIGN-SESSION.md（确认人 / 原话 / 日期）
 ```
 
-**顺序建议**：清 13 条中优先级 → 交用户过 G1 → 原型冻结过 G2 → `schema/draft` 转正过 G3 → 才谈 V1 业务实现。
+**已完成**：清 13 条中优先级 → 用户签 G1/G2/G3（2026-10-24）→ schema 转正冻结。\n**下一步（V1 业务实现）须用户明确解除 `DESIGN-07` 的 phase1 止点后才能开始。**
 
 > 清计数类问题（#11/#12/#14/#15）时注意：**凡是能回读源文件的值（token、表数、断言数、页签数）
 > 一律以源文件为准**，不以先前文档为准（`DESIGN-31`）——这轮 hash 失效就是手写数字造成的。

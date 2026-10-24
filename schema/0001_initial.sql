@@ -300,6 +300,13 @@ CREATE TABLE continence_logs (
 
 -- 改道后代谢长期负担（维度 10）。**来源待补**：B12/碳酸氢盐/氯/结石/尿感
 -- 在已精读的 11 份中文共识里查不到原文，所以此处只留位置，不填数字不给阈值。
+-- 【与 observations 的关系 · 唯一事实源口径】(#22)
+-- 这两张表**不是两个事实源**，而是同一件事的两个阶段：
+--   · 来源待补期 → metabolic_observations（item_key 是封闭枚举，source_ref_id 允许为空）
+--   · 来源补齐后 → 迁进 metric_definitions + observations，本表**退役**
+-- 之所以现在不直接塞进 observations：observations 要求挂 metric_definitions 的
+-- 版本化 code，而没有出处的指标**不该拿到正式 code** —— 那等于给它一个看起来权威的身份。
+-- 迁移时：为每个 item_key 建一条 metric_definition，把行搬过去，再删本表。
 CREATE TABLE metabolic_observations (
   id            TEXT PRIMARY KEY,
   subject_id    TEXT NOT NULL REFERENCES subjects(id),
@@ -477,6 +484,13 @@ CREATE TABLE cycles (
   note          TEXT
 );
 
+-- 【与 bcg_responses 的区别 · 别合并】(#22)
+-- responses          = **疗效评估**（某个治疗方案做了以后，影像/病理上怎么样），
+--                      挂在 treatment_lines 上，值原文照录不套 RECIST。
+-- bcg_responses      = **BCG 应答状态**（初治 / 无应答 / 不耐受 / 未判定），
+--                      它本身是一条**由医生作出的判断**，不是检查结果（见 DESIGN-28）。
+-- 一个患者可以「BCG 无应答」（bcg_responses）同时「后续 GC 方案部分缓解」（responses）。
+-- 合并会让「无应答」这个判断失去它必须携带的 doctor_words_raw 与 decided_on。
 CREATE TABLE responses (
   id            TEXT PRIMARY KEY,
   line_id       TEXT NOT NULL REFERENCES treatment_lines(id),

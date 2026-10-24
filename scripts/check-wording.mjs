@@ -37,7 +37,7 @@ const RULES = [
   { pattern: '不应该用', why: '同上' },
   { pattern: '预后良好', why: '不做预后判断' },
   { pattern: '治愈', why: '不做预后判断' },
-  { pattern: '可能复发', why: '不做复发预测' },
+  { pattern: '可能(会|要|得)?复发', why: '不做复发预测（原写法漏掉「可能会复发」，由探针实测发现）' },
   { pattern: '复发率\\s*\\d', why: '带具体百分比的复发率无来源，不得进文案' },
   { pattern: '2[–\\-～]5%', why: '「2–5% 会得 UTUC」无来源，已纠正（docs/DIFF-MATRIX.md:81）' },
   { pattern: '50[–\\-～]70%', why: '「复发率 50–70%」无来源，已纠正' },
@@ -52,6 +52,13 @@ const RULES = [
   { pattern: '热敷|冰敷', why: '同上（具体处理手段）' },
   { pattern: '不用去医院|不需要去医院|没必要去医院', why: '不得替代就医判断' },
   { pattern: '不要等到', why: '替医生判断时点；只说「属于共识列出的固定情形」' },
+  /* —— 因果连写：只许并置，不许连线 ——
+     docs/23 第④条：看板提醒只把「表达面（感受）」与「指标面（数值）」两列并置，
+     **不写因果、不写处置**。下面抓的是把两列写成一句话的写法。 */
+  { pattern: '(因为|由于)[^。；]{0,40}(所以|因此|才)', why: '把感受与数值写成因果（docs/23 第④条）；两列只并置' },
+  { pattern: '说明(病情|情况|指标)(在)?(进展|好转|恶化|加重|稳定)', why: '工作台不得从单个数值推出病情走向' },
+  { pattern: '(导致|引起|意味着|代表)(病情|复发|进展|转移|恶化|好转)', why: '同上；不做因果与预后推断' },
+  { pattern: '(指标|数值|结果)(一|变)?(低|高|差)了?[^，。；]{0,6}(所以|说明|代表)', why: '同上' },
 ];
 
 // 文档面豁免：这些文件的工作是"陈述规则本身"或"记录研究原文"。
@@ -113,6 +120,33 @@ function walk(dir, out = []) {
   return out;
 }
 
+// ---------------------------------------------------------------- 反向探针
+// 规则「0 违规」有两种可能：真的干净，或者规则本身匹配不到东西。
+// 下面这些句子**必须每条都被抓到**，漏掉任何一条就说明对应规则是空转的。
+const PROBES = [
+  ['因为你血红蛋白低，所以才会觉得累。', '因果连写'],
+  ['这个结果说明病情在进展。', '从数值推病情'],
+  ['指标变低了所以要注意。', '因果连写'],
+  ['可能会复发。', '复发预测'],
+  ['你自己停药就行。', '自行用药'],
+  ['可以先等两天。', '替医生判断能不能等'],
+  ['随访是终身的。', '无来源表述'],
+  ['复发率 60% 左右。', '带百分比复发率'],
+  ['应该用免疫治疗。', '方案倾向'],
+];
+
+function selfTest() {
+  let bad = 0;
+  for (const [line, label] of PROBES) {
+    const fired = RULES.some((r) => new RegExp(r.pattern).test(line));
+    if (!fired) { console.log(`  ❌ 漏抓：${label} —— 「${line}」`); bad++; }
+  }
+  console.log(bad === 0
+    ? `反向探针：${PROBES.length} / ${PROBES.length} 全部命中 ✅（规则不是空转）`
+    : `反向探针：${PROBES.length - bad} / ${PROBES.length} —— 有 ${bad} 条规则空转 ❌`);
+  return bad;
+}
+
 function scan(files, { uiFacing }) {
   const hits = [];
   for (const abs of files) {
@@ -141,6 +175,13 @@ function scan(files, { uiFacing }) {
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const uiOnly = args.includes('--ui-only');
+const selfTestOnly = args.includes('--self-test');
+
+// --self-test：只跑反向探针，不扫仓库（用于 CI 与改动规则后的自证）
+if (selfTestOnly) {
+  console.log('== 文案红线规则反向探针 ==');
+  process.exit(selfTest() ? 1 : 0);
+}
 
 const uiFiles = walk(join(ROOT, 'prototypes'));
 const docFiles = uiOnly ? [] : walk(join(ROOT, 'docs'));

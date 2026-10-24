@@ -4,7 +4,7 @@
 > **状态**：审核完成；**P1–P6 已全部执行**；**P7 待 G2 讨论**。
 > **B 级现状：2 → 0**；**S 层失败恢复已由 P1 补齐**（18 条场景全部给出具体降级动作）；**两条的 I 层界面仍待原型补**，属 G2 范围。
 
-日期：2026-10-24。审核对象：`docs/SPEC.md`（v0.1）、`docs/SCENARIOS.md`（S01–S16）、`docs/CORE-MODULES.md`（131 行）、`docs/SCHEMA.md` + `schema/draft/0001_initial.sql`（640 行 / 42 表）、`docs/ACCEPTANCE.md`（63 行）。
+日期：2026-10-24。审核对象：`docs/SPEC.md`（v0.1）、`docs/SCENARIOS.md`（S01–S16）、`docs/CORE-MODULES.md`（131 行）、`docs/SCHEMA.md` + `schema/0001_initial.sql`（640 行 / 42 表）、`docs/ACCEPTANCE.md`（63 行）。
 
 审核范围：`docs/` + `schema/` + `prototypes/v0.1/`（排除 `_archived/`、`reference/`）。本次**未**做：用户访谈、临床审核、原型逐页人工确认、实机安装。
 
@@ -27,7 +27,7 @@
 
 1. **`docs/CORE-MODULES.md:90` 把两处已纠正的无来源表述写了回去**：「上尿路继发尿路上皮癌 **2–5%**」与「NMIBC 的复查是**终身的**」。而 `docs/DIFF-MATRIX.md:80-81` 明确写着这两条**不得用于界面文案**，`docs/SCENARIOS.md:27` 也标了「该数字无来源，已纠正」。
 2. 同文件 `:43`「**一辈子**要按周期排程」、`:87` 标题「（**终身** + 恐惧管理）」，`docs/DESIGN-PROMPT.md:37/:40`、`docs/BRIEF.md:5` 同样带「终身」。**`docs/SPEC.md:309` 的 AC-24 要求「全站 grep 不到『终身』」**——按自己写的验收标准，这几份文档现在都不通过。
-3. **`docs/ACCEPTANCE.md` 与 `docs/UI-DESIGN.md` 仍是未经填写的原始模板**。SPEC 里 47 条 `AC-xx` 只是散在模块段里的一句话锚点，没有操作步骤、没有异常路径，不能直接执行；`UI-DESIGN.md` 全文都是 `...`。**G2 没有可对照的验收合同。**
+3. 〔**审核时快照**，2026-10-24 04:10；两者**均已填写**，见 §8 改动追踪〕**`docs/ACCEPTANCE.md` 与 `docs/UI-DESIGN.md` 仍是未经填写的原始模板**。SPEC 里 47 条 `AC-xx` 只是散在模块段里的一句话锚点，没有操作步骤、没有异常路径，不能直接执行；`UI-DESIGN.md` 全文都是 `...`。**G2 没有可对照的验收合同。**
 
 ---
 
@@ -49,7 +49,7 @@
 | 结论 | 复核方式 | 结果 |
 | --- | --- | --- |
 | `SCENARIOS.md` 无「失败恢复」表述 | `grep -nE '失败\|恢复\|降级\|低精力\|断网\|没资料\|缺资料' docs/SCENARIOS.md` | 仅命中 `:60`「被删/降级的候选」——**与失败恢复无关**，结论成立 |
-| `schema/draft/0001_initial.sql` 无「组织学变异型」字段 | `grep -inE '变异\|histolog' schema/draft/0001_initial.sql` | **0 命中**，结论成立 |
+| `schema/0001_initial.sql` 无「组织学变异型」字段 | `grep -inE '变异\|histolog' schema/0001_initial.sql` | **0 命中**，结论成立 |
 
 ---
 
@@ -96,7 +96,7 @@
 | BL-08 | 0 | 1 | 1 | **0** | 1 | 3 | **已补 S17 + 新模块 M15 + 2 张表 + AC-50…54**（P3）；I 层界面待 G2 |
 | BL-09 | 0 | 1 | 1 | 1 | 0 | 3 | S 缺失败恢复；A 无条目 |
 | BL-10 | 0 | 1 | 1 | 1 | 0 | 3 | 同上 |
-| BL-11 | 0 | 1 | 1 | 1 | 0 | 3 | 同上；B12/代谢性酸中毒**11 份共识零覆盖** → U |
+| BL-11 | 0 | 1 | 1 | 1 | 0 | 3 | 同上；B12/代谢性酸中毒**6 份共识文献零覆盖** → U |
 | BL-12 | 0 | 1 | 1 | 1 | 0 | 3 | S 缺失败恢复；A 无条目 |
 | BL-13 | 0 | 1 | 1 | 1 | 0 | 3 | 同上 |
 | BL-14 | 0 | 1 | 1 | **0** | 0 | 2 | P2 页面仅占位；无来源 → U |
@@ -122,7 +122,7 @@
 | ID | 脚本初值 C | 人工复核 C | 改判理由 |
 | --- | --- | --- | --- |
 | BL-05 | 5 | 3 | 脚本按术语命中给满层。**A 层实为 0**：`docs/ACCEPTANCE.md` 无对应条目，SPEC 的 `AC-05..AC-08` 是一句话锚点，无操作步骤与异常路径 |
-| BL-07 | 2 | 3 | 脚本 F 判 0（关键词未命中），实际 `schema/draft/0001_initial.sql:409` 有 `renal_thresholds` 表（`criterion='cisplatin_crcl'/'cisplatin_egfr'`）→ **F=1**；I 层原型有肾功能页与门槛卡 → **I=1** |
+| BL-07 | 2 | 3 | 脚本 F 判 0（关键词未命中），实际 `schema/0001_initial.sql:409` 有 `renal_thresholds` 表（`criterion='cisplatin_crcl'/'cisplatin_egfr'`）→ **F=1**；I 层原型有肾功能页与门槛卡 → **I=1** |
 | BL-12/13/16/17 | 2 | 3 | 同上：脚本 F 判 0，实际 `stoma_logs`(:258)、`continence_logs`(:273)、`urgent_symptoms`(:409) 均在 |
 | BL-14 | 2 | 2 | 复核后维持：`viewpoints.topic`(:560) 仅是一个**自由文本枚举位**，无性功能专属结构 → F 勉强 1，I=0 |
 
@@ -141,7 +141,7 @@
 - **现象**：场景成立（微乳头/腺样分化/鳞状分化确实改变患者要问的问题），但**从场景到验收一条都没有**。
 - **证据**：
   ```bash
-  grep -inE '变异|histolog' schema/draft/0001_initial.sql   # 0 命中
+  grep -inE '变异|histolog' schema/0001_initial.sql   # 0 命中
   grep -c '变异型' docs/SCENARIOS.md docs/SPEC.md           # 0 / 0
   ```
   唯一命中：`docs/research/中文权威共识-事实提取.md` 2 次。
@@ -172,7 +172,7 @@
 
 ### G2 ACCEPTANCE 仍是空模板（HVT 全部，A 层全 0）
 
-- **现象**：`docs/ACCEPTANCE.md` 63 行全是脚手架原始条目（ACC-01..ACC-31，**通用装机验收**），无一条场景级验收；状态列全为「未验证」。
+- 〔**审核时快照**，2026-10-24 04:10〕**现象**：`docs/ACCEPTANCE.md` 63 行全是脚手架原始条目（ACC-01..ACC-31，**通用装机验收**），无一条场景级验收；状态列全为「未验证」。
 - **证据**：`docs/SPEC.md` 里 `AC-01`..`AC-47` 共 47 处，但**全是模块段里的一句话**，例如 `docs/SPEC.md:264`「AC-02 选 NMIBC 出…卡、选 MIBC 出…卡，两者不并存」——可观察，但**无操作步骤、无异常路径、无编号索引**。
 - **影响**：G2 会变成「打开原型看着像就过」，而 SKILL.md 明令「截图通过」不得当确认。
 - **处置**：补丁 P4。
@@ -229,7 +229,7 @@ grep -cE '^\| \*\*S[0-9]{2}\*\*.*\| *[^|]' docs/SCENARIOS.md
 >
 > **比原方案更强的一点**：审读证据时发现 `docs/research/中文权威共识-事实提取.md:34` 有 E1 原文——2024 版明确把「**变异组织类型**」列为**极高危四项构成之一**。所以它不是"没来源只能留个自由文本"，而是有权威定位的。规则相应收紧为：可带来源陈述「2024 版把它列为极高危构成之一」，但**不得由工作台据此给出处置方向**。
 
-判据：`grep -c '变异型' docs/SPEC.md` ≥ 1（实测 3）；`grep -c 'variant' schema/draft/0001_initial.sql` ≥ 1（实测 1）；`node scripts/check-schema-draft.mjs` 通过 28/28。
+判据：`grep -c '变异型' docs/SPEC.md` ≥ 1（实测 3）；`grep -c 'variant' schema/0001_initial.sql` ≥ 1（实测 1）；`node scripts/check-schema.mjs` 通过 28/28。
 
 ### P3【已执行 2026-10-24】BCG 无应答与保膀胱抉择 → 新增场景 S17 + 新模块 M15 `F-应答`
 
@@ -242,7 +242,7 @@ grep -cE '^\| \*\*S[0-9]{2}\*\*.*\| *[^|]' docs/SCENARIOS.md
 >
 > **与 P2 是同一句原文**：两条 B 级缺口指向的是 2024 版这**同一句**极高危构成——「BCG 无应答」与「变异组织类型」都是其中的一项。这也解释了为什么两条会一起漏掉：它们共享同一个句子，而这个句子从没被翻译成场景。
 
-判据：`grep -c '无应答' docs/SCENARIOS.md` ≥ 1（实测 ≥2）；`grep -c 'bcg_response' docs/SPEC.md` ≥ 1；`node scripts/check-schema-draft.mjs` 通过 28/28（含 6 条 S17 探针）。
+判据：`grep -c '无应答' docs/SCENARIOS.md` ≥ 1（实测 ≥2）；`grep -c 'bcg_response' docs/SPEC.md` ≥ 1；`node scripts/check-schema.mjs` 通过 28/28（含 6 条 S17 探针）。
 
 ### P4【已执行 2026-10-24】`AC-xx` 升级为可执行验收 → `docs/ACCEPTANCE.md §2`
 
@@ -313,7 +313,8 @@ grep -rn '终身\|一辈子\|2–5%\|2-5%' --include='*.md' . | grep -v _archive
 - **待核项 U1–U5**（见 §4）：危险度分组判据、尿细胞学四态、改道后代谢、性功能与生育、急症分级表。全部为**图片未获取**或**共识零覆盖**，字段位置已留、判断不做。
 - **脚本命中统计不等于语义覆盖**：本次 18 个场景零命中 0 个，但 BL-02 的「命中 2 次」实际等于**零落地**——命中数高绝不代表做得好。
 - **五层判定的 I 层带补偿证据**：`docs/UI-DESIGN.md` 为空（按文档判应为 0），本报告依据「原型是默认实现合同」（`docs/14-HTML-AND-DATA-CONTRACT.md`）与 150+12 条实测断言判 1，**并在 G3 单独记为缺口**。这个判法需要 G1 确认，不能默认成立。
-- **本报告不构成 G1 签认**。B 级 2 条未清零，G1 不具备签字条件。
+- 〔**审核时快照**，2026-10-24 04:10〕**本报告不构成 G1 签认**。B 级 2 条未清零，G1 不具备签字条件。
+  → **后续更新**：P2/P3 已执行，B 级 **2 → 0**（见 §5）；G1 是否签字由用户决定，不由本报告代替。
 
 ---
 
@@ -325,6 +326,6 @@ grep -rn '终身\|一辈子\|2–5%\|2-5%' --include='*.md' . | grep -v _archive
 | 2026-10-24 | 人工改判 5 个场景的 C 值（BL-05/07/12/13/14） | 本文件 §3.2 |
 | 2026-10-24 | 发现 3 处文档自相矛盾（G4 无来源表述写回；P3 假声明；ACCEPTANCE/UI-DESIGN 空模板） | 本文件 §4 |
 | 2026-10-24 | 输出 7 条需求补丁（P1–P7） | 本文件 §5 |
-| 2026-10-24 | **执行 P2/P3**：新增 S17（BCG 无应答）+ S18（组织学变异型）；新建 M15 `F-应答`；实体清单 19→21 组；schema 42→44 表；AC-48…54；约束探针 18→28 条。**B 级 2 → 0** | `docs/SCENARIOS.md`、`docs/SPEC.md`、`schema/draft/0001_initial.sql`、`scripts/check-schema-draft.mjs` |
+| 2026-10-24 | **执行 P2/P3**：新增 S17（BCG 无应答）+ S18（组织学变异型）；新建 M15 `F-应答`；实体清单 19→21 组；schema 42→44 表；AC-48…54；约束探针 18→28 条。**B 级 2 → 0** | `docs/SCENARIOS.md`、`docs/SPEC.md`、`schema/0001_initial.sql`、`scripts/check-schema.mjs` |
 | 2026-10-24 | **执行 P1/P4/P5**：SCENARIOS 新增 §1.2 失败恢复表（18 条全给具体降级动作）；ACCEPTANCE 新增 §2 覆盖 AC-01…AC-54 + §3 全局项；UI-DESIGN 从空模板填成完整界面合同。顺带修正 SPEC 一处写错的数据色 | `docs/SCENARIOS.md`、`docs/ACCEPTANCE.md`、`docs/UI-DESIGN.md`、`docs/SPEC.md` |
 | 2026-10-24 | **执行 P6**：改 6 份文件 8 处 + GitHub Issue #11 正文；新建 `scripts/check-wording.mjs`（界面面零容忍 / 文档面按规则陈述豁免），两面 0 违规；脚本额外抓出人工漏掉的第 9 处（`DESIGNER-BRIEF.md:12`） | 本文件 §5 P6、`scripts/check-wording.mjs` |
