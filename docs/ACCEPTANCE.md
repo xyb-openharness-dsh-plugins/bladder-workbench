@@ -1,10 +1,10 @@
 # 验收记录
 
-代码版本/commit/dirty 状态：...
-包名称/版本/tgz/SHA-256：...
-Desktop 版本/OS/架构/Node：...
-安装入口/实际 profile/执行位置：...
-Agent 是否运行在目标 Desktop 内：...
+代码版本/commit/dirty 状态：**未验证（未装机）** —— phase1 止点内不产生可安装包（`DESIGN-07`）
+包名称/版本/tgz/SHA-256：**未验证** —— 未执行 `dsh-wb-cli pack`，无 tgz、无包 hash
+Desktop 版本/OS/架构/Node：**未验证** —— 未接入 DSH Desktop。本机开发环境 Node v22.19.0 / darwin-arm64（供参考，非目标 Desktop 实测）
+安装入口/实际 profile/执行位置：**未验证** —— 未安装。目标 profile 路径为 `~/Library/Application Support/dsh-desktop/harness/profiles/web`（注意 `~/.dsh/profiles/*` **不是**它），此条为**待核对项**
+Agent 是否运行在目标 Desktop 内：**否** —— 本次工作在普通 DSH 会话内，非目标 Desktop
 
 | ID | 层级 | 操作和预期 | 真实结果 | 证据文件/命令 | 通过/失败/未验证/不适用 |
 | --- | --- | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ Agent 是否运行在目标 Desktop 内：...
 | ACC-10 | 外部 | API/MCP/cron 实际链路与失败恢复 | | | 未验证 |
 
 附官方规范第 8 节每条适用项的责任、证据与结果，不适用写理由。只跑静态不能把 ACC-04 以后勾通过。
-限制/失败/需要用户完成的重启步骤：...
+限制/失败/需要用户完成的重启步骤：**未验证** —— 装机时若旧版仍被加载，需用户完整退出重开目标 Desktop 后再验收；不在 Agent 侧自行关闭或重启该应用
 
 ## 设计与混合数据补充
 
