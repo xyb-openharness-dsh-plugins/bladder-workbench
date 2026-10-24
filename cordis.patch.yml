@@ -1,3 +1,11 @@
 - insert:
     - id: bladder-cancer-workbench-main
       name: "@xyb-community/bladder-cancer-workbench"
+      config:
+        root: !!js dshHomePath('bladder-cancer-workbench')
+# 说明（本仓库 checker 以文件首字符为 `- insert:` 判定，注释一律放条目之后）：
+# 1. name 必须写 npm 包名（相对/绝对路径 Node 解析不到）；空 patch 写 `[]`。
+# 2. id / config.root 与 dsh/workbench.js 的 PLUGIN_ID、HOST_BASE 同值，别手改。
+# 3. config.root 由宿主 dshHomePath 分配用户数据目录（对齐 glioblastoma / lymphoma 装机契约）。
+#    缺这一行的后果不是「少个目录」而是每个宿主重启都换成新的内存库：checker 会直接报
+#    「installs fine but resets to an in-memory DB on every restart」。

@@ -1,12 +1,14 @@
 # 实施任务与当前交接 · 小泉宝 UroPal · 膀胱癌
 
-规格版本：`docs/SPEC.md` v0.1.0（**草案，G1 未签**）
-原型总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646（由 `node scripts/hash-prototype.mjs` 生成）`
-当前分支/包版本：`master` · `@xyb-community/bladder-cancer-workbench@0.1.0`
-最后更新：2026-10-24
+规格版本：`docs/SPEC.md` v0.1.0（**G1/G2/G3 已签**，2026-10-24；见 [SIGNOFF-2026-10-24.md](SIGNOFF-2026-10-24.md)）
+原型总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`（由 `node scripts/hash-prototype.mjs` 生成）
+当前分支/包版本：`main` · `@xyb-community/bladder-cancer-workbench@0.1.0`
+最后更新：2026-10-24（M5 开发版）
 
-> **一句话现状**：phase1 的**调研、SPEC、原型、数据模型草案、临床库**五件已交付并通过自检；
-> **业务代码一行未写**（`DESIGN-07` 一期止点）；**G1/G2/G3 三个闸口全部未签**。
+> **一句话现状**：phase1 五件（调研、SPEC、原型、数据模型、临床库）+ **M5 开发版**已交付并通过自检；
+> **G1/G2/G3 三闸口已签**，phase1 止点已由用户解除。现在能跑起来的是 `npm start` 起的**本机开发版**
+> （`dsh/` + `lib/` + `public/`，真实 SQLite 落盘、readmodels 与原型逐字符 parity）。
+> **M6 装机与 M7 发布未开始、未授权。**
 
 ---
 
@@ -16,7 +18,7 @@
 > 本文件只记**任务级**待办，不再重复里程碑表 —— 同一份清单写在两处必然漂移
 > （本项目已因同类问题踩坑两次，见 `docs/LESSONS.md`）。
 >
-> 当前：**M0–M4 ✅ 完成，G1/G2/G3 ✅ 已签认，M5–M9 ⬜ 未开始**。
+> 当前：**M0–M5 ✅ 完成，G1/G2/G3 ✅ 已签认，M6–M9 ⬜ 未开始**。
 
 ---
 
@@ -24,13 +26,13 @@
 
 | ID | 业务单元 | 前置依赖 | 拥有文件/模块 | 实现/检查要求 | 证据 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
-| T01 | 接入基线 | BRIEF/SPEC | `package.json` / `cordis.patch.yml` / `dsh/index.js` | 实际包可被目标宿主加载 | `dsh-wb-cli check` staticPass | **未开始**（phase1 止点） |
-| T02 | 数据/API | T01 + 合同 | `schema/` / store / migrations | 旧库兼容与读写闭环 | 44 表 + 探针 37/37 + 冻结合同校验（`schema/`） | **G3 已签，schema 已冻结** |
-| T03 | 共享 UI | 原型冻结 / API 合同 | `prototypes/v0.1/` | 翻面 / 图表 / 弹窗 / 状态 | 自检 155/155 · 一图秀 12/12 · MT 15/15 | **原型完成，待 G2** |
-| T04 | 完整 Tab | T02/T03 | 按页面分配 | 输入→操作→结果→回顾 | `FEATURE-INVENTORY.csv` 52 行 · `PARITY.csv` 30 行 | **原型已覆盖，业务待 V1** |
-| T05 | 跨页/安装验收 | T04 | 集成 / 发布记录 | 官方自测、实际包/版本 | — | **未开始** |
-| T06 | 发布与市场 | T05 | `docs/RELEASE.md` / 发行仓库 / 市场 PR | 选定来源；记录授权、tag/包/hash、Profile、PR 及可见状态 | — | **不适用**（未授权） |
-| T07 | 原生 Agent 面板 | T01 + 目标 Desktop 合同 + UI 状态稿确认 | 全局入口 / 宿主面板适配 / 布局偏好 | 按 ACC-28–31 实现拉起、隐藏/重开、调宽、窄窗与会话复用 | 原型只有**状态稿**，未接 DSH | **不适用**（未接入，如实记未验证） |
+| T01 | 接入基线 | BRIEF/SPEC | `package.json` / `cordis.patch.yml` / `dsh/index.js` | 实际包可被目标宿主加载 | `dsh-wb-cli check` **staticPass: true**、`errors: []` | **✅ 已完成**（M5；`cordis.patch.yml` 已补 `config.root`，否则装机后每次重启换内存库） |
+| T02 | 数据/API | T01 + 合同 | `schema/` / `dsh/store.js` / migrations | 旧库兼容与读写闭环 | 44 表 + 探针 37/37 + 冻结合同校验；**真实落盘库重启后行数不变** | **✅ 已完成**（M5；G3 已签，schema 冻结只增不改） |
+| T03 | 共享 UI | 原型冻结 / API 合同 | `prototypes/v0.1/` → `public/` | 翻面 / 图表 / 弹窗 / 状态 | 原型自检 155/155 · 一图秀 12/12 · MT 15/15；`public/` 由 `scripts/build-public.mjs` 从原型生成 | **✅ 已完成**（G2 已签；开发版继承同一套 UI，禁止手改 `public/`） |
+| T04 | 完整 Tab | T02/T03 | `dsh/readmodels.js` + `public/app.js` | 输入→操作→结果→回顾 | **parity 4/4**（2 分野 × 52 视图 = 104 处逐字符相同）· `FEATURE-INVENTORY.csv` 52 行 | **🔵 已执行未验证**：页面与数据层已通，**但交互仍是演示数据、无写入闭环**（V1） |
+| T05 | 跨页/安装验收 | T04 | 集成 / 发布记录 | 官方自测、实际包/版本 | `probe-headless` **25/25**（本机） | **🔵 部分**：本机无头实测已过；**装机三层验收未做**（M6） |
+| T06 | 发布与市场 | T05 | `docs/RELEASE.md` / 发行仓库 / 市场 PR | 选定来源；记录授权、tag/包/hash、Profile、PR 及可见状态 | — | **不适用**（未授权；push/tag 亦未做） |
+| T07 | 原生 Agent 面板 | T01 + 目标 Desktop 合同 + UI 状态稿确认 | `lib/client.js` / 宿主面板适配 / 布局偏好 | 按 ACC-28–31 实现拉起、隐藏/重开、调宽、窄窗与会话复用 | `lib/client.js` 552 行已实现（probe 实测 35 / 25–45 / 键盘 / 390px）；**未接 DSH** | **🔵 已执行未验证**：面板本体与宽度合同已实现；**「自动创建衔接」与「草稿冲突」两条合同仍零实现**，接入期第一件事 |
 
 ---
 
@@ -38,24 +40,27 @@
 
 | 脚本 | 结果 | 覆盖 |
 | --- | --- | --- |
+| `NODE_OPTIONS= npm run check` | **exit 0** | `check:version → :client → :public → :syntax → :schema → :wording → :package → test` 八段串联 |
+| `node --test test/*.test.mjs` | **21 / 21** | `store` 9 条（迁移幂等 / 播种幂等 / 事务回滚 / 原始值保真）+ `server` + `ui-parity` **4/4** |
+| ui-parity（开发版 vs 原型） | **4 / 4**（104 处逐字符） | 2 分野 × 52 视图的 `#wbPage` + `#wbCrumb`；页脚按规则单独断言 |
+| `node scripts/probe-headless.mjs` | **25 / 25** | 真实渲染数字：导航 14 / 页签 48 / 面板 35 与 25–45 / 390px 不溢出 / error 与 4xx 计数 |
 | `node scripts/verify-prototype.mjs` | **155 / 155** | 真浏览器几何、390px 不溢出、逐页非空、3D 卡正反面不裁切、零控制台 error |
 | `node scripts/verify-one-chart.mjs` | **12 / 12** | 一图秀 C1–C12（UI 级 8 条 + 契约级 4 条） |
-| `node scripts/verify-metric-trend.mjs` | **15 通过 / 0 失败 / 2 未实现** | MT01–MT15；MT14/MT16 如实记未实现 |
-| `node scripts/check-schema.mjs` | **37 / 37**（44 表 8 索引） | 含 6 条**反向探针**（非法值必须被拒） |
-| `node scripts/check-wording.mjs` | **界面面 0 / 文档面 0** | 14+7 条红线；处置指令新增 7 条 |
-| `dsh-wb-cli check .` | `staticPass: true` | 包结构 |
+| `node scripts/verify-metric-trend.mjs` | **15 通过 / 0 失败 / 2 未实现** | MT01–MT15；MT11/MT14 如实记未实现 |
+| `node scripts/check-schema.mjs` | **冻结合同 1/1 + 探针 37/37**（44 表 8 索引） | 含反向探针（非法值必须被拒）+ 篡改已冻结迁移必须失败 |
+| `node scripts/check-wording.mjs` | **界面面 0 / 文档面 0**（另 `--self-test` 9/9） | 25 条红线；处置指令与因果连写已可判定 |
+| `dsh-wb-cli check .` | **staticPass: true**、`errors: []` | 包结构（补 `config.root` 后转绿） |
 
 ---
 
-## 4 phase1 剩余待办
+## 4 剩余待办
 
 ### 4.1 独立审查发现（用户要求逐条处置）
 
 - [x] 高优先级 **10 / 10 已处置**，逐条证据见 [DESIGN-REVIEW.md](DESIGN-REVIEW.md) §2
-- [ ] 中优先级 **2 / 15**（#20 部分、#21 已办），剩 **13 条**：
-      计数过期（#11/#12/#14/#15）、实体名对照表（#20）、HER2 字段三处声称但未建（#17）、
-      「6 份共识文献」口径不一（#18）、S12 模块映射错（#16）、HVT 报告快照标注（#13）、
-      S04 心理风险降级路径（#19）、同语义两处落地（#22）等
+- [x] 中优先级 **15 / 15 已处置**（2026-10-24 清完；含计数过期 #11/#12/#14/#15、实体名对照表 #20、
+      HER2 假声明 #17、「6 份共识文献」口径 #18、S12 模块映射 #16、HVT 快照标注 #13、
+      S04 心理退出路径 #19、同语义两处落地 #22、FEATURE-INVENTORY 验收 ID #23、SPEC 过期表述 #25）
 
 ### 4.2 HVT 报告补丁
 
@@ -65,27 +70,28 @@
 - [x] P4 可执行验收 → `ACCEPTANCE.md §2`（AC-01…AC-54 全覆盖）
 - [x] P5 界面合同 → `UI-DESIGN.md` 填满
 - [x] P6 清除违规表述 → 8 处 + GitHub Issue #11 正文
-- [ ] P7 三条弱回流转正 —— **留 G2 讨论**
+- [x] P7 三条弱回流转正 → `SCENARIO-PATHS.md §5` 登记（G2 已签，按登记处理）
 
-### 4.3 明确未实现（不许粉饰）
+### 4.3 M5 之后仍未实现（不许粉饰）
 
-- 主体/角色切换（S14 上半段）：原型只有分野档案切换，**无照护者视角**（`PARITY.csv` PAR-025）
-- MT14 / MT16：**未实现**
-- 五份图片原文补采：危险度分组判据 / BCG 不良反应分级表 / 灌注后憋尿时间 /
-  2024 版随访计划表 / HER2 判读表 —— 用户裁定**按「来源待补」占位处理**
-- 真实患者访谈：用户裁定**跳过**（本项目**无真实用户访谈**，最大证据缺口）
+- 主体/角色切换（S14 上半段）：只有分野档案切换，**无照护者视角**（`PARITY.csv` PAR-025）
+- 原生 AI 面板的「自动创建衔接」与「草稿冲突保护」两条合同：**零实现**（`AGENT-PANE-DESIGN.md`）
+- MT11（最近报告修订聚合）/ MT14（100+ 记录压力测试）：**未实现**，留 Phase2
+- MinerU 云端解析、指南桥接：**不在 M5 判据内**
+- **写入闭环**：开发版能读能渲染，**还没有「记一笔 → 入库 → 回来看到变了」的写入路径**（V1）
+- `demo2` 与 `demo1` 的共享模块内容相同（`data.js` 只有一份）；真正分线不同值的只有手术/治疗/改道/造口
 
-### 4.4 phase1 未做
+### 4.4 已知缺口（登记在案，不冒充已解决）
 
-- [ ] 清理 13 条中优先级发现（多为计数过期，属文档一致性问题）
-- [ ] `docs/PARITY.csv` 与 `FEATURE-INVENTORY.csv` 随每轮改动同步
-- [ ] 提交本轮 TASKS.md 更新
+- [x] M5 实测暴露的 **14 处 schema 装不下** → 已登记进 [SCHEMA.md](SCHEMA.md) §「M5 实测暴露的『装不下』」，作为 `0002_*.sql` 输入
+- [ ] `PARITY.csv` 尚未登记开发版（`public/`）与原型的关系行
+- [ ] M6 装机三层验收 / M7 push+tag —— **均需单独授权**
 
 ---
 
 ## 5 当前失败 / 复现
 
-无失败项。全部自检脚本 exit 0。
+无失败项。`npm run check` exit 0（8 个 `check:*` + 21 条测试全过），`probe-headless` 25/25。
 
 ---
 
@@ -94,10 +100,11 @@
 | 项 | 状态 | 说明 |
 | --- | --- | --- |
 | 目标 DSH Desktop 实测 | **未验证** | V1 包级 / V2 装机 / V3 业务全部未做 |
-| 原生 AI 面板真实接入 | **未验证** | 原型只有状态稿 + 「复制草稿」退化路径 |
+| 装机后能否真跑（M6） | **未验证** | `dsh-wb-cli pack` 未执行；本机 `npm start` 通过**不等于**装机通过 |
+| 原生 AI 面板真实接入 | **未验证** | 面板本体与宽度合同已实现并实测；**未接 DSH**，两条合同零实现 |
 | MinerU 云端解析 | **未验证** | 一期只留接口与设置页骨架，不联网 |
 | P2 应用首页版本可见性 | **未验证** | 未接入 DSH |
-| P3 版本单一来源 | **未通过** | 仓库**无 `VERSION` 文件**，`workbench.json` 亦不存在 |
+| P3 版本单一来源 | **部分通过** | `VERSION` 已建立（用户提交），但**原型版本号仍是手写字面量**、无构建注入；家族「六处同源」目前只做到**三处** |
 | P4 可追溯（构建日期/渠道/来源） | **未通过** | 「关于」只有版本与性质 |
 | 异模型交叉审查 | **未做** | 本轮独立审查是**同模型、独立会话**，不等于异模型背书 |
 | 性能 | **未测量** | 索引已建，未做基准 |
@@ -107,28 +114,27 @@
 ## 7 下一步具体动作
 
 ```bash
-# 1. 跑全量自检（当前应全绿）
-node scripts/verify-prototype.mjs
-node scripts/verify-one-chart.mjs
-node scripts/verify-metric-trend.mjs
-node scripts/check-schema.mjs
-node scripts/check-wording.mjs
-dsh-wb-cli check .
-
-# 2. 清理 13 条中优先级发现后，请用户在 G1 上签字
-#    签字落点：docs/DESIGN-SESSION.md（确认人 / 原话 / 日期）
+# 全量自检（当前应全绿）
+NODE_OPTIONS= npm run check          # exit 0；含 21 条测试（parity 4/4）
+node scripts/probe-headless.mjs      # 25/25，真实渲染数字
+dsh-wb-cli check .                   # staticPass: true
+npm start                            # 本机开发版，浏览器打开提示的地址
 ```
 
-**已完成**：清 13 条中优先级 → 用户签 G1/G2/G3（2026-10-24）→ schema 转正冻结。\n**下一步（V1 业务实现）须用户明确解除 `DESIGN-07` 的 phase1 止点后才能开始。**
+**M5 已完成（2026-10-24）**：六步移植 → parity 4/4 → 真实 SQLite 落盘与迁移幂等 → 面板实测 → 全量检查绿。
+路径：清 13 条中优先级 → 用户签 G1/G2/G3 → schema 转正冻结 → **M5 开发版** ✅。
 
-> 清计数类问题（#11/#12/#14/#15）时注意：**凡是能回读源文件的值（token、表数、断言数、页签数）
+**下一步是 M6 装机，须用户单独授权**（`DESIGN-07` 虽已解除，但当时明确「只到 M5」；
+push / tag / 装进 Desktop / 市场上架是四件事，分别授权）。
+
+> 清计数类问题时注意：**凡是能回读源文件的值（token、表数、断言数、页签数）
 > 一律以源文件为准**，不以先前文档为准（`DESIGN-31`）——这轮 hash 失效就是手写数字造成的。
 
 ---
 
 ## 8 用户已确认的偏好与授权
 
-- **`DESIGN-07` 一期止点**：严格停在 phase1，业务代码一行不写；MinerU 本轮只留接口与设置页骨架
+- **`DESIGN-07` 一期止点**：~~严格停在 phase1，业务代码一行不写~~ —— **已于 2026-10-24 由用户原话「原型确认通过，继续M5开发」解除，且只到 M5**；M6 装机 / M7 发布需再授权。MinerU 仍只留接口与设置页骨架
 - **`DESIGN-06`**：2026 全年口径，目标 300–500 条 → **实际 295 条**（已如实记录，不凑数）
 - **`DESIGN-01`**：膀胱癌当泌尿族**实际先行者**，不等前列腺癌 T0 家族基线；共享件标「待回填」
 - **`DESIGN-02`**：两条线都做，**MIBC 做厚**

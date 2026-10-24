@@ -154,3 +154,29 @@ subjects ──┬─ line_selections（分野，可改留痕）
 | 隐私派生与快照失效 | `is_private` + 导出/草稿过滤 | 否 | 改成私密后，已有导出与草稿**同步失效** |
 
 HTML 确认前是候选模型/模拟 adapter，确认对应模块后复核并落实生产 schema/API；仅布局/字段顺序变化**不能迫使用户清库**。JSON 扩展有类型/schema/version/上限，核心关系保留外键与约束；写入有 revision/幂等/事务。记录真实迁移/并发/故障证据，**未执行标未验证**。
+
+## M5 实测暴露的「装不下」（Phase2 `0002_*.sql` 的输入）
+
+M5 把原型落成真实 SQLite 时，`dsh/readmodels.js` 要把 `prototypes/v0.1/data.js` 的 52 个视图逐字符还原。**parity 已通过**，但代价是下面 14 处 schema 装不下，靠 `demo_meta` 三键兜底（`uropal.demo.dataset` 演示标记 / `uropal.demo.view_hints` 按实体 id 存展示属性 / `uropal.demo.free_blocks` 整页无表的内容原样 JSON）。
+
+**这不是 M5 的缺陷**——G3 冻结时这些字段还没被实现验证过。但必须登记，否则下一轮会再发现一遍。真缺口（应进 `0002`，只加列/加表，不改 `0001`）：
+
+| # | 表 | 装不下什么 | M5 的绕法 |
+| --- | --- | --- | --- |
+| 1 | `documents` | 页数、出具机构、报告日期；核对状态只能用 `status` 近似 | `view_hints` |
+| 2 | `candidate_fields` | **「抄下来的值」本身**（只有 `raw_text`），值靠 `field_key` 反查事实表；且 2 条草稿（BCG 批号、尿比重）在原型里找不到归属文件 | 补两份隐藏 `documents` 满足 `document_id NOT NULL` |
+| 3 | `pathology_findings` | 只有 `variant_is_predominant` 一个三态列；CIS 与脉管侵犯的「未提及」 | 当 `value_raw` 原文存 |
+| 4 | `pathology_reports` | 来源列 | `source_refs` 外键 + 无来源 |
+| 5 | `surgery_events` | `muscle`/`perforation`/`cath`/`scope`/`organs`/`stay`/`nodes`/`margin`/`lvi`；且 `performed_on NOT NULL` **装不下「计划中的二次电切」** | `free_blocks` + `view_hints` |
+| 6 | `instillation_courses` / `contraindication_flags` | 三段计划（即刻/诱导/维持）原文与批号；后者无 `created_at` | `free_blocks` |
+| 7 | `diversion_facts` / `stoma_supplies` | 机构；耗材**无独立尺寸列**（只能塞 `NOT NULL` 的 `model`）与更换周期天数 | `model` 里拼字符串 |
+| 8 | `cystoscopy_records` / `urine_cytology` / `upper_tract_surveillance` | 结论原文与「有无活检」；`lab`/`method`（落到了 `observations`）；肾积水与吻合口 | `view_hints` |
+| 9 | `treatment_lines` / `regimen_drugs` / `responses` | 「一线/二线」标签与 mounted 摘要；给药途径与来源；备注 | `view_hints` + `free_blocks` |
+| 10 | `metric_definitions` | `color`（展示 token）、`ord`（顺序只能靠 `rowid`）、`src`；且 `unit NOT NULL`，分类指标（尿细胞学）只能存空串 | `view_hints` |
+| 11 | `questions` / `trial_bookmarks` / `trials` | `group`/`kind`/`for`；`next`；`trials.setting`/`status_norm` 是自由文本而**演示用了 `nmibc-or-intravesical` 等自造枚举，schema 没有 CHECK** | 自由文本原样存 |
+| 12 | `bcg_responses` | 表级 CHECK（`status='初治' OR decided_on 与 doctor_words_raw 都非空`）**装不下「未判定」** | 只能靠「没有行」表达，读模型回落成 `{status:'未判定',judgedOn:null,doctorQuote:null,history:[]}` |
+| 13 | 缺承载表 | `LIFE`（生活与照护）、`TRIALS_STATS`、`DIVERSION_CASE.values/explain` 整页没有表 | `free_blocks`（对本轮是**正确**兜底，不是缺陷） |
+
+**明确不是缺口、别误改**：演示数据里本来就没事实的表保持 0 行（`bcg_responses`/`viewpoints`/`tasks`/`change_log`/`urgent_symptoms`/`metabolic_observations`/`continence_logs`）；`surgery_events` 靠 `kind` 分 TURBT 与根治、膀胱镜 `records` 与 `experiences` 两张、灌注 `courses` 与 `events` 两张，都是**有意分开**（合并会让约束失效）。
+
+> 来源：M5 数据层实现者自报（`dsh/demo.js` 1319 行 / `dsh/readmodels.js` 609 行）。判据：凡 `demo_meta` 参与兜底的就是「schema 装不下」；凡原型里本来没有的就 0 行。

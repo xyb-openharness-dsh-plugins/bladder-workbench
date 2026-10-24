@@ -1,0 +1,130 @@
+/* ============================================================
+   小泉宝 UroPal · 设计令牌 v0.1
+   品牌：青泉（清透水色）· 对偶暖赭
+   硬规则：分类变量（尿细胞学四态 / 分级 / 有无肌层）绝不按「好/坏」着色
+   ============================================================ */
+
+:root {
+  /* —— 品牌 —— */
+  --wb-brand:      #1793A6;   /* 清泉青 */
+  --wb-brand-ink:  #0D5A66;
+  --wb-brand-soft: #E7F4F7;
+  --wb-action:     #0F6E7D;   /* 主行动（更深，保证按钮对比度） */
+  --wb-action-ink: #0A4E59;
+  --wb-accent:     #C96A1E;   /* 对偶暖赭 */
+  --wb-accent-soft:#FBEFE2;
+  --wb-accent-ink: #8A4410;
+
+  /* —— 中性 —— */
+  --wb-paper: #F6FAFB;
+  --wb-card:  #FFFFFF;
+  --wb-ink:   #1E3A42;
+  --wb-muted: #4E6B74;
+  --wb-line:  #CFE0E5;
+  --wb-line-soft: #E6EFF2;
+  --wb-ghost: #94A9AF;
+
+  /* —— 语义状态（只用于系统状态，不用于医学分类）—— */
+  --wb-info:    #2F6F8F;
+  --wb-info-bg: #EAF3F8;
+  --wb-warn:    #8A5A0B;
+  --wb-warn-bg: #FBF3E2;
+  --wb-stop:    #9B3A28;
+  --wb-stop-bg: #FBECE8;
+  --wb-ok:      #2F6F55;
+  --wb-ok-bg:   #E9F4EF;
+
+  /* —— 数据色（家族级语义：只区分序列，不表示优劣）—— */
+  --d-urinary:  #1793A6;  /* 尿路 / 膀胱镜 */
+  --d-renal:    #4A6FA5;  /* 肾功能 */
+  --d-lyte:     #A85A3C;  /* 电解质与 B12 */
+  --d-blood:    #A03D5C;  /* 血常规 —— 与 --d-renal(#4A6FA5) 同屏时必须可分辨；
+                             玫色是分类色，不代表「好/坏」 */
+  --d-nutrition:#2F7D6B;  /* 营养体重 */
+  --d-symptom:  #8A6BA8;  /* 症状自评 */
+
+  /* —— 字号三档（基线 12.5px）—— */
+  --tz: 1;
+  --fs-xs: calc(11px   * var(--tz));
+  --fs-sm: calc(12.5px * var(--tz));
+  --fs-md: calc(13.5px * var(--tz));
+  --fs-base: calc(15px * var(--tz));
+  --fs-lg: calc(17.5px * var(--tz));
+  --fs-num: calc(33px * var(--tz));
+  --fs-h1: calc(27px * var(--tz));
+  --fs-h2: calc(20px * var(--tz));
+
+  /* —— 间距与形态 —— */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-7: 32px;
+  --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
+
+  /* —— 面板宽度（唯一来源；真实项目由 lib/layout.js 构建注入）—— */
+  --agent-w: 35%;
+  --nav-w: 218px;
+  --topbar-h: 44px;
+
+  --shadow-1: 0 1px 2px rgba(30,58,66,.06), 0 1px 3px rgba(30,58,66,.05);
+  --shadow-2: 0 2px 6px rgba(30,58,66,.07), 0 6px 18px rgba(30,58,66,.06);
+}
+
+/* 大字模式：正反卡一起升到 340px */
+:root[data-textsize="large"]  { --tz: 1.2; }
+:root[data-textsize="xlarge"] { --tz: 1.4; }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--wb-paper);
+  color: var(--wb-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+               "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; }
+h1 { font-size: var(--fs-h1); }
+h2 { font-size: var(--fs-h2); }
+h3 { font-size: var(--fs-lg); font-weight: 600; }
+p  { margin: 0; }
+a  { color: var(--wb-action); }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* 数字一律等宽，避免跳动 */
+.num, .metric-value, table td.num, .kv-val-num, .chip-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点可见（键盘可达是本项目硬要求） */
+:focus-visible {
+  outline: 2px solid var(--wb-action);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 屏幕阅读器专用 */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* 减少动效：一图秀直接给终态，卡片静态等高切换 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+:root[data-motion="reduce"] * { transition: none !important; animation: none !important; }
+
+/* 隐藏必须真的隐藏（家族硬规则） */
+[hidden] { display: none !important; }
