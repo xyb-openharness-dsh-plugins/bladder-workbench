@@ -12,28 +12,11 @@
 
 ## 1 里程碑进度
 
-| 里程碑 | 名称 | 状态 | 证据 |
-| --- | --- | --- | --- |
-| **M0** | 骨架 | ✅ 完成 | 脚手架 `dsh-wb-cli 1.4.3` 生成 137 文件；`dsh-wb-cli check` `staticPass: true` |
-| **M1** | 调研 · SPEC | ✅ 完成 | `USER-RESEARCH.md` / `SCENARIOS.md`(S01–S18) / `DIFF-MATRIX.md`(15 行) / `CORE-MODULES.md` / `SPEC.md` / `HVT-REVIEW.md` |
-| **M2** | 原型 | ✅ 完成 | `prototypes/v0.1/` 六件 · 14 一级页 + 48 二级页签 + 设置 · 34 张截图 · 自检 155/155 |
-| **M3** | 数据模型 | ✅ 草案完成 | `schema/0001_initial.sql` 44 表 8 索引 · 探针 37/37 · **G3 未签，未进 `schema/`、无迁移** |
-| **M4** | 临床库 | ✅ 完成 | 2026 试验 **295** 条（CT.gov 212 + ChiCTR 83）· SQLite + 4 视图 · manifest 十条 limitations |
-| **M5** | 开发版 | ⬜ 未开始 | **phase1 止点**（`DESIGN-07`）：业务代码一行不写，MinerU 只留接口与设置页骨架 |
-| **M6** | 装机 | ⬜ 未开始 | 未打包、未安装、未接 DSH Desktop |
-| **M7** | 发布 | ⬜ 未开始 | 未授权推送/Release/市场投稿 |
-
-### 闸口
-
-| 闸口 | 含义 | 状态 | 阻塞原因 |
-| --- | --- | --- | --- |
-| **G1** | 需求确认 | ✅ **已签**（2026-10-24） | 用户原话「G1，ok   G2:ok  G3 ok」；HVT 五层检查已跑，**B 级 2 → 0**；P1–P6 补丁已执行；冻结 `BRIEF`/`SPEC`(M01–M15)/`SCENARIOS`(S01–S18)/`DESIGN-SESSION`(DESIGN-01…33) |
-| **G2** | HTML 原型确认 | ✅ **已签**（2026-10-24） | 冻结 `prototypes/v0.1/` 六件，**总哈希 `4d9e1b4b…`**；实测 155/155 · 12/12 · 15/15 · 文案 0 违规 |
-| **G3** | 数据契约 | ✅ **已签**（2026-10-24） | `schema/0001_initial.sql` 44 表 · 8 索引，已冻结 sha256 `86e5a3e5…`；`schema/freeze-contract.md` 已建，`check-schema.mjs` 逐个比对 |
-
-> **三个闸口已于 2026-10-24 由用户签认**（原话「G1，ok   G2:ok  G3 ok」），签认范围与当时**已知未决项**逐条记于
-> `docs/DESIGN-SESSION.md` 末尾「闸口签认记录」。P1–P6 补丁已执行，P7 留待 G2 后讨论。
-> **签认 ≠ phase1 止点解除**（`DESIGN-32`）：V1 业务实现仍须用户明确指示。
+> **里程碑的权威来源已移至 [DEV-PLAN.md](DEV-PLAN.md)**（家族标准 M0–M9 + G1–G3）。
+> 本文件只记**任务级**待办，不再重复里程碑表 —— 同一份清单写在两处必然漂移
+> （本项目已因同类问题踩坑两次，见 `docs/LESSONS.md`）。
+>
+> 当前：**M0–M4 ✅ 完成，G1/G2/G3 ✅ 已签认，M5–M9 ⬜ 未开始**。
 
 ---
 

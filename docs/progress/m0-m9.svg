@@ -1,0 +1,88 @@
+<svg viewBox="0 0 960 260" width="960" height="260" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+  <rect width="960" height="260" fill="#FFFFFF"/>
+  <text x="30" y="34" font-size="15" font-weight="600" fill="#1E3A42">小泉宝 UroPal · 膀胱癌工作台 · 里程碑进度</text>
+  <text x="30" y="54" font-size="11.5" fill="#4E6B74">v0.1.0 · 25 次提交（2026-10-23 → 10-24）· 依据 docs/TASKS.md 与 git 实况</text>
+
+  <!-- 已完成段实线 -->
+  <line x1="60" y1="112" x2="420" y2="112" stroke="#2F7D6B" stroke-width="2"/>
+  <!-- 未开始段虚线 -->
+  <line x1="420" y1="112" x2="900" y2="112" stroke="#B4B2A9" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+  <!-- M0 -->
+  <g><circle cx="60" cy="112" r="15" fill="#2F7D6B"/>
+  <path d="M53 112l5 5 9-10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1E3A42">M0</text>
+  <text x="60" y="158" text-anchor="middle" font-size="10.5" fill="#4E6B74">骨架</text>
+  <text x="60" y="172" text-anchor="middle" font-size="10" fill="#2F7D6B">10-23</text></g>
+
+  <!-- M1 -->
+  <g><circle cx="144" cy="112" r="15" fill="#2F7D6B"/>
+  <path d="M137 112l5 5 9-10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="144" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1E3A42">M1</text>
+  <text x="144" y="158" text-anchor="middle" font-size="10.5" fill="#4E6B74">调研SPEC</text>
+  <text x="144" y="172" text-anchor="middle" font-size="10" fill="#2F7D6B">10-23</text></g>
+
+  <!-- M2 -->
+  <g><circle cx="228" cy="112" r="15" fill="#2F7D6B"/>
+  <path d="M221 112l5 5 9-10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="228" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1E3A42">M2</text>
+  <text x="228" y="158" text-anchor="middle" font-size="10.5" fill="#4E6B74">原型</text>
+  <text x="228" y="172" text-anchor="middle" font-size="10" fill="#2F7D6B">10-24</text></g>
+
+  <!-- M3 -->
+  <g><circle cx="312" cy="112" r="15" fill="#2F7D6B"/>
+  <path d="M305 112l5 5 9-10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="312" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1E3A42">M3</text>
+  <text x="312" y="158" text-anchor="middle" font-size="10.5" fill="#4E6B74">数据模型</text>
+  <text x="312" y="172" text-anchor="middle" font-size="10" fill="#2F7D6B">10-24</text></g>
+
+  <!-- M4 -->
+  <g><circle cx="420" cy="112" r="15" fill="#2F7D6B"/>
+  <path d="M413 112l5 5 9-10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="420" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1E3A42">M4</text>
+  <text x="420" y="158" text-anchor="middle" font-size="10.5" fill="#4E6B74">临床库</text>
+  <text x="420" y="172" text-anchor="middle" font-size="10" fill="#2F7D6B">10-23</text></g>
+
+  <!-- M5 未开始 -->
+  <g><circle cx="516" cy="112" r="15" fill="#fff" stroke="#B4B2A9" stroke-width="1.5"/>
+  <text x="516" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#888780">M5</text>
+  <text x="516" y="158" text-anchor="middle" font-size="10.5" fill="#888780">开发版</text></g>
+
+  <!-- M6 -->
+  <g><circle cx="606" cy="112" r="15" fill="#fff" stroke="#B4B2A9" stroke-width="1.5"/>
+  <text x="606" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#888780">M6</text>
+  <text x="606" y="158" text-anchor="middle" font-size="10.5" fill="#888780">装机</text></g>
+
+  <!-- M7 -->
+  <g><circle cx="696" cy="112" r="15" fill="#fff" stroke="#B4B2A9" stroke-width="1.5"/>
+  <text x="696" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#888780">M7</text>
+  <text x="696" y="158" text-anchor="middle" font-size="10.5" fill="#888780">发布</text></g>
+
+  <!-- M8 -->
+  <g><circle cx="786" cy="112" r="15" fill="#fff" stroke="#B4B2A9" stroke-width="1.5"/>
+  <text x="786" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#888780">M8</text>
+  <text x="786" y="158" text-anchor="middle" font-size="10.5" fill="#888780">状态回填</text></g>
+
+  <!-- M9 -->
+  <g><circle cx="876" cy="112" r="15" fill="#fff" stroke="#B4B2A9" stroke-width="1.5"/>
+  <text x="876" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#888780">M9</text>
+  <text x="876" y="158" text-anchor="middle" font-size="10.5" fill="#888780">回流闭环</text></g>
+
+  <!-- 闸口 G1 G2 G3 -->
+  <line x1="60" y1="205" x2="900" y2="205" stroke="#D3D1C7" stroke-width="0.8"/>
+  <text x="30" y="228" font-size="11" fill="#854F0B" font-weight="600">闸口</text>
+  <g>
+    <circle cx="76" cy="224" r="6" fill="#2F7D6B"/><text x="88" y="228" font-size="11" fill="#2F7D6B">G1 需求 · 10-24 已签</text>
+    <circle cx="216" cy="224" r="6" fill="#2F7D6B"/><text x="228" y="228" font-size="11" fill="#2F7D6B">G2 原型 · 10-24 已签</text>
+    <circle cx="356" cy="224" r="6" fill="#2F7D6B"/><text x="368" y="228" font-size="11" fill="#2F7D6B">G3 数据契约 · 10-24 已签</text>
+    <circle cx="530" cy="224" r="6" fill="#B4B2A9"/><text x="542" y="228" font-size="11" fill="#888780">M5–M9 未开始（业务代码 0 行）</text>
+  </g>
+
+  <!-- 图例 -->
+  <g>
+    <circle cx="60" cy="250" r="4.5" fill="#2F7D6B"/><text x="70" y="253" font-size="10.5" fill="#4E6B74">已完成（带日期）</text>
+    <circle cx="190" cy="250" r="4.5" fill="#fff" stroke="#B4B2A9" stroke-width="1.5"/><text x="200" y="253" font-size="10.5" fill="#4E6B74">未开始</text>
+    <circle cx="270" cy="250" r="6" fill="none" stroke="#2F7D6B" stroke-width="1.8"/><text x="284" y="253" font-size="10.5" fill="#4E6B74">闸口（已签认）</text>
+    <text x="420" y="253" font-size="10.5" fill="#888780">家族标准 M0–M9 + G1–G3（本项目 TASKS.md 原写 M0–M7，缺 M8/M9）</text>
+  </g>
+</svg>
