@@ -21,7 +21,7 @@
 | `charts.js` | `d0af60e59a8ed0f3475497b980dd2f435826c7ea629125725e18c1892cee2982` |
 | `app.js` | `43facdd885393798c7140eecd674f82a052c99db3fe0d237acc426c4fdbea291` |
 
-六件顺序拼接总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646（由 `node scripts/hash-prototype.mjs` 生成）`
+六件顺序拼接总哈希：`6309994660f90853ee554ca464f6c5ca95df09f5d52ed802bd7b50c0817a012e（由 `node scripts/hash-prototype.mjs` 生成）`
 
 **当前 SPEC / 场景 / 数据模型版本**：`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S18）、`docs/SCHEMA.md`（**草案，未冻结**）
 
@@ -37,7 +37,7 @@
 
 ## 二、自检结果（自动，非「用户确认」）
 
-`node scripts/verify-prototype.mjs` → **断言 155 条，通过 155，失败 0**
+`node scripts/verify-prototype.mjs` → **断言 164 条，通过 164，失败 0**
 
 覆盖到的关键项：
 - 14 个一级页 + 二级页签**逐页打开无异常**；浏览器控制台**零 error**
@@ -78,7 +78,7 @@
 
 | 模块/功能ID | 对应 HTML/行为 | 实际走查证据 | 用户明确确认依据/人/日期 | 未确认项 | 允许实施的范围 |
 |---|---|---|---|---|---|
-| — | — | 自检 155/155（机器） | **无** | 全部 | **无（G2 未签，不得开发对应业务）** |
+| — | — | 自检 164/164（机器） | **无** | 全部 | **无（G2 未签，不得开发对应业务）** |
 
 ## 五、P1 发布可见性
 

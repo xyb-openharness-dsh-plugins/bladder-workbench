@@ -118,7 +118,7 @@
 | 闸口 | 冻结内容 | 凭据 |
 | --- | --- | --- |
 | **G1 需求确认** | `docs/BRIEF.md`、`docs/SPEC.md`（含 M01–M15）、`docs/SCENARIOS.md`（S01–S18）、`docs/DIFF-MATRIX.md`、`docs/DESIGN-SESSION.md`（DESIGN-01…31）、`docs/HVT-REVIEW.md`（B 级 0） | 用户原话见上；HVT 五层检查已跑，B 级 2→0 |
-| **G2 HTML 原型** | `prototypes/v0.1/` 六件文件，**以签认时的总哈希为准**：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`（index.html `85eb59008326`｜tokens.css `8b36dfac64f1`｜shell.css `075da3fd4e66`｜data.js `2307488c8774`｜charts.js `d0af60e59a8e`｜app.js `43facdd88539`） | 实测：`verify-prototype` **155/155**、`verify-one-chart` **12/12**、`verify-metric-trend` **15/15**（另 2 条未实现，如实记录不计入通过）、`check-wording` 界面面 0 违规 |
+| **G2 HTML 原型** | `prototypes/v0.1/` 六件文件，**以签认时的总哈希为准**：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`（**现为** `63099946…`，用户指示的三处界面改动，见 `DESIGN-40`）（index.html `85eb59008326`｜tokens.css `8b36dfac64f1`｜shell.css `075da3fd4e66`｜data.js `2307488c8774`｜charts.js `d0af60e59a8e`｜app.js `43facdd88539`） | 实测：`verify-prototype` **155/155**、`verify-one-chart` **12/12**、`verify-metric-trend` **15/15**（另 2 条未实现，如实记录不计入通过）、`check-wording` 界面面 0 违规 |
 | **G3 数据契约** | `schema/0001_initial.sql` **44 张表 · 8 个索引**，转正为 `schema/0001_initial.sql` 并冻结 sha256 | 实测：`check-schema-draft` **37/37**（含反向探针）；`docs/SCHEMA.md` |
 
 > **G2 哈希即实现合同。** 此哈希之后对 `prototypes/v0.1/` 的任何改动都会使本次 G2 签认失效，
@@ -183,3 +183,23 @@
 | 未改 | `API_PREFIX_NAME = 'bladder'`、`HOST_BASE = /api/bladder-workbench`、`DB_FILE = 'xyb-bladder.sqlite'` 本就与仓库名无关，保持不动（改它们会让**已落盘的库换名字**，属无谓风险） |
 | 保留为历史 | `docs/DESIGN-SESSION.md:35/47` 与 `_intake/wb-init.config.json` 里的原值**不追改**——决策日志与 init 素材记的是当时事实 |
 | 影响面 | 装机包名变化 → **M6 装机必须用新包名**；`DESIGN-05` 遗留的「是否最终改名」一问就此关闭 |
+
+---
+
+## DESIGN-40 三处界面改动：删占位说明、急症入口去重、发送到 AI
+
+| 项 | 内容 |
+| --- | --- |
+| 时间 | 2026-10-25 |
+| 触发 | 用户指令（逐字，m05183）：「1）原版站位说明部分可以去掉  2）重复按钮只保留上面的 3）增加发送到AI按钮，在页面中可以复制场景提示词+关键信息，给到AI原生对话窗口」 |
+| 改动 1 | 删掉 AI 面板里的 `.ag-note` 占位说明块（`prototypes/v0.1/index.html` + `shell.css` 的对应规则一并删除）。**理由**：那句话是给开发者看的施工说明，患者读它没有意义，而且它占着面板正文第一屏 |
+| 改动 2 | 看板页的四个急症入口去重。实测重复源是 `gateHTML()`（分野闸门内，y≈865）与 `pageDashboard()` 正文（y≈2565）各渲染一份。改为 `confirmed ? card(...) : ''` —— **闸门显示时不再渲染正文那份**，闸门隐藏（已分野）时由正文兜住。**保留靠上的那份**（首屏可达） |
+| 改动 3 | 新增页面级「发送到 AI」按钮（面包屑右侧），把**当前页的场景 + 关键信息 + 已知缺项 + 没带入什么 + 边界**压成五段提示词，填入右侧 AI 草稿并复制。**不代为发送**，发送动作留给用户 |
+| 改动 3 的三条纪律 | ① **不代发**：只填草稿 + 复制，发送由用户自己做（真接入 DSH 后仍走 `setDraft`，不代按发送）；② **私密项默认不带**：性功能与亲密记录、造口日记与控尿记录明细、症状自评明细一律不进提示词，并在文末**如实列出「没有带入什么」**（静默省略会让人以为带全了）；③ **不编造**：缺的项写「没有」，不推测、不补全 |
+| 改动 3 的隐私处理 | `STATE.aiPrompt` **只存内存、不写 localStorage**（`saveState()` 是白名单序列化，未含该字段）。理由：这段文字含患者事实，关掉页面就没了，比留在本机存储更合适 |
+| 为什么按钮放面包屑而不是顶栏 | 顶栏那组是**全局动作**（设置、大字、AI 面板开关）；这个动作**随页面变化**（每页的场景与关键信息不同），放在页面级位置才对应得上 |
+| 代价 | 原型六件中 `index.html` / `shell.css` / `data.js` / `app.js` 四件变化，**G2 签认哈希 `32731707…` 失效**，新总哈希 `6309994660f90853ee554ca464f6c5ca95df09f5d52ed802bd7b50c0817a012e`（index.html `f272015c2ed8`｜tokens.css `8b36dfac64f1`｜shell.css `d3ed88ca16c1`｜data.js `ff9c29b8c9c0`｜charts.js `d0af60e59a8e`｜app.js `eb036cf96aec`） |
+| 为什么可以视为已确认 | 这三处**由用户逐条指定**（不是我自己改的），改动内容与指令一一对应；但仍按 `DESIGN-32` 如实登记为「范围变动」，并已告知用户新哈希 |
+| 新增断言 | `verify-prototype` 155 → **164**，新增 9 条锁住这三件事：`.ag-note` 为 0；未分野/已分野两种状态下急症入口**每类恰好 1 个**（两种状态都测，防止「修了重复、却留下空档」）；按钮唯一；五段结构顺序；「不是诊断」+「需要我的医生确认」；私密项如实列出；「不代为发送」；提示词不落 localStorage |
+| 踩坑 | 改完 `prototypes/v0.1/` 后 dev server 仍显示旧界面 —— 因为它服务的是**生成的 `public/`**。必须 `npm run build:public`（且 `data.js` 改了还要 `npm run build:demo`，否则 `check:demo` 报不同步） |
+| 踩坑 2 | 首版提示词把待问问题写成「前三条：」再嵌套「· 」，外层 map 已加「- 」，渲染成「-   · xxx」双项目符号，复制到对话框很难看。改为扁平「待问：xxx」 |

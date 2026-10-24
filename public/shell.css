@@ -176,10 +176,6 @@
 }
 .ag-close:hover { background: var(--wb-brand-soft); }
 .ag-body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-.ag-note {
-  font-size: var(--fs-sm); color: var(--wb-muted);
-  background: var(--wb-info-bg); border: 1px solid #D8E7EF; border-radius: var(--r-md); padding: 10px 12px;
-}
 .ag-draft { display: flex; flex-direction: column; gap: 10px; }
 .ag-block { border: 1px solid var(--wb-line); border-radius: var(--r-md); overflow: hidden; }
 .ag-block > h4 {
@@ -191,6 +187,15 @@
 .ag-block.ag-gap > h4 { background: var(--wb-warn-bg); color: var(--wb-warn); }
 .ag-block.ag-excl > h4 { background: #F1F4F5; color: #64777D; }
 .ag-actions { display: flex; gap: 6px; }
+/* 待发送的场景提示词：与普通草稿块区分开，因为它来自页面按钮而不是草稿范围 */
+.ag-block.ag-prompt > h4 { background: var(--wb-brand-soft); color: var(--wb-brand); }
+.ag-pre {
+  margin: 0; padding: 8px 10px; max-height: 240px; overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-xs); line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--wb-ink); background: var(--wb-paper);
+}
 .ag-foot { font-size: var(--fs-xs); color: var(--wb-ghost); }
 .ag-foot code { background: #F1F4F5; padding: 0 4px; border-radius: 4px; }
 
@@ -629,7 +634,23 @@ table.tbl td.num { text-align: right; }
 }
 
 /* 面包屑 */
-.wb-crumb { padding: 12px 24px 0; font-size: var(--fs-sm); color: var(--wb-muted); }
+.wb-crumb {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 24px 0; font-size: var(--fs-sm); color: var(--wb-muted);
+}
+/* 面包屑右侧的页面级动作：把当前页的处境交给 AI。
+   放在面包屑里而不是顶栏，是因为它**随页面变化**——顶栏动作是全局的。 */
+.crumb-ai {
+  margin-left: auto; flex: none;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: var(--r-pill);
+  border: 1px solid var(--wb-line); background: var(--wb-card);
+  color: var(--wb-brand); font-size: var(--fs-xs); font-weight: 650;
+  cursor: pointer; white-space: nowrap;
+}
+.crumb-ai:hover { border-color: var(--wb-brand); background: var(--wb-brand-soft); }
+.crumb-ai:focus-visible { outline: 2px solid var(--wb-brand); outline-offset: 2px; }
+.crumb-txt { min-width: 0; }
 .wb-crumb b { color: var(--wb-ink); font-weight: 600; }
 
 /* Hero */

@@ -1,7 +1,7 @@
 # 实施任务与当前交接 · 小泉宝 UroPal · 膀胱癌
 
 规格版本：`docs/SPEC.md` v0.1.0（**G1/G2/G3 已签**，2026-10-24；见 [SIGNOFF-2026-10-24.md](SIGNOFF-2026-10-24.md)）
-原型总哈希：`32731707be7efd574b34cdeffe467a8fa9a20899625f1842763510ad0fe96646`（由 `node scripts/hash-prototype.mjs` 生成）
+原型总哈希：`6309994660f90853ee554ca464f6c5ca95df09f5d52ed802bd7b50c0817a012e`（由 `node scripts/hash-prototype.mjs` 生成）
 当前分支/包版本：`main` · `@xyb-community/bladder-workbench@0.1.0`
 最后更新：2026-10-24（M6 装机）
 
@@ -28,7 +28,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | T01 | 接入基线 | BRIEF/SPEC | `package.json` / `cordis.patch.yml` / `dsh/index.js` | 实际包可被目标宿主加载 | `dsh-wb-cli check` **staticPass: true**、`errors: []` | **✅ 已完成**（M5；`cordis.patch.yml` 已补 `config.root`，否则装机后每次重启换内存库） |
 | T02 | 数据/API | T01 + 合同 | `schema/` / `dsh/store.js` / migrations | 旧库兼容与读写闭环 | 44 表 + 探针 37/37 + 冻结合同校验；**真实落盘库重启后行数不变** | **✅ 已完成**（M5；G3 已签，schema 冻结只增不改） |
-| T03 | 共享 UI | 原型冻结 / API 合同 | `prototypes/v0.1/` → `public/` | 翻面 / 图表 / 弹窗 / 状态 | 原型自检 155/155 · 一图秀 12/12 · MT 15/15；`public/` 由 `scripts/build-public.mjs` 从原型生成 | **✅ 已完成**（G2 已签；开发版继承同一套 UI，禁止手改 `public/`） |
+| T03 | 共享 UI | 原型冻结 / API 合同 | `prototypes/v0.1/` → `public/` | 翻面 / 图表 / 弹窗 / 状态 | 原型自检 164/164 · 一图秀 12/12 · MT 15/15；`public/` 由 `scripts/build-public.mjs` 从原型生成 | **✅ 已完成**（G2 已签；开发版继承同一套 UI，禁止手改 `public/`） |
 | T04 | 完整 Tab | T02/T03 | `dsh/readmodels.js` + `public/app.js` | 输入→操作→结果→回顾 | **parity 4/4**（2 分野 × 52 视图 = 104 处逐字符相同）· `FEATURE-INVENTORY.csv` 52 行 | **🔵 已执行未验证**：页面与数据层已通，**但交互仍是演示数据、无写入闭环**（V1） |
 | T05 | 跨页/安装验收 | T04 | 集成 / 发布记录 | 官方自测、实际包/版本 | `probe-headless` **25/25**（本机）· `probe-install` **45/46**（装机副本内跑） | **🔵 已执行未验证**：装机三层验收已跑（配置/加载/交互），**授权闸拒绝路径未验**（`UROPAL_AUTH` 未设，须用户退出重开 Desktop 后补验） |
 | T06 | 发布与市场 | T05 | `docs/RELEASE.md` / 发行仓库 / 市场 PR | 选定来源；记录授权、tag/包/hash、Profile、PR 及可见状态 | — | **不适用**（未授权；push/tag 亦未做） |

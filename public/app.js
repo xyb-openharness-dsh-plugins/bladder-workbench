@@ -584,9 +584,12 @@ function renderCrumb() {
   const line = STATE.line === 'nmibc' ? 'NMIBC 保膀胱线'
              : STATE.line === 'mibc' ? 'MIBC 根治与改道线'
              : STATE.line === 'undetermined' ? '分野未定' : '未分野';
-  $('#wbCrumb').innerHTML = `小泉宝工作台 / <b>${esc(def ? def.text : '看板')}</b>`
+  $('#wbCrumb').innerHTML = `<span class="crumb-txt">小泉宝工作台 / <b>${esc(def ? def.text : '看板')}</b>`
     + (current ? ` / ${esc(current)}` : '')
-    + ` <span class="crumb-note">· 演示档案 ${esc(line)} · 全部为模拟资料</span>`;
+    + ` <span class="crumb-note">· 演示档案 ${esc(line)} · 全部为模拟资料</span></span>`
+    // 页面级动作：把「当前这一页的处境」压成提示词交给 AI。
+    // 放在面包屑里而不是顶栏，是因为它随页面变化；顶栏那组是全局动作。
+    + `<button type="button" class="crumb-ai" data-act="toAI" title="把本页场景与关键信息整理成提示词，填入右侧 AI 草稿">发送到 AI</button>`;
 }
 
 /* ---------------- 复用的页面片段 ---------------- */
@@ -749,11 +752,14 @@ function pageDashboard() {
           </table>
           <p class="src" style="margin-top:10px">只有两侧都有记录时才并置；只有一侧时不弹提醒。这里不做因果解释，也不给处置建议。</p>`)}
       </div>`
-    + card('急症入口（不用先分野，30 秒内可达）', `
+    // 分野闸门里已经有一份一模一样的急症入口，而且位置更靠上（首屏可达）。
+    // 闸门显示时这里不再渲染，否则同一页会出现两组同名按钮（用户实测反馈「重复按钮」）。
+    // 闸门隐藏（已确认分野）时才由这里兜住 —— 任何状态下全页都恰好一份。
+    + (confirmed ? card('急症入口（不用先分野，30 秒内可达）', `
         <div class="btn-row">
           ${URGENT.map((u) => `<button type="button" class="btn btn-urgent" data-goto="urgent">${esc(u.cat)}</button>`).join('')}
         </div>
-        <p class="src" style="margin-top:10px">四类判据的来源在原型阶段<b>尚未取得</b>（见「急症与安全」页），界面不给处置建议，只给联系路径。</p>`);
+        <p class="src" style="margin-top:10px">四类判据的来源在原型阶段<b>尚未取得</b>（见「急症与安全」页），界面不给处置建议，只给联系路径。</p>`) : '');
 }
 
 /* 首屏分野闸门（S01）：未选线时不显示任何一条线的专属内容 */
@@ -2596,7 +2602,18 @@ function renderAgent() {
   if (!STATE.agentOpen) return;
 
   const d = DRAFT_SCOPES[STATE.draftScope];
-  $('#agDraft').innerHTML = `
+  // 「发送到 AI」填进来的那段，单独置顶：它是**用户主动要发的话**，
+  // 与下面按范围自动汇总的草稿不是一回事，混在一起会让人以为已经发出去了。
+  const promptBlock = STATE.aiPrompt ? `
+    <div class="ag-block ag-prompt"><h4>待发送：本页场景提示词</h4>
+      <pre class="ag-pre">${esc(STATE.aiPrompt)}</pre>
+      <div class="ag-actions" style="padding:8px 10px">
+        <button type="button" class="tb-btn" data-copy-prompt>复制这段</button>
+        <button type="button" class="tb-btn" data-clear-prompt>清除</button>
+      </div>
+      <p class="src" style="padding:0 10px 8px">工作台<b>不代为发送</b>：请你确认内容后自己贴进对话窗口。</p>
+    </div>` : '';
+  $('#agDraft').innerHTML = promptBlock + `
     <div class="ag-block"><h4>范围：${esc(d.label)}</h4></div>
     ${d.blocks.map((b) => `<div class="ag-block"><h4>${esc(b.label)}</h4>
       <ul>${b.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('')}
@@ -2760,6 +2777,185 @@ function bindPage() {
   }));
 }
 
+/* ============================================================
+   发送到 AI：把「当前页的处境」压成一段可以直接发出去的提示词
+   ------------------------------------------------------------
+   为什么要有这个按钮：患者在页面上看到的是**事实**，但到了 AI 对话框里常常
+   说不清上下文 —— 每次都要重新讲一遍「我是哪条线、现在走到哪一步」。
+   这个按钮把当前页的关键信息 + 想问的事 + 已知缺项 + 边界压成一段。
+
+   三条纪律（与急症页同一套口径）：
+   1) **不代发**：只填进右侧草稿并复制到剪贴板，按发送键的是用户自己。
+      真接入 DSH 后走 setDraft，仍然不代按发送。
+   2) **私密项默认不带**：性功能、造口日记明细、症状自评明细一律不进提示词，
+      并在文末如实写出「没有带入什么」——不然 AI 会把「没说」当成「没有」。
+   3) **不编造**：取不到的项写「没有」，不推测、不补全。
+   ============================================================ */
+
+/** 每页一句：我在看什么、想让 AI 做什么。键与路由 id 一致。 */
+const SCENARIO = {
+  dashboard: { scene: '我在看板，想先弄清接下来该做什么', ask: '请按优先级帮我排一下接下来一个月最该做的三件事，并指出哪些必须先问医生、哪些我可以自己先准备。' },
+  records: { scene: '我在整理资料', ask: '帮我看看这些资料还缺什么、哪些数值需要先核对来源，以及哪些属于「没有」而不是「正常」。' },
+  staging: { scene: '我在看分型与分期', ask: '帮我用患者能懂的话解释这几个词，并明确指出报告里还没说清的地方。' },
+  surgery: { scene: '我在看手术记录', ask: '帮我把这几次手术按时间排清楚，并指出哪些病理信息还缺、缺了会影响什么判断。' },
+  instillation: { scene: '我在看膀胱灌注', ask: '帮我理清灌注进行到哪一步、为什么中断、下次要注意什么。' },
+  diversion: { scene: '我在了解尿流改道', ask: '帮我对比这几种术式在日常生活上的差别，并列出我该问医生的问题。' },
+  treatment: { scene: '我在看治疗历程', ask: '帮我按线理清用过哪些方案、各自效果如何、为什么换线。' },
+  followup: { scene: '我在看复查安排', ask: '帮我确认下次复查该做什么、间隔多久、有没有漏掉的，以及这次复查我要提前准备什么。' },
+  metrics: { scene: '我在看检查指标', ask: '帮我看看这些指标的变化趋势，哪些需要跟医生讨论，以及哪些点之间不能直接比较。' },
+  chart: { scene: '我在看病情一图秀', ask: '帮我把这几条曲线的变化讲清楚，并指出哪些点因为换机构或换方法而不可比。' },
+  urgent: { scene: '我在看急症与安全', ask: '帮我确认这些情况里哪些需要马上找人、该找谁；不要给我用药或「能不能等」的判断。' },
+  life: { scene: '我在记录生活与照护', ask: '帮我把这些日常记录整理成复诊时能说清楚的一段话。' },
+  visit: { scene: '我在准备复诊', ask: '帮我把这些问题排个优先级，并补充我可能没想到要问的。' },
+  trials: { scene: '我在看临床试验', ask: '帮我看这些试验的入组条件里，哪些我需要先确认自己是否符合。' },
+};
+
+function lineLabel() {
+  return STATE.line === 'nmibc' ? '非肌层浸润（NMIBC，保膀胱线）'
+    : STATE.line === 'mibc' ? '肌层浸润（MIBC，根治与改道线）'
+    : STATE.line === 'undetermined' ? '分野未定（报告还没看清）'
+    : '尚未分野';
+}
+
+/** 本页的关键信息：按路由取真值；取不到就跳过，不写「正常」。 */
+function keyFacts() {
+  const out = [`当前分野：${lineLabel()}`];
+  const p = PATHOLOGY || {};
+  if (p.raw) out.push(`病理原文：${p.raw}`);
+  if (p.gradeRaw) out.push(`分级：${p.gradeRaw}`);
+  if (p.musclePresent) out.push(`肌层：${p.musclePresent}`);
+  if (p.reviewState) out.push(`核对状态：${p.reviewState}`);
+
+  const route = STATE.route;
+  if (route === 'instillation' || route === 'dashboard') {
+    const ev = (INSTILLATION && INSTILLATION.events) || [];
+    const done = ev.filter((e) => e.st === 'done').length;
+    const next = ev.find((e) => e.st === 'planned');
+    const cancelled = ev.filter((e) => e.st === 'cancelled');
+    if (INSTILLATION && INSTILLATION.agent) {
+      out.push(`灌注药物：${INSTILLATION.agent}${INSTILLATION.doseRaw ? ` ${INSTILLATION.doseRaw}` : ''}`);
+    }
+    if (ev.length) out.push(`灌注进度：已完成 ${done} 次 / 计划 ${ev.length} 次`);
+    if (cancelled.length) out.push(`已取消 ${cancelled.length} 次`);
+    if (next) out.push(`下一次灌注计划：${next.planned}（${next.phase}第 ${next.idx} 次）`);
+  }
+  if (route === 'followup' || route === 'dashboard' || route === 'visit') {
+    const sc = (FOLLOWUP && FOLLOWUP.schedule) || [];
+    const nxt = sc[0];
+    if (nxt) out.push(`下次复查：${nxt.kind} · ${nxt.planned}（依据：${nxt.intervalSource}）`);
+    if (sc.length > 1) out.push(`再往后：${sc.slice(1, 3).map((x) => `${x.kind} ${x.planned}`).join('；')}`);
+  }
+  if (route === 'treatment' || route === 'metrics' || route === 'chart' || route === 'visit') {
+    const pts = (RENAL && RENAL.points) || [];
+    const last = pts[pts.length - 1];
+    if (last) out.push(`最近一次肾功能：eGFR ${last.egfr} mL/min/1.73m²、肌酐 ${last.creatinine} μmol/L（${last.date}，${last.lab}·${last.method}）`);
+    if (RENAL && RENAL.threshold && RENAL.threshold.text) out.push(`顺铂门槛：${RENAL.threshold.text}`);
+  }
+  if (route === 'metrics' || route === 'chart') {
+    const picked = (STATE.codes && STATE.codes.length ? STATE.codes : ['egfr']).slice(0, 6);
+    picked.forEach((code) => {
+      const m = (METRICS || []).find((x) => x.code === code);
+      if (!m || !m.points || !m.points.length) return;
+      const vals = m.points.map((x) => x.v);
+      out.push(`${m.name}：${vals[0]} → ${vals[vals.length - 1]} ${m.unit}（共 ${vals.length} 次）`);
+    });
+  }
+  if (route === 'surgery') {
+    const c = SURGERY_CASE && SURGERY_CASE[STATE.line === 'mibc' ? 'mibc' : 'nmibc'];
+    if (c) {
+      (c.turbt || []).forEach((t) => out.push(`第 ${t.seq} 次 TURBT：${t.on} · ${t.complete || ''} · 肌层 ${t.muscle || '—'}`));
+      if (c.reTurbt && c.reTurbt.reason) out.push(`二次电切：${c.reTurbt.plannedOn || '计划中'}（原因：${c.reTurbt.reason}）`);
+      if (c.radical) out.push(`根治性切除：${c.radical.on || '—'} · ${c.radical.kind || ''}`);
+    }
+  }
+  if (route === 'treatment') {
+    const c = TREATMENT_CASE && TREATMENT_CASE[STATE.line === 'mibc' ? 'mibc' : 'nmibc'];
+    if (c && c.lines) c.lines.forEach((l) => out.push(`${l.no}：${l.regimen}（${l.from || '—'} → ${l.to || '至今'}）· ${l.status}`));
+  }
+  if (route === 'diversion' && DIVERSION_CASE) {
+    if (DIVERSION_CASE.activeKind) out.push(`当前改道方式：${DIVERSION_CASE.activeKind}`);
+    if (DIVERSION_CASE.operatedOn) out.push(`手术日期：${DIVERSION_CASE.operatedOn}`);
+  }
+  if (route === 'visit' || route === 'dashboard') {
+    const qs = (QUESTIONS || []).filter((q) => q.asked !== '已问');
+    if (qs.length) {
+      // 不写成「前三条：」再嵌套一层「·」——外层 map 已经加了一个「- 」，
+      // 嵌套会渲染成「-   · xxx」双项目符号，复制到对话框里很难看。
+      out.push(`还没问的问题 ${qs.length} 个`);
+      qs.slice(0, 3).forEach((q) => out.push(`待问：${q.q}`));
+    }
+  }
+  if (route === 'records' && RECORDS && RECORDS.files) {
+    const f = RECORDS.files;
+    out.push(`资料 ${f.length} 份，其中已核对 ${f.filter((x) => x.state === '已核对').length} 份、待核对 ${f.filter((x) => x.state !== '已核对').length} 份`);
+  }
+  return out;
+}
+
+/** 本页已知缺项：写清「没有」而不是留空（空会被 AI 读成「正常」）。 */
+function gapsFor() {
+  const common = ['危险度分组：来源待补（原文为图片）'];
+  const byRoute = {
+    instillation: ['灌注后膀胱内保留时间：来源待补'],
+    followup: ['2024 随访表原文：未取到'],
+    metrics: ['电解质与 B12：来源待补'],
+    diversion: ['三种术式的日常生活对比：属设计假设，非指南原文'],
+    urgent: ['四类急症判据的原文来源：尚未取得'],
+    chart: ['肌酐与 eGFR 的方法变更未逐点标注'],
+  };
+  return (byRoute[STATE.route] || []).concat(common);
+}
+
+/** 组装提示词。顺序固定：要做什么 → 我这边的事实 → 缺什么 → 没带什么 → 边界。 */
+function buildAIPrompt() {
+  const sc = SCENARIO[STATE.route] || { scene: `我在「${STATE.route}」这一页`, ask: '帮我把这一页的信息理一理。' };
+  const tabs = tabsFor(STATE.route);
+  const where = tabs.current ? `${sc.scene}（当前页签：${tabs.current}）` : sc.scene;
+  const lines = [
+    '【我想让 AI 帮我做的事】',
+    `${where}。${sc.ask}`,
+    '',
+    '【我这边的关键信息】',
+    ...keyFacts().map((f) => `- ${f}`),
+    '',
+    '【已知缺项（没有就说没有，不要补）】',
+    ...(gapsFor().length ? gapsFor().map((g) => `- ${g}`) : ['- 无']),
+    '',
+    '【没有带入的内容】',
+    '- 性功能与亲密记录（默认私密）',
+    '- 造口日记明细、控尿记录明细（默认私密）',
+    '- 症状自评明细（默认私密）',
+    '',
+    '【边界】',
+    '- 以上是我的记录，不是诊断，请基于这些信息回答。',
+    '- 凡是要改药、改方案、判断能不能等的，请明确说「需要我的医生确认」，不要替我决定。',
+  ];
+  return lines.join('\n');
+}
+
+/** 填入草稿 + 复制。**不代发**：发送动作留给用户。 */
+function sendToAI() {
+  const text = buildAIPrompt();
+  STATE.aiPrompt = text;          // 只在内存里，不写 localStorage（提示词含患者事实）
+  STATE.agentOpen = true;
+  saveState();
+  renderAgent();
+  const done = () => toast('场景提示词已填入右侧 AI 草稿并复制');
+  const fail = () => toast('已填入右侧 AI 草稿；此环境不能自动复制，请手动选择');
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, fail);
+  else fail();
+}
+
+function copyPrompt() {
+  if (!STATE.aiPrompt) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(STATE.aiPrompt).then(
+      () => toast('提示词已复制'),
+      () => toast('复制失败，可手动选择文本'),
+    );
+  } else toast('此环境不支持自动复制');
+}
+
 function copyDraft() {
   const d = DRAFT_SCOPES[STATE.draftScope];
   const text = [`范围：${d.label}`,
@@ -2890,6 +3086,16 @@ async function boot() {
     saveState(); renderAgent();
   });
   $('#btnCopyDraft').addEventListener('click', copyDraft);
+  // 「发送到 AI」的按钮渲染在面包屑里，在 .wb-page 作用域之外，所以用 document 级代理。
+  document.addEventListener('click', (ev) => {
+    const t = ev.target;
+    if (!t || !t.closest) return;
+    if (t.closest('[data-act="toAI"]')) { ev.preventDefault(); sendToAI(); return; }
+    if (t.closest('[data-copy-prompt]')) { ev.preventDefault(); copyPrompt(); return; }
+    if (t.closest('[data-clear-prompt]')) {
+      ev.preventDefault(); STATE.aiPrompt = null; renderAgent(); toast('已清除待发送内容');
+    }
+  });
   $('#btnWording').addEventListener('click', wordingCheck);
   const btnTs = $('#btnTextSize');
   const cycle = { normal: 'large', large: 'xlarge', xlarge: 'normal' };

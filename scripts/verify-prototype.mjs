@@ -842,6 +842,59 @@ async function main() {
     /不等于「没有命中」/.test(rspText));
   await shot('23-灌注-应答与极高危');
 
+  /* --- UI-40a 占位说明已移除 --- */
+  await nav('看板');
+  await page.waitForTimeout(200);
+  const noteCount = await page.locator('.ag-note').count();
+  assert('UI-40a AI 面板不再有「原型占位说明」块', noteCount === 0, `.ag-note=${noteCount}`);
+
+  /* --- UI-40b 同名按钮全页只有一份（用户实测反馈「重复按钮」） --- */
+  const URGENT_LABELS = ['血块与尿潴留', 'BCG 全身感染', '造口缺血 / 梗阻', '无尿与腰痛'];
+  const countUrgent = async () => page.evaluate((labels) => {
+    const seen = {};
+    document.querySelectorAll('button').forEach((b) => {
+      const t = (b.textContent || '').trim();
+      if (labels.includes(t)) seen[t] = (seen[t] || 0) + 1;
+    });
+    return seen;
+  }, URGENT_LABELS);
+  // 未分野（闸门显示）：闸门内那份是唯一的一份
+  const dupUnconfirmed = await countUrgent();
+  assert('UI-40b 未分野时急症入口每类恰好 1 个（闸门内那份，正文不再重复）',
+    URGENT_LABELS.every((k) => dupUnconfirmed[k] === 1), JSON.stringify(dupUnconfirmed));
+  // 已分野（闸门隐藏）：正文那份兜住，仍恰好 1 个
+  await page.selectOption('#selDemo', { index: 1 });
+  await page.waitForTimeout(400);
+  const gateNow = await page.locator('.gate').count();
+  const dupConfirmed = await countUrgent();
+  assert('UI-40b 已分野后急症入口每类仍恰好 1 个（正文兜住，不出现空档）',
+    gateNow === 0 && URGENT_LABELS.every((k) => dupConfirmed[k] === 1),
+    `gate=${gateNow} ${JSON.stringify(dupConfirmed)}`);
+
+  /* --- UI-40c 发送到 AI：页面级按钮 + 五段提示词 + 私密不带 + 不落盘 --- */
+  const aiBtn = await page.locator('[data-act="toAI"]').count();
+  assert('UI-40c 每页面包屑有「发送到 AI」按钮（且只有一个）', aiBtn === 1, `count=${aiBtn}`);
+  await page.click('[data-act="toAI"]');
+  await page.waitForTimeout(300);
+  const promptText = await page.locator('.ag-pre').first().innerText();
+  const SECTIONS = ['【我想让 AI 帮我做的事】', '【我这边的关键信息】',
+    '【已知缺项（没有就说没有，不要补）】', '【没有带入的内容】', '【边界】'];
+  assert('UI-40c 提示词含五段固定结构，顺序固定',
+    SECTIONS.every((h, i) => promptText.indexOf(h) > (i === 0 ? -1 : promptText.indexOf(SECTIONS[i - 1]))),
+    SECTIONS.filter((h) => !promptText.includes(h)).join(',') || '五段齐');
+  assert('UI-40c 提示词明确「不是诊断」且要求「需要我的医生确认」',
+    /不是诊断/.test(promptText) && /需要我的医生确认/.test(promptText));
+  assert('UI-40c 私密项如实列出「没有带入」而非静默省略',
+    /没有带入的内容/.test(promptText) && /性功能与亲密记录/.test(promptText) && /默认私密/.test(promptText));
+  assert('UI-40c 面板明写「不代为发送」', /不代为发送/.test(await page.innerText('#agDraft')));
+  // 提示词不得写进 localStorage（含患者事实，只在内存里）
+  const lsHasPrompt = await page.evaluate(() => {
+    const raw = localStorage.getItem('uropal.prototype.v0.1') || '';
+    return /我想让 AI 帮我做的事/.test(raw) || /病理原文/.test(raw);
+  });
+  assert('UI-40c 提示词不写进 localStorage（含患者事实，只留内存）', lsHasPrompt === false);
+  await shot('40-发送到AI');
+
   /* --- console 错误 --- */
   console.log('\n【运行时错误】');
   assert('浏览器控制台零 error', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | ') || '零 error');

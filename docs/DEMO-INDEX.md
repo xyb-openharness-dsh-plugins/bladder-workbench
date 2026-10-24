@@ -41,7 +41,7 @@ cd /Users/qinxiaoqiang/Downloads/bladder-workbench/prototypes/v0.1 && python3 -m
 cd /Users/qinxiaoqiang/Downloads/bladder-workbench && node scripts/verify-prototype.mjs
 ```
 
-结果：**断言 155 条，通过 155，失败 0**（含真浏览器 Chromium 驱动、`390px` 横向不溢出、零控制台 error，以及图表真实几何对齐）。
+结果：**断言 164 条，通过 164，失败 0**（含真浏览器 Chromium 驱动、`390px` 横向不溢出、零控制台 error，以及图表真实几何对齐）。
 
 ## 三、2026 临床试验数据（`research/bladder-cancer/`）
 

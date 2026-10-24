@@ -15,7 +15,7 @@
 | --- | --- | --- | --- |
 | M0 | 骨架可跑 | `dsh-wb-cli 1.4.3 init` 生成 137 文件；`dsh-wb-cli check .` → `staticPass: true`；`git init` 完成 | ✅ 2026-10-23 |
 | M1 | 调研与 SPEC | `USER-RESEARCH.md`（证据分层 E1–E4，**无真实访谈已如实标注**）；`SCENARIOS.md` S01–S18 且追踪链 E→N→S→F→A 闭合；`DIFF-MATRIX.md` 15 行（≥3 为组织准入）；`CORE-MODULES.md` 四核心模块；`SPEC.md` M01–M15 + AC-01–AC-54；`HVT-REVIEW.md` 五层检查跑完且 **B 级 2 → 0** | ✅ 2026-10-23 |
-| M2 | 原型可点 | `prototypes/v0.1/` 六件；**14 一级页 + 48 二级页签 + 设置**逐页真实点击且正文非空（逐页断言，非目测）；`verify-prototype` **155/155**；`verify-one-chart` C1–C12 **12/12**；`verify-metric-trend` MT **15/15**（另 2 条未实现已登记）；390px `documentElement.scrollWidth === 390`；控制台 **0 error** | ✅ 2026-10-24 |
+| M2 | 原型可点 | `prototypes/v0.1/` 六件；**14 一级页 + 48 二级页签 + 设置**逐页真实点击且正文非空（逐页断言，非目测）；`verify-prototype` **164/164**；`verify-one-chart` C1–C12 **12/12**；`verify-metric-trend` MT **15/15**（另 2 条未实现已登记）；390px `documentElement.scrollWidth === 390`；控制台 **0 error** | ✅ 2026-10-24 |
 | M3 | 数据模型 | `schema/0001_initial.sql` **44 表 · 8 索引**可执行；约束探针 **37/37**；`schema/freeze-contract.md` 落 sha256 `86e5a3e5…`；校验器能拒绝「篡改已冻结迁移」与「新增未登记迁移」（两者均实测退出码 1） | ✅ 2026-10-24 |
 | M4 | 临床库 | 2026 年 **295** 条（ClinicalTrials.gov 212 + ChiCTR 83）；`trials-2026.jsonl` / sqlite / manifest 三方计数一致；4 个视图；声明 sha256 与实算一致；PII **17 类**模式剥除 + `assertNoPii` fail-closed，54 字段终检 **0 命中**；manifest 十条 limitations 随数据呈现 | ✅ 2026-10-23 |
 | M5 | 开发版 | **判据（2026-10-24 用户「原型确认通过，继续M5开发」后写定）**：① 六步移植完成（`dsh/` 六件 + `lib/` 三件 + `public/` 四件 + `scripts/` 检查器 + `test/` 三层）；② `readmodels` 还原的行与 `prototypes/v0.1/data.js` **形状逐字符一致**（parity 是这一层唯一验收标准）；③ 真实 SQLite 落盘且**迁移幂等**（重跑不重复建表）；④ `demo.js` 播种**幂等**（有 subjects 整批跳过）、单事务、失败整体回滚；⑤ customFrame 右侧可拖面板：`businessSide=left`、`businessWidth=0.65` 与 `AGENT_PANE.def=0.35` **互补且只有一份来源**、splitter `role=separator`+键盘+localStorage 夹取、<760px 覆盖式抽屉；⑥ `NODE_OPTIONS= npm run check` 全绿；⑦ `npm start` 无头实测**出数字**（导航数 / 面板宽度开-宽-收 / `bodyScrollW` vs `innerWidth` / error 与 4xx 计数）并截图。**MinerU 与指南桥接不在 M5 判据内**（一期只留接口与设置页骨架） | ✅ 2026-10-24（证据见下） |
@@ -29,7 +29,7 @@
 | ID | 闸口 | 判据 | 状态 |
 | --- | --- | --- | --- |
 | G1 | 需求签字 | HVT 五层检查 B 级清零 + **用户原话**确认 | ✅ 2026-10-24（[SIGNOFF-2026-10-24](SIGNOFF-2026-10-24.md)） |
-| G2 | 原型签字 | 用户确认原型版本与范围 | ✅ 2026-10-24（同文；冻结 `prototypes/v0.1/` 总哈希 `32731707…`） |
+| G2 | 原型签字 | 用户确认原型版本与范围 | ✅ 2026-10-24（同文；冻结 `prototypes/v0.1/` 总哈希 `32731707…`（后经用户指示改动，现为 `63099946…`，见 `docs/DESIGN-SESSION.md` DESIGN-40）） |
 | G3 | 数据模型签字 | 用户确认表数与契约；`freeze-contract.md` 落 sha256 | ✅ 2026-10-24（同文；此后**只增不改**） |
 
 > **phase1 止点已于 2026-10-24 由用户解除**（原话「原型确认通过，继续M5开发」）：
@@ -106,7 +106,7 @@
 ## 复现命令（判据都可自己跑一遍）
 
 ```bash
-node scripts/verify-prototype.mjs      # 期望 155/155
+node scripts/verify-prototype.mjs      # 期望 164/164
 node scripts/verify-one-chart.mjs      # 期望 C1–C12 12/12
 node scripts/verify-metric-trend.mjs   # 期望 15/15（另 2 条未实现）
 node scripts/check-schema.mjs          # 期望 冻结合同 1/1 + 探针 37/37

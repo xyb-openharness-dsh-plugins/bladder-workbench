@@ -44,6 +44,9 @@ const STATE = {
   agentWidth: 35,          // 25–45
   draftScope: 'visit',     // visit | chart | verify
   verifiedOnly: true,
+  // 「发送到 AI」填好的场景提示词。**刻意不写进 localStorage**（saveState 不序列化它）：
+  // 这段文字含患者事实，留在内存里、关掉页面就没了，比留在本机存储更合适。
+  aiPrompt: null,
 };
 
 /* ---------- 演示：病理与分期（原文优先） ---------- */
