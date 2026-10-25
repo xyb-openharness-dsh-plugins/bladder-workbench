@@ -46,7 +46,8 @@
     "install:local": "node scripts/install-local.mjs",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.mjs",
     "check": "npm run check:version && npm run check:client && npm run check:public && npm run check:demo && npm run check:syntax && npm run check:schema && npm run check:wording && npm run check:package && npm test",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "probe:primer": "node scripts/probe-disease-primer.mjs"
   },
   "dsh": {
     "bundle": {
