@@ -26,33 +26,35 @@ window.DISEASE_PRIMER = {
         '急症语境：血块与尿潴留、BCG 全身感染、造口缺血梗阻、无尿与腰痛，项目单列「急症与安全」，只给联系入口与判据原文，不做处置建议。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（据本项目 docs/DEV-PLAN.md 目标池记录，原件未取得）', original: false, page: '页码待核' },
-        { org: '本项目', doc: 'docs/SPEC.md（三分野、M02 病理核对与 AC-05 待澄清口径）', version: '2026-10-24 版', original: true, page: '不适用（项目文档）' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（据本项目 docs/DEV-PLAN.md 目标池记录，原件未取得）', original: false, secondaryUrl: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417', page: '页码待核', note: '二次来源：NCCN 官方指南页' },
+        { org: '本项目', doc: 'docs/SPEC.md（三分野、M02 病理核对与 AC-05 待澄清口径）', version: '2026-10-24 版', original: true, nolink: true, page: '不适用（项目文档）', note: '仓内文档，无公开 https 链接' }
       ]
     },
     {
       id: 'evidence',
       title: '医学资料规范和指南情况',
       intro: '这台工作台里出现的每一条「该查什么、该怎么复查」，都应能追到下面某一份文件。'
-        + '本项目没有取得任何一份的原件；NCCN 的版本号来自本仓目标池记录，两份中文共识只有年份，机构与页码都要另核。',
+        + '本项目没有取得任何一份的原件；NCCN 的版本号来自本仓目标池记录；两份中文共识已核到期刊出处与二次来源页，页码仍要另核。',
       table: {
         head: ['机构', '文件', '版本 / 年份', '原件', '本台的用途'],
         rows: [
-          ['NCCN', 'NCCN Guidelines · Bladder Cancer', '1.2025（据 docs/DEV-PLAN.md 目标池记录）', '未取得原件', '分野、术式与复查节奏的并列参照；条目级引用未引入，页码待核'],
-          ['中国膀胱癌保膀胱治疗多学科诊治协作（机构全名未核实）', '中国膀胱癌保膀胱治疗多学科诊治协作共识', '2022 年版 / 2024 年版（两版均被项目引用）', '未取得原件', '复查间隔（2022 版）与极高危四项构成（2024 版）的出处'],
-          ['机构未核实（项目演示数据只写「2021 灌注共识」）', '膀胱灌注共识', '2021 年版', '未取得原件', '灌注禁忌与中断的语境参照；条目级引用未引入']
+          ['NCCN', 'NCCN Guidelines · Bladder Cancer', '1.2025（据 docs/DEV-PLAN.md 目标池记录）', { text: '未取得原件', url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417' }, '分野、术式与复查节奏的并列参照；条目级引用未引入，页码待核'],
+          ['中国肿瘤医院泌尿肿瘤协作组', '中国膀胱癌保膀胱治疗多学科诊治协作共识', '2022 版（中华肿瘤杂志 2022;44(3):209-218）', { text: '未取得原件', url: 'https://www.liangyihui.net/doc/87900' }, '复查间隔（2022 版）的出处；条目级引用未引入，页码待核'],
+          ['中国肿瘤医院泌尿肿瘤协作组', '中国膀胱癌保膀胱治疗多学科诊治协作共识（2024 版）', '2024 版（中华肿瘤杂志 2024;46(12):1136-1155）', { text: '未取得原件', url: 'https://news.medlive.cn/uro/info-progress/show-220363_191.html' }, '极高危四项构成（2024 版）的出处；条目级引用未引入，页码待核'],
+          ['中国肿瘤医院泌尿肿瘤协作组', '非肌层浸润性膀胱癌膀胱灌注治疗专家共识', '2021 版（中华肿瘤杂志 2021;43(10):1027-1033）', { text: '未取得原件', url: 'https://rs.yiigle.com/cmaid/1339724' }, '灌注禁忌与中断的语境参照；条目级引用未引入，页码待核']
         ]
       },
       points: [
         'NCCN 1.2025 是项目目标池里登记的病种与版本（膀胱癌 #35，T1），不是本项目看过的指南；引用时只写版本号，不写条文。',
-        '两份中文共识的年份来自演示数据的注释（2022 / 2024 保膀胱共识、2021 灌注共识），机构全名与页码均未核实。',
+        '两份中文共识的期刊出处与年份已核到（中华肿瘤杂志 2022 / 2024，以及 2021 灌注共识），机构写作中国肿瘤医院泌尿肿瘤协作组；页码与条文均未核对。',
         '本项目对指南优先级的既有判定：E1 权威原文 > E2 官方注册库 > E3 患者教育材料 > E4 设计假设；未取得 E1 原文时，界面写「未引入」，不占位猜。',
         '本台对未取得原件的文件只记「存在」与「大致讲什么」，页码一律写待核。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（未取得原件）', original: false, page: '页码待核' },
-        { org: '机构未核实', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识', version: '2022 / 2024 年版', original: false, page: '页码待核' },
-        { org: '机构未核实', doc: '膀胱灌注共识（项目演示数据写作「2021 灌注共识」）', version: '2021 年版', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（未取得原件）', original: false, secondaryUrl: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417', page: '页码待核', note: '二次来源：NCCN 官方指南页' },
+        { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识', version: '2022 版（中华肿瘤杂志 2022;44(3):209-218）', original: false, secondaryUrl: 'https://www.liangyihui.net/doc/87900', page: '页码待核', note: '二次来源：良医汇-肿瘤资讯期刊页' },
+        { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识（2024 版）', version: '2024 版（中华肿瘤杂志 2024;46(12):1136-1155）', original: false, secondaryUrl: 'https://news.medlive.cn/uro/info-progress/show-220363_191.html', page: '页码待核', note: '二次来源：医脉通解读页' },
+        { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '非肌层浸润性膀胱癌膀胱灌注治疗专家共识', version: '2021 版（中华肿瘤杂志 2021;43(10):1027-1033）', original: false, secondaryUrl: 'https://rs.yiigle.com/cmaid/1339724', page: '页码待核', note: '二次来源：中华医学期刊全文数据库条目页' }
       ]
     },
     {
@@ -97,8 +99,8 @@ window.DISEASE_PRIMER = {
         '以上是文献与指南里列出的手段，按病期与线序排列，不代表任何一项适合你。选哪一个，这一句需要问你的医生。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（未取得原件）', original: false, page: '页码待核' },
-        { org: '机构未核实', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识', version: '2022 / 2024 年版', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（未取得原件）', original: false, secondaryUrl: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417', page: '页码待核', note: '二次来源：NCCN 官方指南页' },
+        { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识', version: '2022 / 2024 年版', original: false, secondaryUrl: 'https://news.medlive.cn/uro/info-progress/show-220363_191.html', page: '页码待核', note: '二次来源为 2024 版解读页；2022 版条目见「医学资料」表' }
       ]
     },
     {
@@ -113,9 +115,9 @@ window.DISEASE_PRIMER = {
         '截至 2026-10-25：本项目记录的病种目标池版本为 NCCN 1.2025（docs/DEV-PLAN.md，膀胱癌 #35，T1）；原件未取得，生效日期与此前版本的版本号未核实。'
       ],
       sources: [
-        { org: '本项目', doc: 'research/bladder-cancer/manifest.json（登记快照与分层）', version: '采集日 2026-10-22', original: true, page: '不适用（项目数据）' },
-        { org: 'ClinicalTrials.gov / ChiCTR', doc: '登记检索（膀胱癌 / 尿路上皮癌 / 移行细胞癌）', version: '采集日 2026-10-22', original: true, note: '一手登记数据，本项目自采' },
-        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（据 docs/DEV-PLAN.md，原件未取得）', original: false, page: '页码待核' }
+        { org: '本项目', doc: 'research/bladder-cancer/manifest.json（登记快照与分层）', version: '采集日 2026-10-22', original: true, nolink: true, page: '不适用（项目数据）', note: '仓内采集快照，无公开 https 链接' },
+        { org: 'ClinicalTrials.gov', doc: '登记检索（膀胱癌 / 尿路上皮癌 / 移行细胞癌）', version: '采集日 2026-10-22', original: true, url: 'https://clinicaltrials.gov/search?cond=Bladder%20Cancer', note: '一手登记数据，本项目自采；ChiCTR 通道结果仅存仓内快照' },
+        { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（据 docs/DEV-PLAN.md，原件未取得）', original: false, secondaryUrl: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417', page: '页码待核', note: '二次来源：NCCN 官方指南页' }
       ]
     }
   ]

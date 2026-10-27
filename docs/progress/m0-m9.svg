@@ -1,7 +1,7 @@
 <svg viewBox="0 0 960 260" width="960" height="260" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
   <rect width="960" height="260" fill="#FFFFFF"/>
   <text x="30" y="34" font-size="15" font-weight="600" fill="#1E3A42">小泉宝 UroPal · 膀胱癌工作台 · 里程碑进度</text>
-  <text x="30" y="54" font-size="11.5" fill="#4E6B74">v0.1.0 · 29 次提交（10-23 → 10-24）· 依据 docs/DEV-PLAN.md 与 git 实况</text>
+  <text x="30" y="54" font-size="11.5" fill="#4E6B74">v0.1.0 · 31 次提交（10-23 → 10-25）· 依据 docs/DEV-PLAN.md 与 git 实况</text>
 
   <!-- 已完成段实线 -->
   <line x1="60" y1="112" x2="510" y2="112" stroke="#2F7D6B" stroke-width="2"/>

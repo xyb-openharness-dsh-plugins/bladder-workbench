@@ -33,6 +33,10 @@ const CHECK = process.argv.includes('--check');
 
 const read = (p) => readFileSync(p, 'utf8');
 
+/* 版本号单一来源：仓库根 VERSION。原型 index.html 里的可见版本号与 app.js 的
+   APP_VERSION 都按它做定点替换——否则每次升 patch 都要手改这里的匹配串。 */
+const VERSION = read(join(ROOT, 'VERSION')).trim();
+
 /** 每处替换都必须只命中一次：命中 0 次说明原型改了、这段失效；命中多次说明匹配太宽 */
 function mustReplace(text, from, to, what) {
   const hits = text.split(from).length - 1;
@@ -167,7 +171,7 @@ function buildHtml() {
 
   P(`<!-- ============ 原型横幅：整页最顶，先声明「这是假的」 ============ -->
 <div class="wb-demo-bar" role="note">
-  <span class="db-left"><b>交互原型 v0.1.0</b> · 全部为模拟资料</span>
+  <span class="db-left"><b>交互原型 v${VERSION}</b> · 全部为模拟资料</span>
   <span class="db-right">仅本页演示 · 刷新重置 · 未接入 DSH / AI · 无数据库</span>
 </div>
 
@@ -176,11 +180,13 @@ function buildHtml() {
   P('<header class="wb-topbar" role="banner">', '<header class="wb-topbar wb-shell-topbar" role="banner">',
     '顶栏加 wb-shell-topbar（宿主左留白由 shell.css 增量负责）');
 
-  P('<script src="data.js"></script>\n<script src="charts.js"></script>\n<script src="app.js"></script>',
-    '<script>window.__WB_INFO__ = {{WB_INFO}};</script>\n<script src="app.js"></script>',
-    '脚本：去掉 data.js/charts.js，注入构建信息');
+  /* 36 号疾病概要：primer-data.js / primer.js 是共享模块，开发版必须保留；
+     只去掉原型专用的 data.js / charts.js（charts 由 buildApp 拼进 app.js）。 */
+  P('<script src="data.js"></script>\n<script src="charts.js"></script>\n<script src="primer-data.js"></script>\n<script src="primer.js"></script>\n<script src="app.js"></script>',
+    '<script>window.__WB_INFO__ = {{WB_INFO}};</script>\n<script src="primer-data.js"></script>\n<script src="primer.js"></script>\n<script src="app.js"></script>',
+    '脚本：去掉 data.js/charts.js，保留 primer 模块，注入构建信息');
 
-  P('<span class="tb-version" id="versionChip" title="原型版本号，与 VERSION / package.json 一致（本原型手工同步，无构建注入）">v0.1.0</span>',
+  P(`<span class="tb-version" id="versionChip" title="原型版本号，与 VERSION / package.json 一致（本原型手工同步，无构建注入）">v${VERSION}</span>`,
     '<span class="tb-version" id="versionChip" title="版本号由构建从 VERSION 文件注入，与 package.json 同源">v{{WB_VERSION}}</span>',
     '版本 chip 注释与值改为构建注入（发布可见性 P3）');
 
@@ -192,7 +198,7 @@ function buildHtml() {
     '<button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane" data-agent-state="idle">打开 AI 对话</button>',
     'AI 按钮加 data-agent-state（五态由它驱动）');
 
-  P('<span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">0.1.0</b></span>',
+  P(`<span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">${VERSION}</b></span>`,
     '<span>小泉宝 UroPal · 开发版 · 版本 <b id="footVersion">{{WB_VERSION}}</b></span>',
     '页脚版本号改为构建注入');
 
@@ -234,10 +240,10 @@ function buildApp() {
   app = mustReplace(app, "'use strict';\n", '', "app.js 的 'use strict'（上移到文件顶部）");
 
   // 4.3 版本号改从构建注入读
-  app = mustReplace(app, "const APP_VERSION = '0.1.0';",
+  app = mustReplace(app, `const APP_VERSION = '${VERSION}';`,
     "/* 定点替换（M5 第 5 处）：版本号单一来源。页面里的值由服务端从 lib/version.js 注入，\n"
     + "   而 lib/version.js 由 VERSION 文件生成——所以顶栏、页脚、package.json 三处同源。 */\n"
-    + "const APP_VERSION = (window.__WB_INFO__ && window.__WB_INFO__.version) || '0.1.0';",
+    + `const APP_VERSION = (window.__WB_INFO__ && window.__WB_INFO__.version) || '${VERSION}';`,
     'APP_VERSION 改为读构建注入');
 
   // 4.4 本地存储键改开发版（原型与开发版同机打开时不能互相覆盖状态）
@@ -414,7 +420,10 @@ ${app}`;
 const outputs = [
   ['style.css', read(join(SRC, 'tokens.css'))],
   ['shell.css', read(join(SRC, 'shell.css')) + SHELL_DELTA],
+  ['primer.css', read(join(SRC, 'primer.css'))],
   ['index.html', buildHtml()],
+  ['primer-data.js', read(join(SRC, 'primer-data.js'))],
+  ['primer.js', read(join(SRC, 'primer.js'))],
   ['app.js', buildApp()],
 ];
 
@@ -428,7 +437,7 @@ if (CHECK) {
     bad += 1;
   }
   if (bad) { console.error(`\n${bad} 个文件需要重新生成：node scripts/build-public.mjs`); process.exit(1); }
-  console.log('\n✓ 开发版前端与原型同源（4 个文件）');
+  console.log(`\n✓ 开发版前端与原型同源（${outputs.length} 个文件）`);
 } else {
   mkdirSync(OUT, { recursive: true });
   for (const [name, text] of outputs) {

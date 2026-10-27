@@ -12,7 +12,7 @@
 
 <!-- ============ 原型横幅：整页最顶，先声明「这是假的」 ============ -->
 <div class="wb-demo-bar" role="note">
-  <span class="db-left"><b>交互原型 v0.1.0</b> · 全部为模拟资料</span>
+  <span class="db-left"><b>交互原型 v0.1.1</b> · 全部为模拟资料</span>
   <span class="db-right">仅本页演示 · 刷新重置 · 未接入 DSH / AI · 无数据库</span>
 </div>
 
@@ -22,7 +22,7 @@
   <div class="tb-brand">
     <span class="tb-mark" aria-hidden="true"></span>
     <span class="tb-name">小泉宝 UroPal</span>
-    <span class="tb-version" id="versionChip" title="原型版本号，与 VERSION / package.json 一致（本原型手工同步，无构建注入）">v0.1.0</span>
+    <span class="tb-version" id="versionChip" title="原型版本号，与 VERSION / package.json 一致（本原型手工同步，无构建注入）">v0.1.1</span>
   </div>
 
   <!-- 中：一句状态说明（随页面变化） -->
@@ -32,6 +32,7 @@
   <div class="tb-actions">
     <span class="tb-pill" id="pillDir" data-state="off"><i aria-hidden="true"></i>资料目录 未接入</span>
     <span class="tb-pill" id="pillTalk" data-state="off"><i aria-hidden="true"></i>对话 未接入</span>
+    <button type="button" class="tb-btn tb-btn-ghost" data-primer-open aria-haspopup="dialog" aria-label="疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势" title="疾病概要：定义 · 指南 · 治疗全景 · 趋势">?</button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnTextSize" aria-pressed="false" title="切换大字模式（正文字号升一档）">大字 <span class="tbig">Aa</span></button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnWording" title="文案红线自检（本页扫描）">文案自检</button>
     <button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane">打开 AI 对话</button>
@@ -48,7 +49,7 @@
     <div class="wb-crumb" id="wbCrumb"><!-- 面包屑，由 app.js 渲染 --></div>
     <div class="wb-page" id="wbPage"><!-- 由 app.js 渲染 --></div>
     <footer class="wb-footer">
-      <span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">0.1.0</b></span>
+      <span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">0.1.1</b></span>
       <span class="wb-foot-note">本页为设计原型，数据为演示用；<b>不构成诊断或治疗建议</b></span>
     </footer>
   </main>

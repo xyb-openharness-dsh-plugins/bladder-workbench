@@ -372,7 +372,7 @@ const CHART = (() => {
 
 /* 定点替换（M5 第 5 处）：版本号单一来源。页面里的值由服务端从 lib/version.js 注入，
    而 lib/version.js 由 VERSION 文件生成——所以顶栏、页脚、package.json 三处同源。 */
-const APP_VERSION = (window.__WB_INFO__ && window.__WB_INFO__.version) || '0.1.0';
+const APP_VERSION = (window.__WB_INFO__ && window.__WB_INFO__.version) || '0.1.1';
 
 /* ---------------- 工具 ---------------- */
 const $  = (s, r = document) => r.querySelector(s);
@@ -658,26 +658,36 @@ function pageDashboard() {
     </div>`;
 
   const strip = nmibc ? `
-    <div class="strip">
+    <div class="strip status-card">
       <div class="strip-main">
-        <div class="strip-head">膀胱灌注 诱导 3 / 6 次已完成</div>
-        <div class="strip-note">2026-10-23 因<b>肉眼血尿</b>取消这一次 · 下一次计划 2026-10-30。
+        <div class="status-eyebrow">状态卡 · 待初始化 · 距下次灌注</div>
+        <div class="status-day">待初始化</div>
+        <p class="status-note">未记录锚点日（诱导 D1 / 手术 Day 0），天数无法派生。三步初始化
+          （① 分野 ② 录入病理 ③ 记录首个灌注 / 手术日）尚未完成；本原型暂无独立向导页，先在
+          <button type="button" class="status-link" data-goto="records">病情整理</button> 录入。</p>
+        <div class="strip-head">膀胱灌注 诱导期 · 3 / 6 次已完成</div>
+        <div class="strip-note">上次 2026-10-23 因<b>肉眼血尿</b>取消 · 下次：2026-10-30（灌注第 4 次）。
           取消不是恶化，是禁忌在保护你；漏做不做补做建议。</div>
       </div>
       <div class="strip-actions">
-        <button type="button" class="btn btn-primary" data-goto="instillation">看灌注周期</button>
-        <button type="button" class="btn" data-goto="visit">带去复诊的问题</button>
+        <button type="button" class="btn btn-primary" data-goto="instillation">看灌注周期（按天）→</button>
+        <button type="button" class="btn" data-primer-open aria-label="疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势">疾病概要：膀胱癌是什么？</button>
       </div>
     </div>` : `
-    <div class="strip">
+    <div class="strip status-card">
       <div class="strip-main">
+        <div class="status-eyebrow">状态卡 · 待初始化 · 距术式确定</div>
+        <div class="status-day">待初始化</div>
+        <p class="status-note">未记录锚点日（手术 Day 0 / 诱导 D1），天数无法派生。三步初始化
+          （① 分野 ② 录入病理 ③ 记录首个灌注 / 手术日）尚未完成；本原型暂无独立向导页，先在
+          <button type="button" class="status-link" data-goto="records">病情整理</button> 录入。</p>
         <div class="strip-head">尿流改道术式 尚未记录</div>
         <div class="strip-note">三种术式<b>各自独立</b>：回肠造口 / 原位新膀胱 / 输尿管皮肤造口。
           选定后改动会留痕，不覆盖旧值。</div>
       </div>
       <div class="strip-actions">
-        <button type="button" class="btn btn-primary" data-goto="diversion">三术式对照</button>
-        <button type="button" class="btn" data-goto="treatment">肾功能门槛</button>
+        <button type="button" class="btn btn-primary" data-goto="diversion">三术式对照 →</button>
+        <button type="button" class="btn" data-primer-open aria-label="疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势">疾病概要：膀胱癌是什么？</button>
       </div>
     </div>`;
 

@@ -44,8 +44,9 @@ const NEGATIONS = ['不', '勿', '禁', '别', '未', '毋', '莫'];
 const NEGATION_LOOKBACK = 12;
 
 // 检查器自己必须写出这些词才能检查它们（词表定义、断言样例），放行。
-// 只放行 scripts/ 下的 check-*.mjs / verify-*.mjs，避免把这条豁免扩大成后门。
-const SELF_EXEMPT = /^scripts\/(check|verify)-[^/]*\.mjs$/;
+// 只放行 scripts/ 下的 check-*.mjs / verify-*.mjs / probe-*.mjs，避免把这条豁免扩大成后门。
+// probe-* 也要放行：probe-disease-primer.mjs 的 BANNED 数组必须逐字包含这些词，才能测出违规。
+const SELF_EXEMPT = /^scripts\/(check|verify|probe)-[^/]*\.mjs$/;
 
 const rel = (p) => relative(ROOT, p).split('\\').join('/');
 

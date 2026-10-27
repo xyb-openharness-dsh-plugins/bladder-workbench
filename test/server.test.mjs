@@ -46,7 +46,11 @@ test('GET / → 200 且是开发版首页（模板占位符已全部替换）', 
     const html = await res.text();
     assert.ok(html.includes('id="wbMain"'), '首页必须含业务主区 #wbMain');
     assert.ok(!/\{\{[A-Z_]+\}\}/.test(html), `模板占位符没有被替换：${html.match(/\{\{[A-Z_]+\}\}/g)?.join(', ')}`);
-    assert.ok(!html.includes('data.js'), '开发版不该引原型的 data.js（数据走 /api/bootstrap）');
+    /* 36 号：primer-data.js / primer.js 是共享模块，开发版必须保留；
+       只禁止原型专用的 data.js / charts.js（charts 已拼进 app.js）。 */
+    const protoOnlyHtml = html.replace(/primer-data\.js|primer\.js/g, '');
+    assert.ok(!protoOnlyHtml.includes('data.js'), '开发版不该引原型的 data.js（数据走 /api/bootstrap）');
+    assert.ok(!protoOnlyHtml.includes('charts.js'), '开发版不该引原型的 charts.js（已拼进 app.js）');
     assert.ok(html.includes('data-api-base'), 'html 标签上要有 data-api-base，供 app.js 拼接口地址');
   } finally { await s.close(); }
 });

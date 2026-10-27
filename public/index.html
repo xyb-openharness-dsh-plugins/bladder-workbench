@@ -9,6 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Ccircle%20cx='24'%20cy='24'%20r='19'%20fill='%23E7F4F7'/%3E%3Cpath%20d='M24%2010c5%206%209%2010.5%209%2015a9%209%200%200%201-18%200c0-4.5%204-9%209-15Z'%20fill='%231793A6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="primer.css">
 </head>
 <body>
 
@@ -28,6 +29,7 @@
   <div class="tb-actions">
     <span class="tb-pill" id="pillDir" data-state="off"><i aria-hidden="true"></i>资料目录 未接入</span>
     <span class="tb-pill" id="pillTalk" data-state="off"><i aria-hidden="true"></i>对话 未接入</span>
+    <button type="button" class="tb-btn tb-btn-ghost" data-primer-open aria-haspopup="dialog" aria-label="疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势" title="疾病概要：定义 · 指南 · 治疗全景 · 趋势">?</button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnTextSize" aria-pressed="false" title="切换大字模式（正文字号升一档）">大字 <span class="tbig">Aa</span></button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnWording" title="文案红线自检（本页扫描）">文案自检</button>
     <button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane" data-agent-state="idle">打开 AI 对话</button>
@@ -76,6 +78,8 @@
 <div class="wb-toast" id="wbToast" role="status" aria-live="polite" hidden></div>
 
 <script>window.__WB_INFO__ = {{WB_INFO}};</script>
+<script src="primer-data.js"></script>
+<script src="primer.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

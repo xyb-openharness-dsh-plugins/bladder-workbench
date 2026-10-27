@@ -192,9 +192,13 @@ test('开发版 index.html 接线齐全，且不再引用原型的 data.js / 演
     footer: (document.querySelector('.wb-footer') || {}).innerText || '',
   })`));
   assert.deepEqual(info.ids, [], `开发版 index.html 缺这些 id：${info.ids.join(', ')}`);
-  assert.ok(!info.scripts.includes('data.js'), '开发版不该再引原型的 data.js');
+  /* 36 号：primer-data.js / primer.js 是共享模块，开发版必须保留；
+     只禁止原型专用的 data.js / charts.js（charts 已拼进 app.js）。 */
+  const protoOnlyScripts = info.scripts.filter((s) => s !== 'primer-data.js' && s !== 'primer.js');
+  assert.ok(!protoOnlyScripts.includes('data.js'), '开发版不该再引原型的 data.js');
+  assert.ok(!protoOnlyScripts.includes('charts.js'), '开发版不该再引原型的 charts.js');
   assert.equal(info.hasProtoBar, false, '开发版不该保留原型的演示横幅 .prototype-bar');
-  assert.deepEqual(info.sheetOrder, ['style.css', 'shell.css'], `样式引用顺序不对：${info.sheetOrder.join(', ')}`);
+  assert.deepEqual(info.sheetOrder, ['style.css', 'shell.css', 'primer.css'], `样式引用顺序不对：${info.sheetOrder.join(', ')}`);
   assert.ok(info.version, '页面必须拿到构建注入的版本号（发布可见性 P3）');
   assert.equal(info.runtime, 'standalone', '独立启动时 runtime 应为 standalone');
   /**
@@ -204,7 +208,7 @@ test('开发版 index.html 接线齐全，且不再引用原型的 data.js / 演
   assert.ok(!info.footer.includes('原型'), `开发版页脚不得自称「原型」：${info.footer}`);
   assert.ok(!info.footer.includes('演示用'), `开发版页脚不得再说「数据为演示用」：${info.footer}`);
   assert.ok(info.footer.includes('开发版'), `开发版页脚应写明「开发版」：${info.footer}`);
-  assert.ok(info.footer.includes('0.1.0'), `开发版页脚必须显示版本号：${info.footer}`);
+  assert.ok(info.footer.includes(info.version), `开发版页脚必须显示版本号 ${info.version}：${info.footer}`);
 });
 
 test('两侧浏览器零 error（console.error 与未捕获异常都算）', async () => {
