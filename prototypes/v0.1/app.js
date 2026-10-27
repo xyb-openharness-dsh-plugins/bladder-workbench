@@ -216,7 +216,7 @@ function renderCrumb() {
     + ` <span class="crumb-note">· 演示档案 ${esc(line)} · 全部为模拟资料</span></span>`
     // 页面级动作：把「当前这一页的处境」压成提示词交给 AI。
     // 放在面包屑里而不是顶栏，是因为它随页面变化；顶栏那组是全局动作。
-    + `<button type="button" class="crumb-ai" data-act="toAI" title="把本页场景与关键信息整理成提示词，填入右侧 AI 草稿">发送到 AI</button>`;
+    + `<button type="button" class="crumb-ai" data-act="toAI" title="把本页场景与关键信息整理成提示词，交给宿主原生 AI 会话（页面内不自建对话窗）">发送到 AI</button>`;
 }
 
 /* ---------------- 复用的页面片段 ---------------- */
@@ -1981,11 +1981,11 @@ function pageVisit(tab) {
     <div class="btn-row" style="margin-top:14px">
       <button type="button" class="btn btn-primary" data-export>导出摘要（原型占位）</button>
       <button type="button" class="btn" data-copy>复制文本</button>
-      <button type="button" class="btn">带入 AI 对话</button>
+      <button type="button" class="btn" data-act="toAI" data-to-ai="draft">带入 AI 对话</button>
     </div>
     <p class="src" style="margin-top:8px">
-      导出会得到格式真实的文件。带入 AI 对话只会把摘要放进草稿框，
-      <b>不会自动发送</b>；草稿里不含本机资料目录路径。</p>`);
+      导出会得到格式真实的文件。带入 AI 对话会把这一页的摘要提示词交给宿主原生会话
+      （嵌入式填草稿；独立打开只复制），<b>不替你发送、不替你下判断</b>；提示词不含本机资料目录路径。</p>`);
 
   const prepBody = () => card('就诊准备', `
     <h3>去之前要带什么</h3>
@@ -2224,71 +2224,9 @@ function openSettings() {
   }));
 }
 
-/* ================= Agent 面板 ================= */
-function renderAgent() {
-  const pane = $('#agentPane'), sp = $('#splitter'), btn = $('#btnAgent');
-  pane.hidden = !STATE.agentOpen;
-  sp.hidden = !STATE.agentOpen;
-  btn.setAttribute('aria-expanded', String(STATE.agentOpen));
-  btn.textContent = STATE.agentOpen ? '收起 AI 对话' : '打开 AI 对话';
-  $('#agState').dataset.state = STATE.agentOpen ? 'ready' : 'idle';
-  $('#agState').textContent = STATE.agentOpen ? '已连接（原型）' : '未连接';
-  if (!STATE.agentOpen) return;
-
-  const d = DRAFT_SCOPES[STATE.draftScope];
-  // 「发送到 AI」填进来的那段，单独置顶：它是**用户主动要发的话**，
-  // 与下面按范围自动汇总的草稿不是一回事，混在一起会让人以为已经发出去了。
-  const promptBlock = STATE.aiPrompt ? `
-    <div class="ag-block ag-prompt"><h4>待发送：本页场景提示词</h4>
-      <pre class="ag-pre">${esc(STATE.aiPrompt)}</pre>
-      <div class="ag-actions" style="padding:8px 10px">
-        <button type="button" class="tb-btn" data-copy-prompt>复制这段</button>
-        <button type="button" class="tb-btn" data-clear-prompt>清除</button>
-      </div>
-      <p class="src" style="padding:0 10px 8px">工作台<b>不代为发送</b>：请你确认内容后自己贴进对话窗口。</p>
-    </div>` : '';
-  $('#agDraft').innerHTML = promptBlock + `
-    <div class="ag-block"><h4>范围：${esc(d.label)}</h4></div>
-    ${d.blocks.map((b) => `<div class="ag-block"><h4>${esc(b.label)}</h4>
-      <ul>${b.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`).join('')}
-    <div class="ag-block ag-gap"><h4>缺项（写「没有」，不补不推测）</h4>
-      <ul>${d.gaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
-    <div class="ag-block ag-excl"><h4>已排除</h4>
-      <ul>${d.excluded.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
-    <p class="src">「已确认」只表示转录核对，<b>不等于医学审核</b>。</p>`;
-  sp.setAttribute('aria-valuenow', String(STATE.agentWidth));
-  scheduleCharts();
-}
-
-/* 拖动分隔器（按容器 rect 夹取） */
-function initSplitter() {
-  const sp = $('#splitter');
-  let dragging = false;
-  const onMove = (e) => {
-    if (!dragging) return;
-    const bodyW = $('.wb-body').getBoundingClientRect().width;
-    const pct = ((e.clientX - $('.wb-body').getBoundingClientRect().left) / bodyW) * 100;
-    STATE.agentWidth = clampAgentWidth(100 - pct);   // 面板在右
-    applyPrefs(); scheduleCharts();
-  };
-  sp.addEventListener('pointerdown', (e) => { dragging = true; sp.setPointerCapture(e.pointerId); });
-  sp.addEventListener('pointermove', onMove);
-  sp.addEventListener('pointerup', () => { dragging = false; saveState(); scheduleCharts(); });
-  sp.addEventListener('keydown', (e) => {
-    const step = 2;
-    if (e.key === 'ArrowLeft')  { STATE.agentWidth = clampAgentWidth(STATE.agentWidth + step); }
-    else if (e.key === 'ArrowRight') { STATE.agentWidth = clampAgentWidth(STATE.agentWidth - step); }
-    else if (e.key === 'Home') { STATE.agentWidth = 25; }
-    else if (e.key === 'End')  { STATE.agentWidth = 45; }
-    else return;
-    e.preventDefault(); applyPrefs(); sp.setAttribute('aria-valuenow', String(STATE.agentWidth));
-    saveState(); scheduleCharts();
-  });
-}
-
 /* ================= 文案红线自检 ================= */
 function wordingCheck() {
-  const text = $('#wbPage').innerText + ' ' + ($('#agentPane').hidden ? '' : $('#agentPane').innerText);
+  const text = $('#wbPage').innerText;
   const hits = WORDING_REDLINES.filter((w) => text.includes(w));
   openModal(`
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="wdTitle">
@@ -2399,7 +2337,6 @@ function bindPage() {
       toast('已跳到「复诊准备 › 问题清单」，可以把它写成一条要问的问题');
     }
     else if (a === 'setDiversion') toast('术式是不可逆事实：改动会留痕，不覆盖旧值');
-    else if (a === 'copyDraft') copyDraft();
     else if (a === 'toggleShare') {
       b.dataset.on = b.dataset.on === '1' ? '0' : '1';
       b.textContent = b.dataset.on === '1' ? '本次已勾选带入 ☑' : '本次已勾选带入 ▢';
@@ -2419,8 +2356,8 @@ function bindPage() {
    这个按钮把当前页的关键信息 + 想问的事 + 已知缺项 + 边界压成一段。
 
    三条纪律（与急症页同一套口径）：
-   1) **不代发**：只填进右侧草稿并复制到剪贴板，按发送键的是用户自己。
-      真接入 DSH 后走 setDraft，仍然不代按发送。
+   1) **不自建对话**：嵌入式只 postMessage bladder:agent-draft 给宿主原生会话；
+      独立打开时复制到剪贴板并说明没有会话面板，页面里不出现聊天窗/输入框/发送键。
    2) **私密项默认不带**：性功能、造口日记明细、症状自评明细一律不进提示词，
       并在文末如实写出「没有带入什么」——不然 AI 会把「没说」当成「没有」。
    3) **不编造**：取不到的项写「没有」，不推测、不补全。
@@ -2567,37 +2504,22 @@ function buildAIPrompt() {
   return lines.join('\n');
 }
 
-/** 填入草稿 + 复制。**不代发**：发送动作留给用户。 */
-function sendToAI() {
+/** 页内「发送到 AI」只把提示词交给宿主原生会话，不自建聊天窗口、不代按发送键。
+    嵌入式（宿主 iframe）走 bladder:agent-draft；独立打开时复制草稿并明确说明没有会话面板。 */
+function sendToAI(asDraft = false) {
   const text = buildAIPrompt();
-  STATE.aiPrompt = text;          // 只在内存里，不写 localStorage（提示词含患者事实）
-  STATE.agentOpen = true;
-  saveState();
-  renderAgent();
-  const done = () => toast('场景提示词已填入右侧 AI 草稿并复制');
-  const fail = () => toast('已填入右侧 AI 草稿；此环境不能自动复制，请手动选择');
+  const embedded = (() => { try { return window.parent && window.parent !== window } catch { return false } })();
+  if (embedded) {
+    try {
+      window.parent.postMessage({ type: 'bladder:agent-draft', prompt: text, send: !asDraft }, location.origin);
+      toast(asDraft ? '已把摘要提示词填入 AI 对话草稿' : '已把场景提示词交给 AI 对话');
+      return;
+    } catch { /* postMessage 不可用：退回复制 */ }
+  }
+  const done = () => toast(asDraft ? '已复制摘要提示词；此处没有页面内 AI 会话面板' : '已复制场景提示词；此处没有页面内 AI 会话面板');
+  const fail = () => toast('此环境没有 AI 会话面板，也不能自动复制，请手动选择');
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, fail);
   else fail();
-}
-
-function copyPrompt() {
-  if (!STATE.aiPrompt) return;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(STATE.aiPrompt).then(
-      () => toast('提示词已复制'),
-      () => toast('复制失败，可手动选择文本'),
-    );
-  } else toast('此环境不支持自动复制');
-}
-
-function copyDraft() {
-  const d = DRAFT_SCOPES[STATE.draftScope];
-  const text = [`范围：${d.label}`,
-    ...d.blocks.map((b) => `${b.label}\n` + b.lines.map((l) => `- ${l}`).join('\n')),
-    `缺项\n` + d.gaps.map((g) => `- ${g}`).join('\n'),
-    `已排除\n` + d.excluded.map((g) => `- ${g}`).join('\n')].join('\n\n');
-  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('草稿已复制'), () => toast('复制失败，可手动选择文本'));
-  else toast('此环境不支持自动复制');
 }
 
 /* ================= 路由与渲染 ================= */
@@ -2673,7 +2595,6 @@ function renderPage() {
   bindTabs(STATE.route);
   bindPage();
   paintCharts();
-  renderAgent();
 }
 
 function routeFromHash() {
@@ -2688,29 +2609,14 @@ function boot() {
   routeFromHash();
   renderNav();
   renderPage();
-  initSplitter();
 
-  $('#btnAgent').addEventListener('click', () => {
-    STATE.agentOpen = !STATE.agentOpen; saveState(); renderAgent();
-  });
-  $('#btnAgentClose').addEventListener('click', () => {
-    STATE.agentOpen = false; saveState(); renderAgent();
-  });
-  $('#btnDraftScope').addEventListener('click', () => {
-    const keys = Object.keys(DRAFT_SCOPES);
-    STATE.draftScope = keys[(keys.indexOf(STATE.draftScope) + 1) % keys.length];
-    saveState(); renderAgent();
-  });
-  $('#btnCopyDraft').addEventListener('click', copyDraft);
   // 「发送到 AI」的按钮渲染在面包屑里，在 .wb-page 作用域之外，所以用 document 级代理。
+  // 它只把提示词 postMessage 给宿主原生会话，页面里没有自建聊天窗。
   document.addEventListener('click', (ev) => {
     const t = ev.target;
     if (!t || !t.closest) return;
-    if (t.closest('[data-act="toAI"]')) { ev.preventDefault(); sendToAI(); return; }
-    if (t.closest('[data-copy-prompt]')) { ev.preventDefault(); copyPrompt(); return; }
-    if (t.closest('[data-clear-prompt]')) {
-      ev.preventDefault(); STATE.aiPrompt = null; renderAgent(); toast('已清除待发送内容');
-    }
+    const btn = t.closest('[data-act="toAI"]');
+    if (btn) { ev.preventDefault(); sendToAI(btn.dataset.toAi === 'draft'); }
   });
   $('#btnWording').addEventListener('click', wordingCheck);
   const btnTs = $('#btnTextSize');

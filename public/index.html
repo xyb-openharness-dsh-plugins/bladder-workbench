@@ -32,7 +32,6 @@
     <button type="button" class="tb-btn tb-btn-ghost" data-primer-open aria-haspopup="dialog" aria-label="疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势" title="疾病概要：定义 · 指南 · 治疗全景 · 趋势">?</button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnTextSize" aria-pressed="false" title="切换大字模式（正文字号升一档）">大字 <span class="tbig">Aa</span></button>
     <button type="button" class="tb-btn tb-btn-ghost" id="btnWording" title="文案红线自检（本页扫描）">文案自检</button>
-    <button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane" data-agent-state="idle">打开 AI 对话</button>
   </div>
 </header>
 
@@ -50,28 +49,6 @@
       <span class="wb-foot-note">数据只在本机；<b>记录不是诊断，不构成治疗建议</b></span>
     </footer>
   </main>
-
-  <!-- ============ 分隔器 + 右侧原生 Agent 面板 ============ -->
-  <div class="wb-splitter" id="splitter" role="separator" aria-orientation="vertical"
-       aria-label="调整 AI 对话面板宽度" aria-valuemin="25" aria-valuemax="45" aria-valuenow="35" tabindex="0" hidden></div>
-
-  <aside class="wb-agent" id="agentPane" aria-label="AI 对话（原生面板）" hidden>
-    <div class="ag-head">
-      <span class="ag-title">AI 对话</span>
-      <span class="ag-state" id="agState" data-state="idle">未连接</span>
-      <button type="button" class="ag-close" id="btnAgentClose" aria-label="收起 AI 对话">×</button>
-    </div>
-    <div class="ag-body">
-      <div class="ag-draft" id="agDraft"><!-- 由 app.js 渲染 --></div>
-      <div class="ag-actions">
-        <button type="button" class="tb-btn" id="btnDraftScope">切换草稿范围</button>
-        <button type="button" class="tb-btn tb-btn-primary" id="btnCopyDraft">复制草稿</button>
-      </div>
-      <p class="ag-foot">
-        只调 <code>setDraft</code>，不代为发送。草稿<b>不含本机资料目录路径与用户名</b>。
-      </p>
-    </div>
-  </aside>
 
 </div>
 

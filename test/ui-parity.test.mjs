@@ -45,10 +45,11 @@ const CDP_PORT = Number(process.env.UROPAL_PARITY_CDP_PORT || 9351);
 /** 两条线都要比：原型按分野分两套数据，只比一条会放过一整半的偏差 */
 const LINES = ['nmibc', 'mibc'];
 
-/** 开发版 `index.html` 必须齐全的 id（缺一个就说明前端移植漏了接线） */
+/** 开发版 `index.html` 必须齐全的 id（缺一个就说明前端移植漏了接线）。
+    AI 对话入口只保留宿主外壳那一个：页面里不再有 btnAgent / agentPane / splitter。 */
 const REQUIRED_IDS = [
-  'wbNav', 'wbMain', 'wbPage', 'wbCrumb', 'agentPane', 'splitter',
-  'btnAgent', 'btnAgentClose', 'btnTextSize', 'btnWording', 'btnDraftScope', 'btnCopyDraft',
+  'wbNav', 'wbMain', 'wbPage', 'wbCrumb',
+  'btnTextSize', 'btnWording',
   'versionChip', 'footVersion', 'pillDir', 'pillTalk', 'tbStatus', 'wbToast',
 ];
 
@@ -178,11 +179,12 @@ test('逐字符 parity：2 个分野 × 全部 (一级页, 二级页签)，业�
   );
 });
 
-test('开发版 index.html 接线齐全，且不再引用原型的 data.js / 演示横幅', async () => {
+test('开发版 index.html 接线齐全、无页面级 AI 面板，且不再引用原型的 data.js / 演示横幅', async () => {
   await navigate(`http://127.0.0.1:${app.__port}/`);
   const { cdp } = chrome;
   const info = JSON.parse(await cdp.eval(`JSON.stringify({
     ids: ${JSON.stringify(REQUIRED_IDS)}.filter((id) => !document.getElementById(id)),
+    pageAgentControls: document.querySelectorAll('#btnAgent, #agentPane, #splitter, .wb-agent').length,
     scripts: Array.from(document.querySelectorAll('script[src]')).map((s) => s.getAttribute('src')),
     hasProtoBar: !!document.querySelector('.prototype-bar'),
     apiBase: document.documentElement.dataset.apiBase ?? null,
@@ -192,6 +194,8 @@ test('开发版 index.html 接线齐全，且不再引用原型的 data.js / 演
     footer: (document.querySelector('.wb-footer') || {}).innerText || '',
   })`));
   assert.deepEqual(info.ids, [], `开发版 index.html 缺这些 id：${info.ids.join(', ')}`);
+  /* 30/34 号 + 本轮修复：AI 对话入口只在宿主外壳，页面里不得再自建面板或重复按钮。 */
+  assert.equal(info.pageAgentControls, 0, '页面里不应再有自建 AI 面板/入口（#btnAgent / #agentPane / #splitter / .wb-agent）');
   /* 36 号：primer-data.js / primer.js 是共享模块，开发版必须保留；
      只禁止原型专用的 data.js / charts.js（charts 已拼进 app.js）。 */
   const protoOnlyScripts = info.scripts.filter((s) => s !== 'primer-data.js' && s !== 'primer.js');

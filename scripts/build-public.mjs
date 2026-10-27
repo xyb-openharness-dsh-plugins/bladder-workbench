@@ -194,10 +194,6 @@ function buildHtml() {
     '<p class="tb-status" id="tbStatus">数据只在本机 · 记录不是诊断</p>',
     '顶栏状态说明改为开发版');
 
-  P('<button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane">打开 AI 对话</button>',
-    '<button type="button" class="tb-btn tb-btn-primary" id="btnAgent" aria-expanded="false" aria-controls="agentPane" data-agent-state="idle">打开 AI 对话</button>',
-    'AI 按钮加 data-agent-state（五态由它驱动）');
-
   P(`<span>小泉宝 UroPal · 原型 v0.1 · 版本 <b id="footVersion">${VERSION}</b></span>`,
     '<span>小泉宝 UroPal · 开发版 · 版本 <b id="footVersion">{{WB_VERSION}}</b></span>',
     '页脚版本号改为构建注入');
