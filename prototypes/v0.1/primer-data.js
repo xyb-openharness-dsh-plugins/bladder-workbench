@@ -41,7 +41,7 @@ window.DISEASE_PRIMER = {
           ['NCCN', 'NCCN Guidelines · Bladder Cancer', '1.2025（据 docs/DEV-PLAN.md 目标池记录）', { text: '未取得原件', url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417' }, '分野、术式与复查节奏的并列参照；条目级引用未引入，页码待核'],
           ['中国肿瘤医院泌尿肿瘤协作组', '中国膀胱癌保膀胱治疗多学科诊治协作共识', '2022 版（中华肿瘤杂志 2022;44(3):209-218）', { text: '未取得原件', url: 'https://www.liangyihui.net/doc/87900' }, '复查间隔（2022 版）的出处；条目级引用未引入，页码待核'],
           ['中国肿瘤医院泌尿肿瘤协作组', '中国膀胱癌保膀胱治疗多学科诊治协作共识（2024 版）', '2024 版（中华肿瘤杂志 2024;46(12):1136-1155）', { text: '未取得原件', url: 'https://news.medlive.cn/uro/info-progress/show-220363_191.html' }, '极高危四项构成（2024 版）的出处；条目级引用未引入，页码待核'],
-          ['中国肿瘤医院泌尿肿瘤协作组', '非肌层浸润性膀胱癌膀胱灌注治疗专家共识', '2021 版（中华肿瘤杂志 2021;43(10):1027-1033）', { text: '未取得原件', url: 'https://rs.yiigle.com/cmaid/1339724' }, '灌注禁忌与中断的语境参照；条目级引用未引入，页码待核']
+          ['中国肿瘤医院泌尿肿瘤协作组', '非肌层浸润性膀胱癌膀胱灌注治疗专家共识', '2021 版（中华肿瘤杂志 2021;43(10):1027-1033）', { text: '未取得原件', url: 'https://d.wanfangdata.com.cn/periodical/zhzl202110006' }, '灌注禁忌与中断的语境参照；条目级引用未引入，页码待核']
         ]
       },
       points: [
@@ -54,7 +54,7 @@ window.DISEASE_PRIMER = {
         { org: 'NCCN', doc: 'NCCN Guidelines · Bladder Cancer', version: '1.2025（未取得原件）', original: false, secondaryUrl: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1417', page: '页码待核', note: '二次来源：NCCN 官方指南页' },
         { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识', version: '2022 版（中华肿瘤杂志 2022;44(3):209-218）', original: false, secondaryUrl: 'https://www.liangyihui.net/doc/87900', page: '页码待核', note: '二次来源：良医汇-肿瘤资讯期刊页' },
         { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '中国膀胱癌保膀胱治疗多学科诊治协作共识（2024 版）', version: '2024 版（中华肿瘤杂志 2024;46(12):1136-1155）', original: false, secondaryUrl: 'https://news.medlive.cn/uro/info-progress/show-220363_191.html', page: '页码待核', note: '二次来源：医脉通解读页' },
-        { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '非肌层浸润性膀胱癌膀胱灌注治疗专家共识', version: '2021 版（中华肿瘤杂志 2021;43(10):1027-1033）', original: false, secondaryUrl: 'https://rs.yiigle.com/cmaid/1339724', page: '页码待核', note: '二次来源：中华医学期刊全文数据库条目页' }
+        { org: '中国肿瘤医院泌尿肿瘤协作组', doc: '非肌层浸润性膀胱癌膀胱灌注治疗专家共识', version: '2021 版（中华肿瘤杂志 2021;43(10):1027-1033）', original: false, secondaryUrl: 'https://d.wanfangdata.com.cn/periodical/zhzl202110006', page: '页码待核', note: '二次来源：万方数据条目页（含摘要与页码）' }
       ]
     },
     {
