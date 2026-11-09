@@ -141,15 +141,26 @@ const CHART = (() => {
         const d = run.idx
           .map((i, n) => `${n ? 'L' : 'M'}${coords[i][0].toFixed(1)} ${coords[i][1].toFixed(1)}`).join(' ');
         parts.push(
+          /* 进场描线：pathLength=1 + dashoffset，按序列递延 45ms。
+             缓动用 cubic-bezier(.3,.7,.3,1)（与小巢宝一致）——比 ease 收尾更干净，
+             长短线的视觉速度差也更小。 */
           `<path class="series-line" d="${d}" stroke="${s.color}" pathLength="1" `
-          + `style="stroke-dasharray:1;stroke-dashoffset:1;animation:dash .7s ease forwards;animation-delay:${animDelay}ms"/>`
+          + `style="stroke-dasharray:1;stroke-dashoffset:1;animation:dash .72s cubic-bezier(.3,.7,.3,1) forwards;animation-delay:${animDelay}ms"/>`
         );
         animDelay += 45;                                  // C9：40–50ms 递增
       });
       coords.forEach(([x, y], i) => {
+        const pt = s.pts[i];
+        const tip = `${s.name} ${pt.d}：${fmt(pt.v)} ${s.unit}｜${labOf(s, pt)} · ${methodOf(s, pt)}｜${s.src}`;
         parts.push(
-          `<circle class="series-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="${s.color}">`
-          + `<title>${esc(s.name)} ${esc(s.pts[i].d)}：${fmt(s.pts[i].v)} ${esc(s.unit)}｜${esc(labOf(s, s.pts[i]))} · ${esc(methodOf(s, s.pts[i]))}｜${esc(s.src)}</title>`
+          /* 点按序淡入 + 轻微放大；同时挂 data-* 供悬停提示与固定详情读。
+             读屏仍走 <title>，data-tip 只给鼠标/触控的可见提示用。 */
+          `<circle class="series-dot dot-in" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="${s.color}" `
+          + `style="animation-delay:${i * 45}ms" tabindex="0" role="img" `
+          + `data-tip="${esc(tip)}" data-code="${esc(s.code)}" data-date="${esc(pt.d)}" `
+          + `data-value="${esc(String(pt.v))}" data-unit="${esc(s.unit)}" `
+          + `aria-label="${esc(tip)}">`
+          + `<title>${esc(tip)}</title>`
           + `</circle>`
         );
       });
@@ -186,7 +197,12 @@ const CHART = (() => {
     });
     const maxRow = rows.reduce((a, b) => Math.max(a, b), 0);
     const treatLane = marks.map((m, i) =>
-      `<div class="treat-mark" style="left:${(m.x / W * 100).toFixed(3)}%;top:${4 + rows[i] * ROW_PITCH}px" data-ev="${m.id}">`
+      /* 治疗节点：可聚焦、可悬停、可点击。节点是「档案里的治疗事件」，
+         不是从指标曲线推断出来的；点一下只说明它是什么，不改任何值。 */
+      `<div class="treat-mark" style="left:${(m.x / W * 100).toFixed(3)}%;top:${4 + rows[i] * ROW_PITCH}px" `
+      + `data-ev="${m.id}" data-tip="${esc(`${m.d} · ${m.label}（治疗事件，来自档案）`)}" `
+      + `tabindex="0" role="button" aria-label="${esc(`${m.d} ${m.label}，治疗事件，来自档案`)}" `
+      + `title="${esc(`${m.d} · ${m.label}`)}">`
       + `<div class="tm-diamond" aria-hidden="true"></div>`
       + `<div class="tm-label">${m.label}</div>`
       + `<div class="tm-stem" aria-hidden="true"></div></div>`

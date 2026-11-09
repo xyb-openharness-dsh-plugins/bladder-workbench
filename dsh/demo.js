@@ -1185,6 +1185,8 @@ function seedDemoMeta(plan, data, stamp) {
       note: 'schema 里没有对应表的原型内容块（逐档案一份）。',
       blocks: Object.fromEntries(PROFILES.map((p) => [p.id, {
         life: data.LIFE,
+        // 灌注后不适同样没有表：它是自述记录的整块内容，逐档案各一份（演示数据相同）。
+        sideEffects: data.SIDE_EFFECTS,
         trialsStats: data.TRIALS_STATS,
         // 改道页：原型只有 DIVERSION_CASE 一份，且它的注释写明这是 DEMO-2 档案的记录。
         // 「本档案实际采用的术式」按档案给：DEMO-1 是 NMIBC，没做改道 ⇒ appliesToProfile=false。

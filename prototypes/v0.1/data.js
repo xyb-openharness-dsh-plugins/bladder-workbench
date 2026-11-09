@@ -22,7 +22,9 @@ const NAV = [
   { id: 'urgent',       text: '急症与安全',      ico: '⚑' },
   { id: 'life',         text: '生活与照护',      ico: '☘', tabs: ['饮水与饮食', '造口与社交', '性功能与亲密', '工作与出行', '照护者交接'] },
   { id: 'visit',        text: '复诊准备',        ico: '✎', tabs: ['问题清单', '复诊摘要', '就诊准备'] },
-  { id: 'trials',       text: '临床试验',        ico: '⌕', tabs: ['线索', '已收藏', '入组问题'] },
+  /* 35 号：匹配是一段「建档 → 检索 → 匹配结果」的可见流程，所以它是默认页签；
+     登记快照、收藏与跟踪、入组问题各自回答另一个问题，不混在同一屏。 */
+  { id: 'trials',       text: '临床试验',        ico: '⌕', tabs: ['匹配', '登记快照', '收藏与跟踪', '入组问题'] },
 ];
 
 /* ---------- 全局状态 ---------- */
@@ -101,6 +103,16 @@ const INSTILLATION = {
   supplyNote: null,
   retentionMinutes: null,     // ⚠️ 来源待补：原文为图片
 };
+
+/* ---------- 演示：灌注后不适（本人自述，强度是自评不是分级） ----------
+   原来这三行写死在 pageInstillation 的 HTML 里，导致「添加 / 修改 / 删除」
+   无处可落。搬到数据层后，页面与 CRUD 共用同一份记录；分级判据原文为图片
+   未取得，所以只存自评强度，不存分级。 */
+const SIDE_EFFECTS = [
+  { on: '2026-10-16', feel: '尿频、尿急，排尿时灼热', score: 4, days: '约 2 天', by: '本人自述' },
+  { on: '2026-10-09', feel: '当天乏力，第二天好转', score: 2, days: '1 天', by: '本人自述' },
+  { on: '2026-10-02', feel: '无明显不适', score: 0, days: '—', by: '本人自述' },
+];
 
 /* 禁忌（E1：2021 灌注共识） */
 const CONTRA = [
@@ -531,6 +543,134 @@ const TRIALS_STATS = {
   views: { v_bladder_only: 272, v_interventional: 195, v_bladder_interventional: 180, v_china: 158 },
   fetchedAt: '2026-10-23',
 };
+
+/* ---------- 35 号：匹配用的演示条目（合成登记号，不是真实在招试验） ----------
+   为什么单独一份：真实 2026 快照（TRIALS）只有登记号/标题/状态，**没有入排标准的
+   结构化字段**（35 号 §七.1 的教训）。拿它硬做匹配，只能按标题猜——那是假功能。
+   所以匹配流程用这一组「带结构化条件」的合成条目，登记号一律 DEMO- 前缀，
+   页头、每张卡与详情都声明「合成演示数据」。
+
+   条件只引用患者档案里**真实存在**的字段（病理结论、分野、分级、TURBT、eGFR、
+   BCG 应答状态、组织学变异型、肌层取材）；档案里没有的（年龄、ECOG、转移状态、
+   既往系统治疗）一律留给「待确认 / 无法自动匹配」，不猜、不写不适用。
+   `need` 是给人看的条件要求，`text` 是条件原文要点；看不清结构的写 unstructured。 */
+const TRIAL_DEMO_MATCH = [
+  {
+    reg: 'DEMO-NMIBC-01',
+    short: 'BCG 灌注失败的高级别 NMIBC · 联合治疗（合成）',
+    title: 'BCG 灌注失败的非肌层浸润性膀胱癌：抗体偶联药物联合免疫治疗（演示条目）',
+    sponsor: '演示研究中心（合成）',
+    phase: 'II 期',
+    scope: 'nmibc',
+    poolNote: '本机快照中「非肌层浸润」子集的前 50 条里的一条（合成）',
+    verifiedOn: null,
+    criteria: [
+      { kind: 'include', cat: 'diagnosis', hard: true, field: 'diag_urothelial',
+        text: '组织学确诊尿路上皮癌', need: '尿路上皮癌' },
+      { kind: 'include', cat: 'stage', hard: true, field: 'line', value: 'nmibc',
+        text: '非肌层浸润性膀胱癌（NMIBC）', need: 'NMIBC' },
+      { kind: 'include', cat: 'pathology', hard: true, field: 'grade_high',
+        text: '高级别尿路上皮癌', need: '高级别' },
+      { kind: 'include', cat: 'organ', hard: true, field: 'egfr_min', value: 30,
+        text: '肾功能可耐受研究用药', need: 'eGFR ≥ 30 mL/min/1.73m²' },
+      { kind: 'include', cat: 'bcg', hard: true, field: 'bcg_failure',
+        text: '既往 BCG 灌注治疗失败', need: 'BCG 无应答（需医生判定）' },
+      { kind: 'include', cat: 'age', hard: true, field: 'age_min', value: 18,
+        text: '签署知情同意时年满 18 岁', need: '≥ 18 岁' },
+      { kind: 'include', cat: 'performance', hard: false, field: 'ecog_max', value: 1,
+        text: '体能状态可完成随访', need: 'ECOG 0–1' },
+    ],
+  },
+  {
+    reg: 'DEMO-MIBC-02',
+    short: 'MIBC 保膀胱 · HER2 抗体偶联药物（合成）',
+    title: '肌层浸润性膀胱癌保膀胱治疗：HER2 抗体偶联药物联合免疫治疗（演示条目）',
+    sponsor: '演示研究中心（合成）',
+    phase: 'II 期',
+    scope: 'mibc',
+    poolNote: '本机快照中「肌层浸润」子集的前 50 条里的一条（合成）',
+    verifiedOn: null,
+    criteria: [
+      { kind: 'include', cat: 'diagnosis', hard: true, field: 'diag_urothelial',
+        text: '组织学确诊尿路上皮癌', need: '尿路上皮癌' },
+      { kind: 'include', cat: 'stage', hard: true, field: 'line', value: 'mibc',
+        text: '肌层浸润性膀胱癌（MIBC）', need: 'MIBC' },
+      { kind: 'include', cat: 'pathology', hard: true, field: 'grade_high',
+        text: '高级别尿路上皮癌', need: '高级别' },
+      { kind: 'include', cat: 'organ', hard: true, field: 'egfr_min', value: 45,
+        text: '肾功能可耐受研究用药', need: 'eGFR ≥ 45 mL/min/1.73m²' },
+      { kind: 'exclude', cat: 'pathology', hard: true, field: 'variant_absent',
+        text: '排除组织学变异型为主者', need: '无变异型为主' },
+      { kind: 'include', cat: 'age', hard: true, field: 'age_min', value: 18,
+        text: '签署知情同意时年满 18 岁', need: '≥ 18 岁' },
+    ],
+  },
+  {
+    reg: 'DEMO-ADV-03',
+    short: '晚期 / 转移性膀胱癌 · 一线联合治疗（合成）',
+    title: '晚期或转移性膀胱癌一线联合治疗（演示条目）',
+    sponsor: '演示研究中心（合成）',
+    phase: 'III 期',
+    scope: 'advanced',
+    poolNote: '本机快照中「晚期/转移」子集的前 50 条里的一条（合成）',
+    verifiedOn: null,
+    criteria: [
+      { kind: 'include', cat: 'diagnosis', hard: true, field: 'diag_urothelial',
+        text: '组织学确诊尿路上皮癌', need: '尿路上皮癌' },
+      { kind: 'include', cat: 'pathology', hard: true, field: 'grade_high',
+        text: '高级别尿路上皮癌', need: '高级别' },
+      { kind: 'include', cat: 'stage', hard: true, field: 'metastatic',
+        text: '局部晚期或转移性疾病', need: '晚期或转移' },
+      { kind: 'include', cat: 'bcg', hard: true, field: 'prior_systemic_naive',
+        text: '未接受过晚期系统治疗', need: '无晚期系统治疗史' },
+      { kind: 'include', cat: 'organ', hard: true, field: 'egfr_min', value: 30,
+        text: '肾功能可耐受研究用药', need: 'eGFR ≥ 30 mL/min/1.73m²' },
+      { kind: 'include', cat: 'performance', hard: false, field: 'ecog_max', value: 2,
+        text: '体能状态可完成随访', need: 'ECOG 0–2' },
+    ],
+  },
+  {
+    reg: 'DEMO-NMIBC-04',
+    short: 'NMIBC 卡介苗替代方案 · 剂量探索（合成）',
+    title: '非肌层浸润性膀胱癌卡介苗替代方案的剂量探索研究（演示条目）',
+    sponsor: '演示研究中心（合成）',
+    phase: 'I/II 期',
+    scope: 'nmibc',
+    poolNote: '本机快照中「非肌层浸润」子集的前 50 条里的一条（合成）',
+    verifiedOn: null,
+    criteria: [
+      { kind: 'include', cat: 'diagnosis', hard: true, field: 'diag_urothelial',
+        text: '组织学确诊尿路上皮癌', need: '尿路上皮癌' },
+      { kind: 'include', cat: 'stage', hard: true, field: 'line', value: 'nmibc',
+        text: '非肌层浸润性膀胱癌（NMIBC）', need: 'NMIBC' },
+      { kind: 'include', cat: 'organ', hard: true, field: 'egfr_min', value: 30,
+        text: '肾功能可耐受研究用药', need: 'eGFR ≥ 30 mL/min/1.73m²' },
+      { kind: 'include', cat: 'other', hard: false, field: 'unstructured',
+        text: '由研究者判断适合接受膀胱内研究药物（原文为综合判断，无法结构化）',
+        need: '研究者综合判断' },
+      { kind: 'include', cat: 'age', hard: true, field: 'age_min', value: 18,
+        text: '签署知情同意时年满 18 岁', need: '≥ 18 岁' },
+    ],
+  },
+  {
+    reg: 'DEMO-FU-05',
+    short: '高级别 NMIBC 随访队列（登记研究，合成）',
+    title: '高级别非肌层浸润性膀胱癌随访队列（演示登记研究）',
+    sponsor: '演示研究中心（合成）',
+    phase: '登记研究',
+    scope: 'nmibc',
+    poolNote: '本机快照中「非肌层浸润」子集的前 50 条里的一条（合成）',
+    verifiedOn: null,
+    criteria: [
+      { kind: 'include', cat: 'diagnosis', hard: true, field: 'diag_urothelial',
+        text: '组织学确诊尿路上皮癌', need: '尿路上皮癌' },
+      { kind: 'include', cat: 'stage', hard: true, field: 'line', value: 'nmibc',
+        text: '非肌层浸润性膀胱癌（NMIBC）', need: 'NMIBC' },
+      { kind: 'include', cat: 'pathology', hard: true, field: 'grade_high',
+        text: '高级别尿路上皮癌', need: '高级别' },
+    ],
+  },
+];
 
 /* ---------- 文案红线（scripts/check-wording.mjs 同口径） ---------- */
 const WORDING_REDLINES = [

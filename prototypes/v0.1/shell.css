@@ -975,3 +975,135 @@ ul.plain li { font-size: var(--fs-base); }
 .preview-doc p { margin: 0 0 10px; }
 .preview-doc p:last-child { margin-bottom: 0; }
 .preview-doc b { color: var(--brand-ink); }
+
+/* ------------------------------------------------------------
+   9. 本轮修复：流程条 / 匹配卡 / 导入流程 / 记录 CRUD / 图表交互
+   （35 号匹配、29 号导入、16 号一图秀、记录类三件按钮）
+   ------------------------------------------------------------ */
+
+/* —— 流程步进条：三段匹配流程与五段导入流程共用 —— */
+.flow-steps {
+  list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px; margin: 0 0 14px; padding: 0;
+}
+.flow-steps.import-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.flow-steps li {
+  display: flex; gap: 8px; align-items: flex-start; min-width: 0;
+  padding: 10px 12px; border: 1px solid var(--wb-line); border-radius: 10px; background: var(--wb-card);
+}
+.flow-steps li b {
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #EEF3F5; color: #5B7077; font-size: 12px;
+}
+.flow-steps li.current { border-color: var(--wb-accent); box-shadow: 0 0 0 2px rgba(23, 147, 166, .12); }
+.flow-steps li.current b { background: var(--wb-accent); color: #fff; }
+.flow-steps li.done b { background: #DDF0E6; color: #2C6A52; }
+.flow-steps li strong { display: block; font-size: var(--fs-sm); }
+.flow-steps li small { display: block; color: var(--wb-muted); font-size: 11px; line-height: 1.45; }
+@media (max-width: 760px) {
+  .flow-steps, .flow-steps.import-steps { grid-template-columns: 1fr; }
+}
+
+/* —— 35 号：匹配卡 —— */
+.match-step { margin-bottom: 16px; }
+.match-group { margin: 14px 0 4px; }
+.match-group-title { display: flex; gap: 8px; align-items: baseline; font-size: var(--fs-md); margin: 12px 0 8px; }
+.trial-card { border: 1px solid var(--wb-line); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--wb-card); }
+.trial-card.ineligible { background: #FCFAF9; }
+.trial-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+.trial-main h3 { font-size: var(--fs-md); margin: 6px 0 4px; }
+.trial-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.fit {
+  min-width: 118px; text-align: center; padding: 8px 10px;
+  border: 1px solid var(--wb-line); border-radius: 12px; background: #fff;
+}
+.fit b { display: block; font-size: 26px; line-height: 1.1; }
+.fit b small { font-size: 13px; margin-left: 1px; }
+.fit span { display: block; font-size: 11px; color: var(--wb-muted); }
+.fit em { display: block; font-style: normal; font-size: 12px; font-weight: 600; margin-top: 2px; }
+.fit i.fit-disclaimer {
+  display: block; font-style: normal; font-size: 10px; line-height: 1.35;
+  color: var(--wb-muted); margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--wb-line);
+}
+.fit.chip-ok { background: var(--wb-ok-bg); border-color: #CBE4D8; }
+.fit.chip-warn { background: var(--wb-warn-bg); border-color: #EEDCB4; }
+.fit.chip-neutral { background: #F1F4F5; }
+.fit.chip-stop { background: var(--wb-stop-bg); border-color: #EFCDC5; }
+.fit-note { font-size: 12px; color: var(--wb-muted); margin: 8px 0 0; }
+.fit-hard { font-size: 12px; color: #8E3324; margin: 6px 0 0; }
+.crit-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.crit { border-left: 3px solid var(--wb-line); padding: 6px 0 6px 10px; background: #FBFCFC; border-radius: 0 8px 8px 0; }
+.crit.unmet { border-left-color: #C67163; background: #FDF8F7; }
+.crit.unknown { border-left-color: #D3A24A; background: #FEFBF4; }
+.crit-line { display: flex; align-items: center; gap: 6px; font-size: 12px; flex-wrap: wrap; }
+.crit-mark {
+  display: inline-flex; width: 16px; height: 16px; border-radius: 50%;
+  align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+}
+.tms-ok { background: #DDF0E6; color: #2C6A52; }
+.tms-no { background: #F5DDD8; color: #8E3324; }
+.tms-q { background: #F6E7C8; color: #7A5310; }
+.crit-text { margin: 3px 0; font-size: var(--fs-sm); }
+.crit-evi { margin: 0; font-size: 11px; color: var(--wb-muted); }
+.crit-more summary { cursor: pointer; font-size: var(--fs-sm); color: var(--wb-accent-ink); margin-top: 8px; }
+.muted { color: var(--wb-muted); font-size: 11px; }
+.bad-trials { margin-top: 14px; border: 1px solid var(--wb-line); border-radius: 10px; padding: 10px 12px; }
+.bad-trials summary { cursor: pointer; font-size: var(--fs-sm); }
+.row-muted { color: var(--wb-muted); }
+
+/* —— 记录类视图：三件按钮 / 软删 —— */
+.row-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.btn-quiet { color: #7A2C1D; border-color: #EFCDC5; }
+.crud-voided { margin-top: 10px; }
+.crud-voided summary { cursor: pointer; font-size: var(--fs-sm); color: var(--wb-muted); }
+.is-voided td { text-decoration: line-through; color: var(--wb-ghost); }
+.chip-sm { font-size: 10px; padding: 1px 6px; }
+
+/* —— 29 号：导入流程 —— */
+.modal-wide { max-width: 860px; width: min(860px, calc(100vw - 32px)); }
+.import-drop {
+  border: 2px dashed var(--wb-line); border-radius: 12px; padding: 22px;
+  display: grid; gap: 6px; justify-items: center; text-align: center;
+  background: #FBFDFE; margin: 12px 0;
+}
+.import-drop.over { border-color: var(--wb-accent); background: #F2FAFC; }
+.import-drop b { font-size: var(--fs-md); }
+.import-drop span { font-size: var(--fs-sm); color: var(--wb-muted); }
+.import-file {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  padding: 10px 12px; border: 1px solid var(--wb-line); border-radius: 10px; background: #fff;
+}
+.import-demo { margin-top: 14px; display: grid; gap: 8px; }
+
+/* —— 16 号：一图秀动态 —— */
+.chart-block { position: relative; animation: chartFade .3s ease both; }
+@keyframes chartFade { from { opacity: .35; } to { opacity: 1; } }
+.series-dot.dot-in { animation: dotIn .26s ease both; transform-box: fill-box; transform-origin: center; }
+@keyframes dotIn { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+.treat-mark { animation: dotIn .28s ease both; cursor: pointer; border-radius: 4px; }
+.treat-mark:focus-visible { outline: 2px solid var(--wb-accent); outline-offset: 3px; }
+.chart-tip {
+  position: absolute; z-index: 8; max-width: 240px; padding: 8px 10px; border-radius: 8px;
+  background: #223E46; color: #fff; font-size: 12px; line-height: 1.5;
+  box-shadow: var(--shadow-2); pointer-events: none;
+}
+.chart-tip[hidden] { display: none; }
+.chart-watermark { font-size: 11.5px; color: var(--wb-muted); margin: 10px 0 0; }
+
+/* R11：减少动效时保留最终状态（不是把内容藏起来） */
+:root[data-motion="reduce"] .series-dot,
+:root[data-motion="reduce"] .treat-mark,
+:root[data-motion="reduce"] .chart-block { animation: none !important; }
+:root[data-motion="reduce"] .series-line {
+  stroke-dasharray: none !important; stroke-dashoffset: 0 !important; animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .series-dot, .treat-mark, .chart-block { animation: none !important; }
+  .series-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; animation: none !important; }
+}
+
+/* 导入第 4 步：状态 + 三件按钮不挤成一团 */
+.cand-actions { display: grid; gap: 4px; }
+.cand-actions .btn-row { flex-wrap: nowrap; }
+.cand-actions .btn { white-space: nowrap; }

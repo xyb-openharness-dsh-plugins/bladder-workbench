@@ -51,10 +51,10 @@ function mustReplace(text, from, to, what) {
    ============================================================ */
 
 /** 与档案无关的目录（放 catalogs）；与档案有关的 22 个事实从 profile 绑定 */
-const CATALOG_KEYS = ['NAV', 'CATEGORICAL', 'DIVERSION', 'CONTRA', 'URGENT', 'DRAFT_SCOPES', 'WORDING_REDLINES'];
+const CATALOG_KEYS = ['NAV', 'CATEGORICAL', 'DIVERSION', 'CONTRA', 'URGENT', 'DRAFT_SCOPES', 'WORDING_REDLINES', 'TRIAL_DEMO_MATCH'];
 const PROFILE_KEYS = [
   ['PATHOLOGY', 'pathology'], ['BCG_RESPONSE', 'bcgResponse'], ['HIGH_RISK_MARKERS', 'highRiskMarkers'],
-  ['INSTILLATION', 'instillation'], ['FOLLOWUP', 'followup'], ['RENAL', 'renal'],
+  ['INSTILLATION', 'instillation'], ['SIDE_EFFECTS', 'sideEffects'], ['FOLLOWUP', 'followup'], ['RENAL', 'renal'],
   ['METRICS', 'metrics'], ['DIVERSION_CASE', 'diversionCase'], ['SURGERY_CASE', 'surgeryCase'],
   ['TREATMENT_CASE', 'treatmentCase'], ['RECORDS', 'records'], ['LIFE', 'life'],
   ['QUESTIONS', 'questions'], ['TRIAL_FAVORITES', 'trialFavorites'], ['TRIAL_QUESTIONS', 'trialQuestions'],

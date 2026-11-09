@@ -27,7 +27,7 @@ import { todayISO } from './store.js';
 const PACKAGE_NAME = '@xyb-community/bladder-workbench';
 
 /** 静态目录键：这些不是患者事实，不入库。 */
-const CATALOG_KEYS = ['NAV', 'CATEGORICAL', 'DIVERSION', 'CONTRA', 'URGENT', 'DRAFT_SCOPES', 'WORDING_REDLINES'];
+const CATALOG_KEYS = ['NAV', 'CATEGORICAL', 'DIVERSION', 'CONTRA', 'URGENT', 'DRAFT_SCOPES', 'WORDING_REDLINES', 'TRIAL_DEMO_MATCH'];
 
 /** demo_meta 的三个演示元信息键（与 dsh/demo.js 的 META_KEYS 一致）。 */
 const META_KEYS = {
@@ -567,8 +567,9 @@ export function buildBootstrap(db, { today = todayISO() } = {}) {
       surgeryCase,
       treatmentCase,
       records,
-      // 生活与照护、试验统计这些整块内容在 schema 里没有对应表 → view_hints 里的 free_blocks 原样带出
+      // 生活与照护、灌注后不适、试验统计这些整块内容在 schema 里没有对应表 → free_blocks 原样带出
       life: fb.life ?? null,
+      sideEffects: fb.sideEffects ?? null,
       questions: visitQs.map((r) => ({
         group: hints.questions[r.id].group,
         q: r.text,

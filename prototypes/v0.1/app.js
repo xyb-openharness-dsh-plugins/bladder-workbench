@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-const APP_VERSION = '0.1.1';
+const APP_VERSION = '0.1.3';
 
 /* ---------------- 工具 ---------------- */
 const $  = (s, r = document) => r.querySelector(s);
@@ -172,7 +172,7 @@ function renderNav() {
       <span class="nav-logo" aria-hidden="true"></span>
       <span class="nav-brand-txt">
         <span class="nav-brand-name">小泉宝 UroPal</span>
-        <span class="nav-brand-tag">陪你把两条路走清楚</span>
+        <span class="nav-brand-tag">膀胱癌AI工作台</span>
       </span>
     </div>
     ${profileHTML()}
@@ -482,8 +482,816 @@ function gateHTML() {
 }
 
 /* ================= 2. 病情整理 ================= */
+/* ================= 记录类视图的 CRUD（添加 / 修改 / 删除） =================
+ *
+ * 统一口径，避免每个列表各写一套：
+ *   - **添加**：表单弹窗，字段清单在 CRUD_KINDS[kind].fields；
+ *   - **修改**：先展示「原值 + 来源」，保存时把旧值压进 `_prev`，**原行不覆盖来源**；
+ *   - **删除**：**软删（作废标记）**，不移除原行、不覆盖值；其它页零副作用
+ *     （作废的行不计入统计、不进复诊摘要、不进 AI 草稿），可随时恢复。
+ *
+ * 为什么是软删而不是 `splice`：这些行是「原件抄下来的东西」。删掉之后，
+ * 「这个数字是从哪份文件的哪一行来的」就答不出来了。作废保留可追溯性。
+ */
+const CRUD_KINDS = {
+  recFile: {
+    title: '资料',
+    fields: [
+      ['name', '资料名称', 'text'], ['kind', '类型', 'text'],
+      ['on', '报告日期', 'date'], ['by', '机构', 'text'],
+      ['pages', '页数', 'number'], ['state', '核对状态', 'select', ['已核对', '待核对']],
+    ],
+    label: (r) => r.name,
+    summary: (r) => `${r.kind || ''} · ${r.on || ''} · ${r.by || ''}`,
+    all: () => RECORDS.files,
+    add: () => ({ name: '', kind: '化验', on: '', by: '', pages: 1, state: '待核对' }),
+  },
+  recDraft: {
+    title: '候选',
+    fields: [
+      ['field', '候选字段', 'text'], ['value', '抽取值', 'text'], ['quote', '原文片段', 'text'],
+    ],
+    label: (r) => r.field,
+    summary: (r) => r.quote || '',
+    all: () => RECORDS.drafts,
+    add: () => ({ field: '', value: '', quote: '', ok: true }),
+  },
+  recFact: {
+    title: '已确认事实',
+    fields: [
+      ['item', '项目', 'text'], ['value', '内容', 'text'], ['by', '谁记的', 'text'],
+      ['on', '记录日期', 'date'], ['state', '核对状态', 'select', ['已核对', '待核对', '待澄清']],
+    ],
+    label: (r) => r.item,
+    summary: (r) => `${r.value || ''} · ${r.on || ''} · ${r.by || ''}`,
+    all: () => RECORDS.facts,
+    add: () => ({ item: '', value: '', by: '本人', on: '', state: '待核对' }),
+  },
+  sideEffect: {
+    title: '灌注后不适',
+    fields: [
+      ['on', '日期', 'date'], ['feel', '感受（自述）', 'text'],
+      ['score', '强度（自评 0–10）', 'number'], ['days', '持续', 'text'],
+    ],
+    label: (r) => `${r.on} · ${r.feel}`,
+    summary: (r) => `${r.score} / 10 · ${r.days}`,
+    all: () => SIDE_EFFECTS,
+    add: () => ({ on: '', feel: '', score: 0, days: '—', by: '本人自述' }),
+  },
+  question: {
+    title: '复诊问题',
+    fields: [
+      ['group', '场景', 'text'], ['q', '问题', 'text'],
+      ['asked', '问了没有', 'select', ['未问', '已问']], ['answer', '医生怎么答（原文）', 'text'],
+    ],
+    label: (r) => r.q,
+    summary: (r) => `${r.group || ''} · ${r.asked || ''}`,
+    all: () => QUESTIONS,
+    add: () => ({ group: '通用', q: '', asked: '未问', answer: '' }),
+  },
+  trialFav: {
+    title: '收藏线索',
+    fields: [
+      ['reg', '登记号', 'text'], ['why', '我为什么收藏它', 'text'],
+      ['on', '收藏日期', 'date'], ['next', '下一步', 'text'],
+    ],
+    label: (r) => r.reg,
+    summary: (r) => r.why || '',
+    all: () => TRIAL_FAVORITES,
+    add: () => ({ reg: '', why: '', on: TMATCH_TODAY, next: '待问主诊医生' }),
+  },
+  trialSaved: {
+    title: '匹配收藏',
+    fields: [
+      ['reg', '登记号', 'text'], ['why', '我为什么收藏它', 'text'],
+      ['on', '收藏日期', 'date'], ['state', '状态（手工）', 'select', ['在跟', '准备问', '已归档']],
+    ],
+    label: (r) => r.reg,
+    summary: (r) => r.why || '',
+    keyOf: (r) => r.reg,
+    all: () => Object.keys(trialMatchState().saved).map((reg) => ({ reg, ...trialMatchState().saved[reg] })),
+    add: () => ({ reg: '', why: '', on: TMATCH_TODAY, state: '在跟' }),
+    /* saved_trial 存在对象 map 里（不是数组），所以读写要单独给两个钩子；
+       否则 `all()` 返回的是副本，改它不会落回状态（试过一次，界面不动也不报错）。 */
+    get: (reg) => {
+      const s = trialMatchState().saved[reg];
+      return s ? { reg, ...s } : null;
+    },
+    put: (reg, item) => {
+      const st = trialMatchState();
+      const prev = st.saved[reg] || {};
+      if (reg !== item.reg) delete st.saved[reg];
+      st.saved[item.reg] = { ...prev, on: item.on, why: item.why, state: item.state };
+    },
+    newPut: (item) => {
+      trialMatchState().saved[item.reg] = { on: item.on, why: item.why, state: item.state };
+    },
+  },
+  stomaLog: {
+    title: '造口日记',
+    fields: [
+      ['batchOn', '批次日期', 'date'], ['supplyId', '耗材编号', 'text'],
+      ['changes', '更换次数', 'number'], ['leaks', '渗漏次数', 'number'],
+      ['skin', '皮肤状态', 'select', ['无', '红', '破溃', '其他']],
+    ],
+    label: (r) => `${r.batchOn} · ${r.supplyId}`,
+    summary: (r) => `更换 ${r.changes} · 渗漏 ${r.leaks} · 皮肤 ${r.skin}`,
+    all: () => STOMA_LOG,
+    add: () => ({ batchOn: '', supplyId: STOMA_SELECT(), changes: 0, leaks: 0, skin: '无' }),
+  },
+};
+
+function STOMA_SELECT() {
+  return (STOMA_SUPPLY && STOMA_SUPPLY[0] && STOMA_SUPPLY[0].id) || 's1';
+}
+
+function crudIndexOf(kind, rec) {
+  const K = CRUD_KINDS[kind];
+  return K.keyOf ? K.keyOf(rec) : K.all().indexOf(rec);
+}
+
+/** 作废行单独折叠：不是「删除得一干二净」，而是「留在原地、标成作废、可恢复」。 */
+function voidedBlock(kind) {
+  const K = CRUD_KINDS[kind];
+  if (!K) return '';
+  const dead = K.all().filter((r) => r.voided);
+  if (!dead.length) return '';
+  return `<details class="crud-voided"><summary>已作废 ${dead.length} 条（软删 · 原值保留 · 可恢复）</summary>
+    <table class="tbl"><thead><tr><th>记录</th><th>原值</th><th>操作</th></tr></thead><tbody>
+      ${dead.map((r) => `<tr class="is-voided"><td>${esc(K.label(r))}</td>
+        <td class="src">${esc(K.summary ? K.summary(r) : '')}</td>
+        <td><button type="button" class="btn btn-sm" data-crud="restore" data-kind="${kind}"
+          data-idx="${esc(String(crudIndexOf(kind, r)))}" aria-label="恢复：${esc(K.label(r))}">恢复</button></td>
+      </tr>`).join('')}
+    </tbody></table></details>`;
+}
+
+/** 行内三件按钮：修改 / 删除。删除必须二次确认，说明是软删。 */
+function rowActions(kind, rec) {
+  const K = CRUD_KINDS[kind];
+  const idx = esc(String(crudIndexOf(kind, rec)));
+  const label = esc(K.label(rec) || K.title);
+  return `<span class="row-actions">
+    <button type="button" class="btn btn-sm" data-crud="edit" data-kind="${kind}" data-idx="${idx}"
+      aria-label="修改：${label}">修改</button>
+    <button type="button" class="btn btn-sm btn-quiet" data-crud="del" data-kind="${kind}" data-idx="${idx}"
+      aria-label="删除：${label}（软删，可恢复）">删除</button>
+  </span>`;
+}
+
+/** 表单取值（数字字段保持数字，其余去空格）。 */
+function readCrudForm(mask, fields) {
+  const item = {};
+  fields.forEach(([key, , type]) => {
+    const el = mask.querySelector(`[data-crud-field="${key}"]`);
+    if (!el) return;
+    const v = el.value;
+    item[key] = type === 'number' ? Number(v || 0) : v.trim();
+  });
+  return item;
+}
+
+function openCrudForm(kind, idx) {
+  const K = CRUD_KINDS[kind];
+  if (!K) return;
+  const isNew = idx == null || idx === '' || idx === -1;
+  const rec = isNew ? K.add()
+    : K.get ? K.get(idx) : K.all().find((r) => String(crudIndexOf(kind, r)) === String(idx));
+  if (!rec) return;
+  const title = `${isNew ? '添加' : '修改'}${K.title}`;
+  const fieldsHTML = K.fields.map(([key, label, type, opts]) => {
+    const val = rec[key] == null ? '' : String(rec[key]);
+    const id = `crud-${kind}-${key}`;
+    if (type === 'select') {
+      return `<div class="field"><label for="${id}">${esc(label)}</label>
+        <select id="${id}" data-crud-field="${key}" aria-label="${esc(label)}">
+          ${opts.map((o) => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+        </select></div>`;
+    }
+    return `<div class="field"><label for="${id}">${esc(label)}</label>
+      <input id="${id}" type="${type === 'date' ? 'date' : type === 'number' ? 'number' : 'text'}"
+        data-crud-field="${key}" value="${esc(val)}" aria-label="${esc(label)}"></div>`;
+  }).join('');
+
+  const prev = !isNew && Array.isArray(rec._prev) && rec._prev.length
+    ? `<div class="notice notice-info"><b>这条改过 ${rec._prev.length} 次，原值都留着：</b>
+        <ul class="qlist">${rec._prev.slice(-3).map((p) => `<li>${esc(p.value)} <span class="src">（原记录：${esc(p.src || '来源未写')}）</span></li>`).join('')}</ul></div>`
+    : '';
+
+  const { mask, close } = openModal(`
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="crudTitle">
+      <div class="modal-head"><h3 id="crudTitle">${esc(title)}</h3>
+        <button class="ag-close" data-close aria-label="关闭">×</button></div>
+      <div class="modal-body">
+        ${isNew ? '' : `<p class="src" style="margin-bottom:12px">修改会<b>保留原值与来源</b>：
+          旧值记入这条记录的修改历史，界面显示新值；原行不被删除。</p>`}
+        ${prev}
+        ${fieldsHTML}
+      </div>
+      <div class="modal-foot">
+        <button class="btn" data-close>取消</button>
+        <button class="btn btn-primary" data-crud-save>保存</button>
+      </div>
+    </div>`);
+
+  const saveBtn = mask.querySelector('[data-crud-save]');
+  saveBtn.addEventListener('click', () => {
+    const item = readCrudForm(mask, K.fields);
+    if (!String(item[K.fields[0][0]] || '').trim()) {
+      toast(`先填「${K.fields[0][1]}」`); return;
+    }
+    if (isNew) {
+      if (K.newPut) K.newPut(item);
+      else K.all().push(item);
+    } else {
+      const live = K.get ? K.get(idx) : K.all().find((r) => String(crudIndexOf(kind, r)) === String(idx));
+      if (!live) return;
+      const old = K.fields.map(([k]) => live[k]).join(' / ');
+      const prev = Array.isArray(live._prev) ? live._prev.slice() : [];
+      prev.push({ value: old, src: [live.by, live.on].filter(Boolean).join(' · ') });
+      const next = { ...live, ...item, _prev: prev };
+      if (K.put) K.put(idx, next);
+      else K.fields.forEach(([k]) => { if (item[k] !== undefined) live[k] = item[k]; });
+      if (!K.put) live._prev = prev;
+    }
+    close(); renderPage();
+    toast(isNew ? `已添加${K.title}（本机演示，刷新重置）` : `已保存：原值保留在这条记录的修改历史里`);
+  });
+}
+
+/** 删除二次确认：必须说清「零副作用 + 原行不覆盖 + 软删」。 */
+function confirmCrudDelete(kind, idx) {
+  const K = CRUD_KINDS[kind];
+  const rec = K && K.all().find((r) => String(crudIndexOf(kind, r)) === String(idx));
+  if (!rec) return;
+  const { mask, close } = openModal(`
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+      <div class="modal-head"><h3 id="delTitle">删除${esc(K.title)}？</h3>
+        <button class="ag-close" data-close aria-label="关闭">×</button></div>
+      <div class="modal-body">
+        <p><b>${esc(K.label(rec))}</b></p>
+        <div class="notice notice-warn" style="margin-top:10px">
+          <b>这是软删（作废），不是把原行抹掉。</b>原行与来源日期都保留，随时可以恢复；
+          对其它页<b>零副作用</b>：不计入统计、不进复诊摘要、不进 AI 草稿。
+        </div>
+        <p class="src" style="margin-top:10px">删除后仍能在「已作废（软删）」里看到并恢复 ——
+          这样「这个数字从哪来」始终答得出来。</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" data-close>取消</button>
+        <button class="btn btn-primary" data-crud-confirm>确认删除（软删）</button>
+      </div>
+    </div>`);
+  mask.querySelector('[data-crud-confirm]').addEventListener('click', () => {
+    if (kind === 'trialSaved') {
+      const s = trialMatchState().saved[String(idx)];
+      if (s) s.voided = true;
+    } else {
+      rec.voided = true;
+    }
+    close(); renderPage();
+    toast('已作废（软删）：原行与来源保留，可在「已作废」里恢复');
+  });
+}
+
+function restoreCrud(kind, idx) {
+  const K = CRUD_KINDS[kind];
+  if (kind === 'trialSaved') {
+    const s = trialMatchState().saved[String(idx)];
+    if (s) delete s.voided;
+  } else {
+    const rec = K.all().find((r) => String(crudIndexOf(kind, r)) === String(idx));
+    if (rec) delete rec.voided;
+  }
+  renderPage();
+  toast('已恢复这条记录');
+}
+
+/** 只显示未作废的行；作废的行由 voidedBlock 折叠展示。 */
+const crudLive = (kind) => CRUD_KINDS[kind].all().filter((r) => !r.voided);
+
+/* ================= 29 号：材料导入（嗅探 → 取行 → 闸门 → 抽候选 → 落库） =================
+ *
+ * 用户的要求是「上传 / 解析 / 确认不要拆散在不同入口」。所以这里是**唯一入口**：
+ * 一个「导入材料」按钮打开五步流程，全部在同一个弹窗里完成 —— 不跳页、
+ * 不把某一步挪到设置里。步骤条常显，让人知道自己走到哪、还剩几步。
+ *
+ * 三条不可换的顺序（29 号 §1）：
+ *   ① 嗅探只判类型/文本层/sha，不解析数值；
+ *   ② 闸门（是不是本病种）**必须在抽候选之前**，reject 时不给抽取按钮；
+ *   ③ 抽出来的只是 candidate，逐项确认后才写业务记录（document 与 candidate 先落）。
+ *
+ * 演示材料是合成的（文件名带「演示」），不读本机任何真实文件；真实选择的文件也
+ * 只在本页读名字/大小/sha，不上传、不解析内容 —— 做不到就如实说「无法判定」。
+ */
+const IMPORT_STEP_DEFS = [
+  ['选择 / 上传', '拖拽或选文件；显示文件名、大小、sha 前 8 位'],
+  ['嗅探与闸门', '类型 / 有无文本层 / 是否本病种 → accept / needs_review / reject'],
+  ['抽候选', '逐条：字段、原文行、置信度、来源'],
+  ['逐项确认', '接受 / 改值 / 拒收；「全部确认」要再点一次'],
+  ['落库', '写 document + candidate；确认后才写业务记录'],
+];
+
+/* 演示材料：三条覆盖三种闸门结论，全部为合成内容。 */
+const IMPORT_DEMO_FILES = [
+  {
+    name: '演示-外院病理报告-2026-10-20.pdf', size: 184320, sha: '9f2c1a7d', kind: 'pdf',
+    hasTextLayer: true, route: 'extract', reportDate: '2026-10-20', demo: true, skipped: 2,
+    gate: { verdict: 'accept', via: 'primary', reason: '原发灶措辞命中「膀胱」3 次；指标组合命中 2 项（尿细胞学、膀胱镜）' },
+    candidates: [
+      { field: '血红蛋白', valueText: '124', valueNum: 124, unit: 'g/L', confidence: 0.98, sourceLine: '血红蛋白 124 g/L', measuredOn: '2026-10-20' },
+      { field: 'eGFR', valueText: '66', valueNum: 66, unit: 'mL/min/1.73m²', confidence: 0.96, sourceLine: 'eGFR 66 mL/min/1.73m²', measuredOn: '2026-10-20' },
+      { field: '肌酐', valueText: '105', valueNum: 105, unit: 'μmol/L', confidence: 0.95, sourceLine: '肌酐 105 μmol/L', measuredOn: '2026-10-20' },
+      { field: '尿细胞学', valueText: '非典型', valueNum: null, unit: '', confidence: 0.72, sourceLine: '查见非典型尿路上皮细胞。', measuredOn: '2026-10-20', note: '文本字段：只写候选，不进趋势表' },
+      { field: '尿比重', valueText: '', valueNum: null, unit: '', confidence: 0.31, sourceLine: 'SG 1.0??（原件字迹模糊）', measuredOn: '', needsReview: true, note: '数字没看清，留空等你手填 —— 猜一个比空着更糟' },
+    ],
+  },
+  {
+    name: '演示-腹部CT报告-扫描件.pdf', size: 912640, sha: '4b7e0c22', kind: 'pdf',
+    hasTextLayer: false, route: 'ocr', reportDate: '', demo: true, skipped: 0,
+    gate: { verdict: 'needs_review', via: 'panel', reason: 'PDF 无字体资源与文字算子，判定为扫描件；没有文本层就无法判定病种（需要先做 OCR）' },
+    candidates: [],
+  },
+  {
+    name: '演示-胆道病理报告-外院.pdf', size: 143360, sha: 'a1d93b55', kind: 'pdf',
+    hasTextLayer: true, route: 'extract', reportDate: '2026-10-18', demo: true, skipped: 0,
+    gate: { verdict: 'reject', via: 'primary', reason: '文中原发灶为「胆管癌」；虽提到肝，应为转移灶，不属于膀胱癌工作台' },
+    candidates: [],
+  },
+];
+
+function importState() {
+  APP.$import = APP.$import || { step: 1, file: null, gate: null, candidates: [], skipped: 0, armBulk: false, done: null, manual: false };
+  return APP.$import;
+}
+
+const importKB = (n) => `${(Number(n || 0) / 1024).toFixed(1)} KB`;
+
+/** 真实文件的 sha 前 8 位。算不出来就如实写「无法计算」，不编一个。 */
+async function importSha8(file) {
+  try {
+    if (!(window.crypto && window.crypto.subtle)) return '无法计算';
+    const buf = await file.arrayBuffer();
+    const d = await window.crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
+  } catch {
+    return '无法计算';
+  }
+}
+
+function importStepper() {
+  const st = importState();
+  return `<ol class="flow-steps import-steps" aria-label="材料导入流程">${IMPORT_STEP_DEFS.map(([t, d], i) => {
+    const n = i + 1;
+    const cls = n < st.step ? 'done' : n === st.step ? 'current' : '';
+    return `<li class="${cls}" ${n === st.step ? 'aria-current="step"' : ''}>
+      <b aria-hidden="true">${n}</b><span><strong>${t}</strong><small>${d}</small></span></li>`;
+  }).join('')}</ol>`;
+}
+
+function importFileCard() {
+  const st = importState();
+  if (!st.file) return '';
+  return `<div class="import-file">
+    <b>${esc(st.file.name)}</b>
+    <span>${importKB(st.file.size)} · sha256 前 8 位 <code>${esc(st.file.sha)}</code></span>
+    ${st.file.demo ? '<span class="chip chip-neutral">演示材料（合成）</span>' : ''}
+  </div>`;
+}
+
+function importStep1() {
+  const st = importState();
+  return `<h4>① 选择 / 上传</h4>
+    <p class="src">拖拽到下面，或点「选择文件」。这一步只读文件名、大小与 sha，不解析内容、不上传。</p>
+    <div class="import-drop" data-import-drop tabindex="0" role="button" aria-label="拖拽文件到这里，或按回车选择文件">
+      <b>把材料拖到这里</b>
+      <span>支持 PDF / TXT；扫描件会走 OCR 判定，不会假装读到了字</span>
+      <button type="button" class="btn btn-sm btn-primary" data-import-pick>选择文件</button>
+      <input type="file" id="impFile" accept=".pdf,.txt,.md" hidden aria-label="选择材料文件">
+    </div>
+    ${importFileCard()}
+    <div class="import-demo">
+      <span class="src">没有文件？用一份演示材料走完整条流程（合成内容，不读本机文件）：</span>
+      <div class="btn-row">
+        ${IMPORT_DEMO_FILES.map((f, i) => `<button type="button" class="btn btn-sm" data-import-demo="${i}"
+          aria-label="使用演示材料：${esc(f.name)}">${esc(f.name.replace('演示-', ''))}</button>`).join('')}
+      </div>
+    </div>
+    ${st.file ? '' : '<p class="src">还没选材料时，「下一步」是灰的 —— 这样不会走到闸门才发现什么都没选。</p>'}`;
+}
+
+function importStep2() {
+  const st = importState();
+  const f = st.file;
+  const g = st.gate || { verdict: 'needs_review', reason: '还没有做嗅探', via: '—' };
+  const verdictMap = {
+    accept: ['accept · 收下', 'chip-ok', '可以做下一步：抽候选'],
+    needs_review: ['needs_review · 判不了', 'chip-warn', '文件本身是好的，只是判不了病种；需要你确认或补 OCR'],
+    reject: ['reject · 拒收', 'chip-stop', '这不是本病种的材料；不抽任何数值'],
+  };
+  const [zh, cls, tail] = verdictMap[g.verdict] || verdictMap.needs_review;
+  return `<h4>② 嗅探与闸门</h4>
+    <table class="tbl"><thead><tr><th>项目</th><th>结果</th></tr></thead><tbody>
+      <tr><td>文件名</td><td>${esc(f.name)}</td></tr>
+      <tr><td>类型 / 字节</td><td>${esc(f.kind)} · ${importKB(f.size)}</td></tr>
+      <tr><td>sha256 前 8 位</td><td><code>${esc(f.sha)}</code>（后面做幂等靠它）</td></tr>
+      <tr><td>有没有文本层</td><td>${f.hasTextLayer ? '<span class="chip chip-ok">有</span>' : '<span class="chip chip-warn">无（扫描件）</span>'}</td></tr>
+      <tr><td>路线 route</td><td><code>${esc(f.route)}</code>${f.route === 'ocr' ? ' · 需要 OCR；本机 OCR 结果未提供' : f.route === 'unsupported' ? ' · 不支持的类型' : ''}</td></tr>
+      <tr><td>闸门结论</td><td><span class="chip ${cls}">${zh}</span> <span class="src">via ${esc(g.via)}</span></td></tr>
+    </tbody></table>
+    <div class="notice ${g.verdict === 'accept' ? 'notice-ok' : g.verdict === 'reject' ? 'notice-stop' : 'notice-warn'}" style="margin-top:12px">
+      <b>${zh}</b>：${esc(g.reason)}
+    </div>
+    <p class="src" style="margin-top:10px">${tail}。闸门在抽候选<b>之前</b>：结论不是 accept 时，一条候选都不会产生。</p>`;
+}
+
+function importStep3() {
+  const st = importState();
+  const cands = st.candidates;
+  return `<h4>③ 抽候选（只是候选，不是事实）</h4>
+    ${cands.length ? `<table class="tbl"><thead><tr>
+        <th>字段</th><th>抽取值</th><th>原文行（可回看）</th><th>置信度</th><th>来源</th>
+      </tr></thead><tbody>
+        ${cands.map((c) => `<tr class="${c.needsReview ? 'row-muted' : ''}">
+          <td>${esc(c.field)}</td>
+          <td>${c.valueText ? `<b>${esc(c.valueText)}</b> ${esc(c.unit)}` : '<span class="chip chip-warn">留空待手填</span>'}</td>
+          <td class="src">${esc(c.sourceLine)}</td>
+          <td>${Math.round(Number(c.confidence) * 100)}%${c.needsReview ? ' <span class="chip chip-warn">需核对</span>' : ''}</td>
+          <td class="src">${esc(st.file.name)} · sha ${esc(st.file.sha)}</td>
+        </tr>`).join('')}
+      </tbody></table>
+      <p class="src" style="margin-top:10px">读到但没人认领的行：${st.skipped} 行（不是错误，是排查「OCR 读对了却没匹配上」的入口）。
+      没有单位换算、没有改写数值；置信度低的单独标「需核对」。</p>`
+      : `<div class="empty"><strong>这份材料没有产生候选</strong>
+          <p>可能是扫描件（没有文本层）、或者闸门判不了。可以转手工补录，不用离开这条流程。</p></div>`}`;
+}
+
+function importStep4() {
+  const st = importState();
+  const pending = st.candidates.filter((c) => c.status === 'pending' || c.status === 'editing').length;
+  const done = st.candidates.filter((c) => c.status === 'accepted' || c.status === 'accepted_text' || c.status === 'rejected').length;
+  return `<h4>④ 逐项确认（${done} / ${st.candidates.length} 已处理）</h4>
+    <div class="notice notice-info">
+      <b>确认之前，这里一切都还只是候选。</b>只有数值型字段 + 有测量日期 + 同日同指标不重复，才会写成业务记录；
+      文本字段只登记候选，不进趋势表。
+    </div>
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>字段</th><th>值 / 单位</th><th>原文行</th><th>日期</th><th>状态 / 操作</th>
+    </tr></thead><tbody>
+      ${st.candidates.map((c, i) => {
+        const tag = c.status === 'accepted' ? '<span class="chip chip-ok">已接受 · 将写业务记录</span>'
+          : c.status === 'accepted_text' ? '<span class="chip chip-neutral">已接受 · 只写候选</span>'
+            : c.status === 'rejected' ? '<span class="chip chip-stop">已拒收</span>'
+              : '<span class="chip chip-warn">待确认</span>';
+        if (c.status === 'editing') {
+          return `<tr data-cand-row="${i}">
+            <td>${esc(c.field)}</td>
+            <td><input type="text" data-cand-input="${i}" value="${esc(c.valueText)}" aria-label="${esc(c.field)} 改后的值">
+              <span class="src">${esc(c.unit)}</span></td>
+            <td class="src">${esc(c.sourceLine)}</td>
+            <td>${esc(c.measuredOn || '没有日期')}</td>
+            <td><div class="cand-actions"><div class="btn-row">
+              <button type="button" class="btn btn-sm btn-primary" data-cand-save="${i}" aria-label="保存改后的值并接受">保存并接受</button>
+              <button type="button" class="btn btn-sm" data-cand-reject="${i}" aria-label="拒收这条候选">拒收</button>
+            </div></div></td>
+          </tr>`;
+        }
+        return `<tr data-cand-row="${i}" class="${c.status === 'rejected' ? 'row-muted' : ''}">
+          <td>${esc(c.field)}</td>
+          <td>${c.valueText ? `<b>${esc(c.valueText)}</b> ${esc(c.unit)}` : '<span class="chip chip-warn">留空</span>'}</td>
+          <td class="src">${esc(c.sourceLine)}</td>
+          <td>${esc(c.measuredOn || '没有日期')}</td>
+          <td><div class="cand-actions"><span>${tag}</span><div class="btn-row">
+            <button type="button" class="btn btn-sm" data-cand-accept="${i}" aria-label="接受：${esc(c.field)}">接受</button>
+            <button type="button" class="btn btn-sm" data-cand-edit="${i}" aria-label="改值：${esc(c.field)}">改值</button>
+            <button type="button" class="btn btn-sm btn-quiet" data-cand-reject="${i}" aria-label="拒收：${esc(c.field)}">拒收</button>
+          </div></div></td>
+        </tr>`;
+      }).join('')}
+    </tbody></table>
+    ${st.armBulk ? `<div class="notice notice-warn" style="margin-top:12px">
+        <b>再确认一次：</b>把剩下 ${pending} 条全部按「接受」处理？不合法（缺日期 / 同日重复）的会被跳过并写明原因。
+        <div class="btn-row" style="margin-top:8px">
+          <button type="button" class="btn btn-sm btn-primary" data-cand-bulk-confirm>再次确认全部确认（${pending} 条）</button>
+          <button type="button" class="btn btn-sm" data-cand-bulk-cancel>取消</button>
+        </div>
+      </div>` : ''}`;
+}
+
+function importStep5() {
+  const st = importState();
+  const d = st.done;
+  if (!d) return '<h4>⑤ 落库</h4><p class="src">还没有落库。</p>';
+  return `<h4>⑤ 落库</h4>
+    <div class="notice ${d.reused ? 'notice-warn' : 'notice-ok'}">
+      <b>${d.reused ? '这份材料之前导入过（sha256 相同），这次不重复登记。' : '已写 document + candidate。'}</b>
+      ${d.reused ? '同一份文件在同一档案下只登记一次；待确认列表不会翻倍。' : ''}
+    </div>
+    <table class="tbl" style="margin-top:12px"><thead><tr><th>写了什么</th><th>数量</th><th>说明</th></tr></thead><tbody>
+      <tr><td>document</td><td>${d.reused ? 0 : 1}</td><td>状态 <code>${esc(d.docStatus)}</code>${d.docStatus === 'parse_failed' ? ' · 拒收理由已留在文件上' : ''}</td></tr>
+      <tr><td>candidate</td><td>${d.candidateCount}</td><td>接受 / 拒收都留档；拒收的候选不会被抹掉</td></tr>
+      <tr><td>业务记录（指标点）</td><td>${d.readingCount}</td><td>只有「数值 + 有测量日期 + 同日不重复」才写，且都带 <code>source_doc_id</code></td></tr>
+    </tbody></table>
+    ${d.readings.length ? `<p class="src" style="margin-top:10px">写进去的是：${d.readings.map((r) => `${esc(r.field)} ${esc(r.value)} ${esc(r.unit)}（${esc(r.on)}）`).join('；')}。</p>` : ''}
+    <p class="src" style="margin-top:10px">已确认的候选会出现在「病情整理 › 待核对草稿」，去那里还能再改；
+      原件（document）在「资料库」，点得回原文行。</p>`;
+}
+
+function importFoot() {
+  const st = importState();
+  const back = st.step > 1 && !st.done
+    ? '<button type="button" class="btn" data-import-back>上一步</button>' : '';
+  const close = '<button type="button" class="btn" data-close>关闭</button>';
+  let next = '';
+  if (st.step === 1) next = `<button type="button" class="btn btn-primary" data-import-next ${st.file ? '' : 'disabled'}>下一步：嗅探与闸门</button>`;
+  if (st.step === 2) {
+    if (st.gate && st.gate.verdict === 'accept') next = '<button type="button" class="btn btn-primary" data-import-next>抽取候选</button>';
+    else if (st.gate && st.gate.verdict === 'reject') next = '<button type="button" class="btn" data-import-manual>转手工补录</button><button type="button" class="btn" data-import-back>换一份材料</button>';
+    else next = '<button type="button" class="btn btn-primary" data-import-accept-domain>我确认这是本病种材料</button>'
+      + '<button type="button" class="btn" data-import-manual>转手工补录</button>';
+  }
+  if (st.step === 3) {
+    next = st.candidates.length
+      ? '<button type="button" class="btn btn-primary" data-import-next>下一步：逐项确认</button>'
+      : '<button type="button" class="btn" data-import-manual>转手工补录</button>';
+  }
+  if (st.step === 4) {
+    next = `<button type="button" class="btn" data-cand-bulk>全部确认…</button>
+      <button type="button" class="btn btn-primary" data-import-commit>落库</button>`;
+  }
+  if (st.step === 5) next = '<button type="button" class="btn" data-import-again>再导入一份</button><button type="button" class="btn btn-primary" data-import-finish>完成</button>';
+  return close + back + next;
+}
+
+function renderImport() {
+  const mask = APP.$importMask;
+  if (!mask) return;
+  const body = mask.querySelector('#impBody');
+  const foot = mask.querySelector('#impFoot');
+  if (!body || !foot) return;
+  const st = importState();
+  /* 注意要**调用**取到的那一步（第一版漏了括号，把函数源码当 HTML 渲染了出来）。 */
+  const stepFn = [importStep1, importStep2, importStep3, importStep4, importStep5][st.step - 1];
+  body.innerHTML = importStepper() + (stepFn ? stepFn() : '');
+  foot.innerHTML = importFoot();
+  bindImport(mask);
+}
+
+function importSelectDemo(i) {
+  const st = importState();
+  const f = IMPORT_DEMO_FILES[Number(i)];
+  if (!f) return toast('这份演示材料不存在');
+  st.file = { ...f, candidates: (f.candidates || []).map((c) => ({ ...c })) };
+  st.gate = { ...f.gate };
+  st.candidates = [];
+  st.skipped = 0;
+  st.done = null;
+  renderImport();
+}
+
+/** 真实文件：只读名字/大小/sha。读不到文本层就判 needs_review，不假装解析成功。 */
+async function importSelectReal(file) {
+  const st = importState();
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const sha = await importSha8(file);
+  const supported = ['pdf', 'txt', 'md'].includes(ext);
+  st.file = {
+    name: file.name, size: file.size, sha, kind: ext || 'unknown',
+    hasTextLayer: ext === 'txt' || ext === 'md',
+    route: !supported ? 'unsupported' : ext === 'pdf' ? 'ocr' : 'extract',
+    reportDate: '', demo: false, candidates: [], skipped: 0,
+  };
+  st.gate = !supported
+    ? { verdict: 'reject', via: 'sniff', reason: `不支持的类型 .${ext}；不给抽取按钮，也不逐字段猜` }
+    : {
+      verdict: 'needs_review', via: 'sniff',
+      reason: ext === 'pdf'
+        ? '本机原型不解析 PDF 内容（不跑 OCR、不读文本层），无法判定是不是膀胱癌材料；扫描件还可能没有文本层'
+        : '本机原型不读文件正文，无法自动判定病种；需要你确认或转手工补录',
+    };
+  st.candidates = [];
+  st.done = null;
+  renderImport();
+}
+
+function importExtract() {
+  const st = importState();
+  if (!st.gate || st.gate.verdict !== 'accept') return;   // I1：非 accept 时零候选
+  st.candidates = (st.file.candidates || []).map((c) => ({ ...c, status: 'pending' }));
+  st.skipped = st.file.skipped || 0;
+  st.step = 3;
+  renderImport();
+}
+
+/** 业务记录前置校验：非数值不能进趋势；缺日期不许确认；同日同指标不覆盖。 */
+const IMPORT_METRIC_OF = { 血红蛋白: 'hb', eGFR: 'egfr', 肌酐: 'cr' };
+function importAcceptCheck(c) {
+  /* 空值不能「接受」：原件没看清就留空，不能用空串混进候选表假装处理过。 */
+  if (!String(c.valueText || '').trim()) {
+    return { ok: false, why: '值为空（原件没看清），不能确认；请手填或拒收' };
+  }
+  if (c.valueNum == null) {
+    return { ok: false, text: true, why: '文本字段只登记候选，不进趋势表（部位/诊断没有单位与可比性）' };
+  }
+  if (!c.measuredOn) return { ok: false, why: '没有测量日期，不许确认 —— 不拿上传时间顶替' };
+  const code = IMPORT_METRIC_OF[c.field];
+  const m = code && METRICS.find((x) => x.code === code);
+  if (m && m.points.some((p) => p.d === c.measuredOn)) {
+    return { ok: false, why: '同一天同指标已有记录；宁可报错让你选，不静默覆盖' };
+  }
+  return { ok: true };
+}
+
+function importAccept(i) {
+  const st = importState();
+  const c = st.candidates[i];
+  if (!c) return;
+  if (!String(c.valueText || '').trim()) return toast('先填这一条的值（看不清就留空并拒收，不猜）');
+  const chk = importAcceptCheck(c);
+  if (chk.ok) { c.status = 'accepted'; toast('已接受：落库时会写一条指标记录（带 source_doc_id）'); }
+  else if (chk.text) { c.status = 'accepted_text'; toast('文本字段：只写候选，不进趋势表'); }
+  else { toast(`不能确认：${chk.why}`); }
+  renderImport();
+}
+
+function importCommit() {
+  const st = importState();
+  const accepted = st.candidates.filter((c) => c.status === 'accepted');
+  const acceptedText = st.candidates.filter((c) => c.status === 'accepted_text');
+  const rejected = st.candidates.filter((c) => c.status === 'rejected' || c.status === 'pending' || c.status === 'editing');
+  const sha = st.file.sha;
+  APP.$importedDocs = APP.$importedDocs || [];
+  const reused = APP.$importedDocs.some((d) => d.sha === sha);
+  const allProcessed = st.candidates.length > 0
+    && st.candidates.every((c) => ['accepted', 'accepted_text', 'rejected'].includes(c.status));
+  /* §6.3：parsed 的含义是「人已经看过了」，不是「机器解析成功」；
+     needs_review / 没抽到候选 不能落 pending_review（点进去会是空列表）。 */
+  const docStatus = st.gate.verdict === 'accept'
+    ? (allProcessed ? 'parsed' : 'pending_review')
+    : st.gate.verdict === 'reject' ? 'parse_failed' : 'pending_parse';
+  if (!reused) {
+    const doc = {
+      name: st.file.name, kind: st.file.kind === 'pdf' ? '报告' : '文本',
+      on: st.file.reportDate || '', by: '外院导入（未核对）', pages: 1,
+      state: '待核对', sha, docStatus, gateReason: `[gate] ${st.gate.reason}`,
+    };
+    RECORDS.files.push(doc);
+    [...accepted, ...acceptedText, ...rejected].forEach((c) => {
+      RECORDS.drafts.push({
+        field: c.field, value: c.valueText, quote: c.sourceLine,
+        ok: c.status === 'accepted' || c.status === 'accepted_text',
+        why: c.status === 'rejected' ? '导入时已拒收（候选留档）' : c.note || '',
+      });
+    });
+    accepted.forEach((c) => {
+      const code = IMPORT_METRIC_OF[c.field];
+      const m = code && METRICS.find((x) => x.code === code);
+      if (m) m.points.push({ d: c.measuredOn, v: c.valueNum, srcDoc: sha });
+    });
+    APP.$importedDocs.push({ sha, name: st.file.name });
+  }
+  st.done = {
+    reused, docStatus,
+    candidateCount: st.candidates.length,
+    readingCount: reused ? 0 : accepted.length,
+    readings: accepted.map((c) => ({ field: c.field, value: c.valueText, unit: c.unit, on: c.measuredOn })),
+  };
+  st.step = 5;
+  renderImport();
+}
+
+function importManualMode() {
+  const st = importState();
+  st.manual = true;
+  st.candidates = [{
+    field: '', valueText: '', valueNum: null, unit: '', confidence: 1,
+    sourceLine: '手工补录（没有经过抽取）', measuredOn: '', status: 'pending', manual: true,
+  }];
+  st.step = 3;
+  renderImport();
+}
+
+function openImportWizard() {
+  const st = importState();
+  Object.assign(st, { step: 1, file: null, gate: null, candidates: [], skipped: 0, armBulk: false, done: null, manual: false });
+  const { mask, close } = openModal(`
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+      <div class="modal-head"><h3 id="impTitle">导入材料</h3>
+        <button class="ag-close" data-close aria-label="关闭导入">×</button></div>
+      <div class="modal-body" id="impBody"></div>
+      <div class="modal-foot" id="impFoot"></div>
+    </div>`);
+  APP.$importMask = mask;
+  APP.$importClose = close;
+  renderImport();
+}
+
+function bindImport(mask) {
+  const st = importState();
+  const q = (s) => mask.querySelector(s);
+  const all = (s) => Array.from(mask.querySelectorAll(s));
+
+  const pick = q('[data-import-pick]');
+  if (pick) pick.addEventListener('click', () => { const inp = q('#impFile'); if (inp) inp.click(); });
+  const inp = q('#impFile');
+  if (inp) inp.addEventListener('change', () => { if (inp.files && inp.files[0]) importSelectReal(inp.files[0]); });
+  const drop = q('[data-import-drop]');
+  if (drop) {
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault(); drop.classList.remove('over');
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) importSelectReal(f);
+    });
+    drop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const i = q('#impFile'); if (i) i.click(); }
+    });
+  }
+  all('[data-import-demo]').forEach((b) => b.addEventListener('click', () => importSelectDemo(b.getAttribute('data-import-demo'))));
+  const next = q('[data-import-next]');
+  if (next) next.addEventListener('click', () => {
+    if (st.step === 1) { if (!st.file) return toast('先选一份材料'); st.step = 2; renderImport(); return; }
+    if (st.step === 2) { importExtract(); return; }
+    if (st.step === 3) { st.step = 4; renderImport(); }
+  });
+  const back = q('[data-import-back]');
+  if (back) back.addEventListener('click', () => {
+    if (st.step === 2 && st.gate && st.gate.verdict === 'reject') { st.step = 1; st.file = null; st.gate = null; renderImport(); return; }
+    st.step = Math.max(1, st.step - 1); renderImport();
+  });
+  const acceptDomain = q('[data-import-accept-domain]');
+  if (acceptDomain) acceptDomain.addEventListener('click', () => {
+    st.gate = { verdict: 'accept', via: 'manual', reason: '由你手动确认这是膀胱癌材料（闸门没能自动判定）；下面的候选仍要逐项确认' };
+    st.file.candidates = importManualCandidates(st.file);
+    renderImport();
+  });
+  const manual = q('[data-import-manual]');
+  if (manual) manual.addEventListener('click', importManualMode);
+  all('[data-cand-accept]').forEach((b) => b.addEventListener('click', () => importAccept(Number(b.dataset.candAccept))));
+  all('[data-cand-edit]').forEach((b) => b.addEventListener('click', () => {
+    st.candidates[Number(b.dataset.candEdit)].status = 'editing'; renderImport();
+  }));
+  all('[data-cand-reject]').forEach((b) => b.addEventListener('click', () => {
+    st.candidates[Number(b.dataset.candReject)].status = 'rejected'; renderImport();
+  }));
+  all('[data-cand-save]').forEach((b) => b.addEventListener('click', () => {
+    const i = Number(b.dataset.candSave);
+    const el = q(`[data-cand-input="${i}"]`);
+    if (el) {
+      const v = el.value.trim();
+      st.candidates[i].valueText = v;
+      /* 改值不动原文行；能转成数字才把 valueNum 填上，否则保持 null（文本字段）。 */
+      st.candidates[i].valueNum = v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
+    }
+    st.candidates[i].status = 'pending';
+    importAccept(i);
+  }));
+  const bulk = q('[data-cand-bulk]');
+  if (bulk) bulk.addEventListener('click', () => { st.armBulk = true; renderImport(); toast('「全部确认」需要再点一次确认'); });
+  const bulkCancel = q('[data-cand-bulk-cancel]');
+  if (bulkCancel) bulkCancel.addEventListener('click', () => { st.armBulk = false; renderImport(); });
+  const bulkConfirm = q('[data-cand-bulk-confirm]');
+  if (bulkConfirm) bulkConfirm.addEventListener('click', () => {
+    let ok = 0, skipped = 0;
+    st.candidates.forEach((c, i) => {
+      if (c.status !== 'pending' && c.status !== 'editing') return;
+      const chk = importAcceptCheck(c);
+      if (chk.ok) { c.status = 'accepted'; ok += 1; }
+      else if (chk.text) { c.status = 'accepted_text'; ok += 1; }
+      else { skipped += 1; c.note = chk.why; }
+    });
+    st.armBulk = false;
+    renderImport();
+    toast(`全部确认：接受 ${ok} 条${skipped ? `，跳过 ${skipped} 条（缺日期 / 同日重复，已写明原因）` : ''}`);
+  });
+  const commit = q('[data-import-commit]');
+  if (commit) commit.addEventListener('click', importCommit);
+  const again = q('[data-import-again]');
+  if (again) again.addEventListener('click', () => {
+    Object.assign(st, { step: 1, file: null, gate: null, candidates: [], skipped: 0, armBulk: false, done: null, manual: false });
+    renderImport();
+  });
+  const finish = q('[data-import-finish]');
+  if (finish) finish.addEventListener('click', () => {
+    if (APP.$importClose) APP.$importClose();
+    APP.$importMask = null;
+    renderPage();
+    toast('已回到记录页：新资料在「资料库」，候选在「待核对草稿」');
+  });
+}
+
+/** 手动确认病种后，仍然只给「可结构化的通用候选」；没有原文就留空，不猜。 */
+function importManualCandidates(f) {
+  if (f && f.candidates && f.candidates.length) return f.candidates;
+  return [
+    { field: '血红蛋白', valueText: '', valueNum: null, unit: 'g/L', confidence: 1, sourceLine: '手工补录：请对照原件填写', measuredOn: '' },
+    { field: 'eGFR', valueText: '', valueNum: null, unit: 'mL/min/1.73m²', confidence: 1, sourceLine: '手工补录：请对照原件填写', measuredOn: '' },
+  ];
+}
+
 function pageRecords(tab) {
-  const F = RECORDS.files;
+  const F = crudLive('recFile');
   const confirmed = F.filter((f) => f.state === '已核对').length;
   const pending = F.length - confirmed;
 
@@ -494,17 +1302,23 @@ function pageRecords(tab) {
       ['资料份数', `${F.length} 份`, '按原件计'],
       ['已核对', `${confirmed} 份`, '数字已进病情档案'],
       ['待核对', `${pending} 份`, '只有原件，还没逐项确认'],
-      ['最近一份', F[F.length - 1].on, F[F.length - 1].by],
+      ['最近一份', F.length ? F[F.length - 1].on : '没有', F.length ? F[F.length - 1].by : '—'],
     ])}
+    <div class="notice notice-info" style="margin-top:12px">
+      <b>材料导入只有一个入口：</b>「导入材料」。选文件 → 嗅探与闸门 → 抽候选 → 逐项确认 → 落库，
+      五步在同一条流程里完成，不跳页、也不分散到设置里。
+    </div>
     <table class="tbl" style="margin-top:12px"><thead><tr>
-      <th>资料</th><th>类型</th><th>报告日期</th><th>机构</th><th class="num">页数</th><th>核对状态</th>
+      <th>资料</th><th>类型</th><th>报告日期</th><th>机构</th><th class="num">页数</th><th>核对状态</th><th>操作</th>
     </tr></thead><tbody>
       ${F.map((f) => `<tr>
-        <td>${esc(f.name)}</td><td>${esc(f.kind)}</td><td>${esc(f.on)}</td>
+        <td>${esc(f.name)}${Array.isArray(f._prev) && f._prev.length ? ' <span class="chip chip-neutral">已修改 · 原值保留</span>' : ''}</td><td>${esc(f.kind)}</td><td>${esc(f.on)}</td>
         <td>${esc(f.by)}</td><td class="num">${f.pages}</td>
         <td>${f.state === '已核对' ? `<span class="chip chip-ok">${esc(f.state)}</span>` : `<span class="chip chip-warn">${esc(f.state)}</span>`}</td>
+        <td>${rowActions('recFile', f)}</td>
       </tr>`).join('')}
     </tbody></table>
+    ${voidedBlock('recFile')}
     ${collapsible('资料可以怎么进来', `
       <table class="tbl"><thead><tr><th>方式</th><th>适合什么</th><th>进来之后</th></tr></thead><tbody>
         <tr><td>手动抄录</td><td>任何东西；最可靠</td><td>直接是「已核对」，因为是你照着原件打的</td></tr>
@@ -517,7 +1331,11 @@ function pageRecords(tab) {
       <p>因为「有这份报告」和「报告里的数字是准的」是两件事。转述会走样、复制会漏行、
       同一份报告可能有多个版本。</p>
       <p>把原件和事实分成两层之后，任何时候你都能回答：<b>这个数字是从哪份文件的哪一行来的？</b>
-      对不上时也能一眼看到是原件抄错了，还是你记错了。</p>`)}`);
+      对不上时也能一眼看到是原件抄错了，还是你记错了。</p>`)}`,
+    `<div class="btn-row">
+      <button type="button" class="btn btn-sm btn-primary" data-import aria-label="导入材料（五步在同一条流程里完成）">导入材料</button>
+      <button type="button" class="btn btn-sm" data-crud="new" data-kind="recFile" aria-label="添加一份资料">+ 添加资料</button>
+    </div>`);
 
   const draftBody = () => card('待核对草稿（未经核对，不算事实）', `
     <div class="notice notice-warn">草稿区的条目<b>不会</b>进入病情档案，也<b>不会</b>进入 AI 草稿的「已确认事实」。
@@ -533,47 +1351,56 @@ function pageRecords(tab) {
     <table class="tbl" style="margin-top:16px"><thead><tr>
       <th>候选字段</th><th>抽取值</th><th>原文片段</th><th>操作</th>
     </tr></thead><tbody>
-      ${RECORDS.drafts.map((d) => `<tr>
-        <td>${esc(d.field)}</td>
+      ${crudLive('recDraft').map((d) => `<tr>
+        <td>${esc(d.field)}${Array.isArray(d._prev) && d._prev.length ? ' <span class="chip chip-neutral">已修改 · 原值保留</span>' : ''}</td>
         <td>${d.value ? esc(d.value) : '<span class="chip chip-warn">留空待手填</span>'}</td>
         <td class="src">${esc(d.quote)}${d.why ? `<br>${esc(d.why)}` : ''}</td>
-        <td>${d.ok ? '<div class="btn-row"><button class="btn btn-sm btn-primary" data-confirm>确认</button><button class="btn btn-sm">忽略</button></div>' : '<span class="src">需手填</span>'}</td>
+        <td><div class="btn-row">
+          ${d.ok ? '<button type="button" class="btn btn-sm btn-primary" data-confirm aria-label="确认这条候选">确认</button>' : '<span class="src">需手填</span>'}
+          ${rowActions('recDraft', d)}
+        </div></td>
       </tr>`).join('')}
     </tbody></table>
+    ${voidedBlock('recDraft')}
     ${collapsible('为什么非要逐项确认，不能一键全收', `
       <p>因为自动识别一定会出错 —— 特别是数字和单位。而这类错误不会报错、不会变红，
       只会在几个月后变成一条对不上的曲线。</p>
-      <p>逐项确认是<b>你唯一能拦住它的地方</b>。所以这一步不做「全部确认」按钮，只能一条一条点。</p>`)}`);
+      <p>逐项确认是<b>你唯一能拦住它的地方</b>。正式导入流程里的「全部确认」也必须再点一次确认，
+      不会一键静默收下。</p>`)}`,
+    `<button type="button" class="btn btn-sm" data-crud="new" data-kind="recDraft" aria-label="手工添加一条候选">+ 手工添加候选</button>`);
 
   const fileBody = () => card('病情档案（已确认事实）', `
     <div class="notice notice-info">每条都记了<b>谁记的、记的是谁、什么时候记的</b>。
     换一个照护者接手时，不用问患者也能对上。</div>
     <table class="tbl" style="margin-top:12px"><thead><tr>
-      <th>项目</th><th>内容</th><th>谁记的</th><th>记录日期</th><th>核对状态</th>
+      <th>项目</th><th>内容</th><th>谁记的</th><th>记录日期</th><th>核对状态</th><th>操作</th>
     </tr></thead><tbody>
-      ${RECORDS.facts.map((f) => `<tr>
+      ${crudLive('recFact').map((f) => `<tr>
         <td>${esc(f.item)}</td>
-        <td>${esc(f.value)}</td>
+        <td>${esc(f.value)}${Array.isArray(f._prev) && f._prev.length ? ' <span class="chip chip-neutral">已修改 · 原值保留</span>' : ''}</td>
         <td class="src">${esc(f.by)}</td>
         <td>${esc(f.on)}</td>
         <td>${f.state === '已核对' ? `<span class="chip chip-ok">${esc(f.state)}</span>` : `<span class="chip chip-warn">${esc(f.state)}</span>`}</td>
+        <td>${rowActions('recFact', f)}</td>
       </tr>`).join('')}
     </tbody></table>
+    ${voidedBlock('recFact')}
     <p class="src" style="margin-top:10px">「已核对」只表示<b>转录没错</b>，
     <b>不等于医学审核</b>。诊断与处置仍以你的医疗团队为准。</p>
     <dl class="kv" style="margin-top:12px">
       <dt>病理结论原文</dt><dd>${esc(PATHOLOGY.raw)} ${src(PATHOLOGY.source)}</dd>
       <dt>分级（原文）</dt><dd>${esc(PATHOLOGY.gradeRaw)} <span class="src">报告未写分级体系名；不做换算</span></dd>
       <dt>有无肌层组织</dt><dd>${esc(PATHOLOGY.musclePresent)} <span class="chip chip-warn">分期可能不完整</span></dd>
-    </dl>`);
+    </dl>`,
+    `<button type="button" class="btn btn-sm" data-crud="new" data-kind="recFact" aria-label="添加一条已确认事实">+ 添加事实</button>`);
 
   const summaryBody = () => {
     const bySource = ['医生记录', '本人自述', '照护者代记', '待核对草稿'];
     return card('病情汇总', `
       ${statStrip([
-        ['已确认事实', `${RECORDS.facts.filter((f) => f.state === '已核对').length} 条`, `共 ${RECORDS.facts.length} 条`],
-        ['资料', `${RECORDS.files.length} 份`, `${RECORDS.files.filter((f) => f.state === '待核对').length} 份待核对`],
-        ['待核对草稿', `${RECORDS.drafts.filter((d) => d.ok).length} 条`, '不参与汇总'],
+        ['已确认事实', `${crudLive('recFact').filter((f) => f.state === '已核对').length} 条`, `共 ${crudLive('recFact').length} 条（不含已作废）`],
+        ['资料', `${crudLive('recFile').length} 份`, `${crudLive('recFile').filter((f) => f.state === '待核对').length} 份待核对`],
+        ['待核对草稿', `${crudLive('recDraft').filter((d) => d.ok).length} 条`, '不参与汇总'],
         ['时间范围', '2026-06-11 ～ 2026-10-22', '最早 / 最近一条事实'],
       ])}
       <h3 style="margin-top:16px">来源分布</h3>
@@ -964,12 +1791,16 @@ function pageInstillation(tab) {
           它属于「疗程被打断」的事实，不该混进副作用里。</p>
         <p class="src" style="margin-top:8px">本演示档案没有断供记录，所以这家医院那条时间线上是空的。</p>`),
     '副作用': () => card('灌注后不适（自述）', `
-      <table class="tbl"><thead><tr><th>日期</th><th>感受</th><th>强度（自评）</th><th>持续</th></tr></thead><tbody>
-        <tr><td>2026-10-16</td><td>尿频、尿急，排尿时灼热</td><td class="num">4 / 10</td><td>约 2 天</td></tr>
-        <tr><td>2026-10-09</td><td>当天乏力，第二天好转</td><td class="num">2 / 10</td><td>1 天</td></tr>
-        <tr><td>2026-10-02</td><td>无明显不适</td><td class="num">0 / 10</td><td>—</td></tr>
+      <table class="tbl"><thead><tr><th>日期</th><th>感受</th><th>强度（自评）</th><th>持续</th><th>操作</th></tr></thead><tbody>
+        ${crudLive('sideEffect').map((s) => `<tr>
+          <td>${esc(s.on)}</td><td>${esc(s.feel)}${Array.isArray(s._prev) && s._prev.length ? ' <span class="chip chip-neutral">已修改 · 原值保留</span>' : ''}</td>
+          <td class="num">${esc(String(s.score))} / 10</td><td>${esc(s.days)}</td>
+          <td>${rowActions('sideEffect', s)}</td>
+        </tr>`).join('')}
       </tbody></table>
-      <p class="src" style="margin-top:10px">分级判据原文为图片未取得，此处<b>不做分级</b>，只记自评强度。<span class="verify-tag">来源待补</span></p>`)
+      ${voidedBlock('sideEffect')}
+      <p class="src" style="margin-top:10px">分级判据原文为图片未取得，此处<b>不做分级</b>，只记自评强度。<span class="verify-tag">来源待补</span></p>`,
+      `<button type="button" class="btn btn-sm" data-crud="new" data-kind="sideEffect" aria-label="记录一次灌注后不适">+ 记录一次</button>`)
       + card('这类不适，什么时候需要找人', `
         <div class="notice notice-warn">
           灌注后出现<b>发热寒战、并且持续不缓解</b>，或伴明显乏力、血压偏低 ——
@@ -1119,33 +1950,36 @@ function pageDiversion(tab) {
         </table>
         <p class="src" style="margin-top:10px">来源：本人的门诊经过 · 未核对。术式一旦记成「我的术式」按<b>不可逆事实</b>处理，之后改动只追加版本、不覆盖（见 docs/SCHEMA.md ADR-03）。</p>`);
   } else if (tab === '造口日记') {
+    const liveLog = crudLive('stomaLog');
     body = statStrip([
-      ['近 30 天更换底盘', `${STOMA_LOG.reduce((a, l) => a + l.changes, 0)} 次`, '按批次加总'],
-      ['近 30 天渗漏', `${STOMA_LOG.reduce((a, l) => a + l.leaks, 0)} 次`, '次数 ≠ 严重程度'],
-      ['皮肤发红批次', `${STOMA_LOG.filter((l) => l.skin === '红').length} 批`, '按批次算'],
+      ['近 30 天更换底盘', `${liveLog.reduce((a, l) => a + Number(l.changes || 0), 0)} 次`, '按批次加总'],
+      ['近 30 天渗漏', `${liveLog.reduce((a, l) => a + Number(l.leaks || 0), 0)} 次`, '次数 ≠ 严重程度'],
+      ['皮肤发红批次', `${liveLog.filter((l) => l.skin === '红').length} 批`, '按批次算'],
       ['记法', '一次录一批', '不需要每天打卡'],
     ]) + card('造口日记（一次录一批）', `
       <div class="notice notice-info">按<b>一批</b>记录，不需要每天打卡。耗材型号从目录里选，不用每次重打。</div>
       <div class="batch-row" style="margin-top:14px">
-        <label class="bf"><span>批次日期</span><input type="date" value="2026-10-23"></label>
-        <label class="bf"><span>耗材</span><select>${STOMA_SUPPLY.map((s) => `<option>${esc(s.kind)} · ${esc(s.brand)}</option>`).join('')}</select></label>
-        <label class="bf"><span>更换次数</span><input type="number" value="2" min="0"></label>
-        <label class="bf"><span>渗漏次数</span><input type="number" value="1" min="0"></label>
-        <label class="bf"><span>皮肤状态</span><select><option>无</option><option selected>红</option><option>破溃</option><option>其他</option></select></label>
-        <button class="btn btn-primary" data-act="batchAdd">加入本批</button>
+        <label class="bf"><span>批次日期</span><input type="date" id="stomaOn" value="2026-10-23" aria-label="批次日期"></label>
+        <label class="bf"><span>耗材</span><select id="stomaSupply" aria-label="耗材">${STOMA_SUPPLY.map((s) => `<option value="${esc(s.id)}">${esc(s.kind)} · ${esc(s.brand)}</option>`).join('')}</select></label>
+        <label class="bf"><span>更换次数</span><input type="number" id="stomaChanges" value="2" min="0" aria-label="更换次数"></label>
+        <label class="bf"><span>渗漏次数</span><input type="number" id="stomaLeaks" value="1" min="0" aria-label="渗漏次数"></label>
+        <label class="bf"><span>皮肤状态</span><select id="stomaSkin" aria-label="皮肤状态"><option>无</option><option selected>红</option><option>破溃</option><option>其他</option></select></label>
+        <button class="btn btn-primary" data-act="batchAdd" aria-label="把这一批加入造口日记">加入本批</button>
       </div>
-      <table class="tbl" style="margin-top:14px"><thead><tr><th>批次</th><th>耗材</th><th class="num">更换</th><th class="num">渗漏</th><th>皮肤</th></tr></thead><tbody>
-        ${STOMA_LOG.map((l) => `<tr><td>${esc(l.batchOn)}</td><td>${esc(l.supplyId === 's1' ? '底盘 · 演示A' : l.supplyId)}</td>
-          <td class="num">${l.changes}</td><td class="num">${l.leaks}</td><td>${esc(l.skin)}</td></tr>`).join('')}
-      </tbody></table>`)
+      <table class="tbl" style="margin-top:14px"><thead><tr><th>批次</th><th>耗材</th><th class="num">更换</th><th class="num">渗漏</th><th>皮肤</th><th>操作</th></tr></thead><tbody>
+        ${liveLog.map((l) => `<tr><td>${esc(l.batchOn)}${Array.isArray(l._prev) && l._prev.length ? ' <span class="chip chip-neutral">已修改 · 原值保留</span>' : ''}</td><td>${esc(l.supplyId === 's1' ? '底盘 · 演示A' : l.supplyId)}</td>
+          <td class="num">${l.changes}</td><td class="num">${l.leaks}</td><td>${esc(l.skin)}</td>
+          <td>${rowActions('stomaLog', l)}</td></tr>`).join('')}
+      </tbody></table>
+      ${voidedBlock('stomaLog')}`)
     + `<div class="cols-2" style="margin-top:16px">
         ${card('最近 30 天小结（只数次数，不判断好坏）', `
           <table class="tbl">
             <thead><tr><th>项目</th><th class="num">次数</th><th>怎么来的</th></tr></thead>
             <tbody>
-              <tr><td>更换底盘</td><td class="num">${STOMA_LOG.reduce((a, l) => a + l.changes, 0)}</td><td>把上面每一批的次数加总</td></tr>
-              <tr><td>发生渗漏</td><td class="num">${STOMA_LOG.reduce((a, l) => a + l.leaks, 0)}</td><td>同上；渗漏<b>次数</b>不等于严重程度</td></tr>
-              <tr><td>皮肤发红</td><td class="num">${STOMA_LOG.filter((l) => l.skin === '红').length}</td><td>按批次数到「红」的批数</td></tr>
+              <tr><td>更换底盘</td><td class="num">${liveLog.reduce((a, l) => a + Number(l.changes || 0), 0)}</td><td>把上面每一批的次数加总</td></tr>
+              <tr><td>发生渗漏</td><td class="num">${liveLog.reduce((a, l) => a + Number(l.leaks || 0), 0)}</td><td>同上；渗漏<b>次数</b>不等于严重程度</td></tr>
+              <tr><td>皮肤发红</td><td class="num">${liveLog.filter((l) => l.skin === '红').length}</td><td>按批次数到「红」的批数</td></tr>
             </tbody>
           </table>
           <p class="src" style="margin-top:10px">这是<b>计数</b>，不是评价。什么算「多」要问造口治疗师，工作台不设阈值。</p>`)}
@@ -1714,19 +2548,26 @@ function pageChart() {
       <div class="legend" data-legend></div>
     </div>`;
 
-  return H('病情一图秀', '每条线按该指标<b>全期</b> min/max 归一化，所以不同线之间<b>不可比</b>；治疗条单独一层。')
+  const winLabel = (wins.find(([v]) => v === state.win) || ['all', '全部'])[1];
+  return H('病情一图秀', '每条线按该指标<b>全部记录范围</b>缩放，<b>不代表不同指标数值可比</b>；治疗条单独一层。')
     + card('选择指标（最多 6 条）', `<div class="btn-row">${opts}</div>
         <p class="src" style="margin-top:10px">分类变量（${CATEGORICAL.map((c) => esc(c.name)).join('、')}）不进折线图。</p>`)
     + card('时间轴', `
       <div class="chart-toolbar">
-        ${wins.map(([v, t]) => `<button class="btn btn-sm ${state.win === v ? 'btn-primary' : ''}" data-win="${v}">${t}</button>`).join('')}
-        <span class="src" style="margin-left:auto">治疗事件：${CHART.TREATMENTS.length} 个</span>
+        ${wins.map(([v, t]) => `<button class="btn btn-sm ${state.win === v ? 'btn-primary' : ''}" data-win="${v}"
+          aria-pressed="${state.win === v}" aria-label="时间窗：${t}">${t}</button>`).join('')}
+        <button type="button" class="btn btn-sm" data-replay-chart aria-label="重播趋势动画">重播动画</button>
+        <span class="src" style="margin-left:auto">治疗事件：${CHART.TREATMENTS.length} 个 ·
+          <span role="status" aria-live="polite">当前时间窗：${winLabel}</span></span>
       </div>
       ${plotBlock}
+      <p class="chart-watermark">↑ 每条线按该指标全部记录范围缩放，不代表不同指标数值可比。</p>
       <p class="legend-note">
-        单点不连线；空窗口给空态；末点每序列只标一次。点数据点可看到日期、值、机构与方法。
+        单点不连线；空窗口给空态；末点每序列只标一次。鼠标停在点上（或键盘 Tab 到点）可看到日期、值、机构与方法；
+        治疗节点可点，说明它来自档案里的哪条事件。
       </p>
-      <p class="legend-note">动画：<code>pathLength=1</code> + <code>stroke-dashoffset</code>，点按 45ms 递增延迟；减少动效时直接给终态。</p>`)
+      <p class="legend-note">动画：<code>pathLength=1</code> + <code>stroke-dashoffset</code>（进场描线），
+        点按 45ms 递增延迟淡入，切时间窗有淡入过渡；减少动效时直接给终态。</p>`)
     + card('治疗事件（与节点同 ID 联动）', `
       <table class="tbl"><thead><tr><th>日期</th><th>事件</th><th>ID</th></tr></thead><tbody>
         ${CHART.TREATMENTS.map((t) => `<tr><td>${esc(t.d)}</td><td>${esc(t.label)}</td><td><code>${esc(t.id)}</code></td></tr>`).join('')}
@@ -1917,29 +2758,31 @@ function pageLife(tab) {
 }
 
 function pageVisit(tab) {
-  const asked = QUESTIONS.filter((q) => q.asked === '已问').length;
+  const asked = crudLive('question').filter((q) => q.asked === '已问').length;
 
   const qBody = () => card('要问医生的问题', `
     <div class="notice notice-info">问题问完要<b>当场把答案记下来</b>，
     否则下次门诊还会问同一句。没问到的不删，留着下次接着问。</div>
     ${statStrip([
-      ['问题总数', `${QUESTIONS.length} 条`, '按场景分组'],
+      ['问题总数', `${crudLive('question').length} 条`, '按场景分组'],
       ['已问', `${asked} 条`, '已记下医生的回答'],
-      ['还没问', `${QUESTIONS.length - asked} 条`, '下次门诊带上'],
-      ['分组', `${new Set(QUESTIONS.map((q) => q.group)).size} 组`, '病理 / 灌注 / 复查 / 肾功能 / 急症'],
+      ['还没问', `${crudLive('question').length - asked} 条`, '下次门诊带上'],
+      ['分组', `${new Set(crudLive('question').map((q) => q.group)).size} 组`, '病理 / 灌注 / 复查 / 肾功能 / 急症'],
     ])}
     <table class="tbl" style="margin-top:12px"><thead><tr>
-      <th>场景</th><th>问题</th><th>问了没有</th><th>医生怎么答（原文）</th>
+      <th>场景</th><th>问题</th><th>问了没有</th><th>医生怎么答（原文）</th><th>操作</th>
     </tr></thead><tbody>
-      ${QUESTIONS.map((q) => `<tr>
+      ${crudLive('question').map((q) => `<tr>
         <td class="src">${esc(q.group)}</td>
-        <td>${esc(q.q)}</td>
+        <td>${esc(q.q)}${Array.isArray(q._prev) && q._prev.length ? ' <span class="chip chip-neutral">已修改 · 原值保留</span>' : ''}</td>
         <td>${q.asked === '已问' ? `<span class="chip chip-ok">${esc(q.asked)}</span>` : `<span class="chip chip-warn">${esc(q.asked)}</span>`}</td>
         <td>${q.answer ? esc(q.answer) : '<span class="src">—</span>'}</td>
+        <td>${rowActions('question', q)}</td>
       </tr>`).join('')}
     </tbody></table>
+    ${voidedBlock('question')}
     <div class="btn-row" style="margin-top:14px">
-      <button type="button" class="btn btn-primary">+ 加一个问题</button>
+      <button type="button" class="btn btn-primary" data-crud="new" data-kind="question" aria-label="添加一个要问医生的问题">+ 加一个问题</button>
       <button type="button" class="btn" data-goto="visit" data-tab="复诊摘要">生成复诊摘要</button>
     </div>
     ${collapsible('问题该怎么问，医生才答得上', `
@@ -2008,9 +2851,384 @@ function pageVisit(tab) {
     + tabsHTML('visit') + body();
 }
 
+/* ================= 35 号：临床试验匹配（建档 → 检索 → 匹配结果） =================
+ *
+ * 这一屏回答一个问题：**我这份档案，哪些登记能对上？**
+ * 三段必须在同一屏里依次看见，缺一段就是假功能：
+ *   ① 建档：把参与匹配的字段摆出来，并明确「只有已确认入库的字段参与」；
+ *   ② 检索：本地快照（带日期、带「会过期」）+ 在线通道逐来源状态；
+ *   ③ 匹配：四档分层 + 每条试验的粗筛符合度 + 逐条证据链。
+ *
+ * 三条语义纪律（35 号 §二）：
+ *   - pct = 符合项 ÷ 已对照项，**待确认按 0 计**，所以只会偏低、不会偏高；
+ *   - 四档里「硬性条件不满足」单列，不参与 pct 排序首位；
+ *   - 每条试验的 pct 旁固定写「这不是入组资格，也不代表效果」。
+ *
+ * 演示条目一律 DEMO- 前缀（数据在 data.js 的 TRIAL_DEMO_MATCH），页面逐处声明。
+ * 工作台不替研究团队判断谁符合；缺字段写「无法自动匹配」，不写一个阴性结论。
+ */
+const TMATCH_BAND = {
+  high: ['字段都对得上', 'chip-ok'],
+  partial: ['部分对得上', 'chip-warn'],
+  needs_info: ['需补充信息', 'chip-neutral'],
+  ineligible: ['硬性条件不满足', 'chip-stop'],
+};
+const TMATCH_CAT = {
+  diagnosis: '诊断', pathology: '病理类型', stage: '分期', organ: '器官功能',
+  bcg: '既往治疗', age: '年龄', performance: '体能状态', other: '其他',
+};
+const TMATCH_STATE = {
+  met: ['符合', 'tms-ok', '✓'],
+  unmet: ['不符合', 'tms-no', '✕'],
+  unknown: ['待确认', 'tms-q', '?'],
+};
+/** 演示基准日：收藏日期用固定值，避免每次刷新都变（也让两侧渲染可逐字符比对）。 */
+const TMATCH_TODAY = '2026-10-24';
+
+function trialMatchState() {
+  APP.$trialMatch = APP.$trialMatch || { saved: {}, rejected: {} };
+  return APP.$trialMatch;
+}
+
+/**
+ * 参与匹配的档案字段。
+ *
+ * 规则只有一条：**只有「已确认入库」的字段参与**。来源一律来自 RECORDS.facts
+ * （每条都带「谁记的 / 什么时候记的」），没有建档的字段写「未建档」，
+ * 既不算符合也不算不符合 —— 它会落到「无法自动匹配 / 待确认」。
+ */
+function trialMatchFields() {
+  const factOf = (item) => (RECORDS.facts || []).find((f) => f.item === item) || null;
+  const line = factOf('所在分野');
+  const path = factOf('病理结论');
+  const muscle = factOf('有无肌层组织');
+  const egfr = factOf('肾功能');
+  const confirmed = (f) => !!f && f.state === '已核对';
+  const srcOf = (f) => (f ? `${f.on} · ${f.by}` : '档案里没有这一项');
+  const stateOf = (f) => (confirmed(f) ? 'confirmed' : f ? 'candidate' : 'missing');
+
+  const r = RENAL.points && RENAL.points.length ? RENAL.points[RENAL.points.length - 1] : null;
+  const out = [];
+  const add = (key, label, value, source, state, note) => out.push({ key, label, value, source, state, note });
+
+  add('diag_urothelial', '组织学诊断',
+    path && /尿路上皮癌/.test(path.value) ? '尿路上皮癌' : '未建档',
+    srcOf(path), stateOf(path), '来自病理结论原文');
+  add('line', '分野',
+    line ? line.value : '未建档', srcOf(line), stateOf(line), '决定是否肌层浸润');
+  add('grade_high', '分级',
+    path && /高级别/.test(path.value) ? '高级别' : '未建档',
+    srcOf(path), stateOf(path), '病理报告原文');
+  add('egfr', 'eGFR',
+    r ? `${r.egfr} mL/min/1.73m²` : '未建档',
+    r ? `${r.date} · 演示检验科（已核对）` : '档案里没有这一项', r && confirmed(egfr) ? 'confirmed' : 'candidate',
+    '用于器官功能类条件');
+  add('bcg_response', 'BCG 应答状态',
+    BCG_RESPONSE.status, BCG_RESPONSE.doctorQuote ? '有医生原话' : '未判定：缺医生原话', 'missing',
+    '没有医生原话只能停在「未判定」');
+  add('muscle', '肌层取材',
+    muscle ? muscle.value : '未建档', srcOf(muscle), stateOf(muscle),
+    '「未见肌层」不等于「已确认无肌层浸润」');
+  add('variant', '组织学变异型',
+    PATHOLOGY.variantRaw ? PATHOLOGY.variantRaw : '报告未提及',
+    `${PATHOLOGY.reportDate} 病理报告`, 'missing', '「没提」不等于「没有」');
+  add('age', '年龄', '未建档', '档案里没有这个字段', 'missing', '不按身份证推算');
+  add('ecog', 'ECOG 体能', '未建档', '档案里没有这个字段', 'missing', '门诊常写，但本工作台没有这个字段');
+  add('metastatic', '转移 / 晚期状态', '未记录', '影像结论未结构化', 'missing', '不按文字描述猜');
+  add('prior_systemic', '既往系统治疗', '记录里没有', '治疗记录只有膀胱灌注', 'missing',
+    '「没有记录」不等于「确认没用过」');
+  return out;
+}
+
+/** 把字段整理成求值用的快照；未确认的字段一律不进（值保持 null）。 */
+function trialMatchFacts() {
+  const fields = trialMatchFields();
+  const conf = (k) => {
+    const f = fields.find((x) => x.key === k);
+    return f && f.state === 'confirmed' ? f : null;
+  };
+  const diag = conf('diag_urothelial');
+  const line = conf('line');
+  const grade = conf('grade_high');
+  const egfr = conf('egfr');
+  return {
+    fields,
+    src: {
+      diag: diag ? diag.source : '档案里没有这一项',
+      line: line ? line.source : '档案里没有这一项',
+      grade: grade ? grade.source : '档案里没有这一项',
+      egfr: egfr ? egfr.source : '档案里没有这一项',
+    },
+    diagUrothelial: !!diag,
+    /* 注意顺序：先判 NMIBC，再判 MIBC —— "NMIBC" 里包含子串 "MIBC"，
+       反过来写会把保膀胱线判成肌层浸润（真踩过）。 */
+    line: line ? (/NMIBC/.test(line.value) ? 'nmibc' : /MIBC/.test(line.value) ? 'mibc' : null) : null,
+    lineRaw: line ? line.value : null,
+    gradeHigh: !!grade,
+    egfr: egfr ? Number(String(egfr.value).match(/[\d.]+/)?.[0]) : null,
+    bcgResponse: BCG_RESPONSE.status,
+    variantReported: PATHOLOGY.variantRaw,
+    muscleSampled: muscleState(),
+  };
+}
+
+/** 「未见肌层组织」不是阴性结论：只有明确写了取材含肌层才算 true。 */
+function muscleState() {
+  const f = (RECORDS.facts || []).find((x) => x.item === '有无肌层组织');
+  if (!f || f.state !== '已核对') return null;
+  return /有肌层|见肌层/.test(f.value) && !/未见/.test(f.value) ? true : false;
+}
+
+/**
+ * 单条条件的求值。三态 + 一个必填的「记录里是 / 条件要求」。
+ * 这里的 unknown 是**诚实**：档案里没有就是没有，不用阴性去填。
+ */
+function evalTrialCriterion(c, facts) {
+  const need = c.need;
+  const mk = (state, actual, src) => ({ state, actual, src, need });
+  const unknown = (actual, src) => mk('unknown', actual, src || '档案里没有这一项');
+  switch (c.field) {
+    case 'diag_urothelial':
+      return facts.diagUrothelial
+        ? mk('met', '尿路上皮癌', facts.src.diag)
+        : unknown('组织学诊断未建档');
+    case 'line': {
+      if (!facts.line) return unknown('分野未建档');
+      const label = facts.lineRaw || facts.line;
+      return facts.line === c.value
+        ? mk('met', label, facts.src.line)
+        : mk('unmet', label, facts.src.line);
+    }
+    case 'grade_high':
+      return facts.gradeHigh
+        ? mk('met', '高级别', facts.src.grade)
+        : unknown('分级未建档');
+    case 'egfr_min':
+      return facts.egfr == null
+        ? unknown('eGFR 未建档')
+        : mk(facts.egfr >= Number(c.value) ? 'met' : 'unmet',
+          `eGFR ${facts.egfr} mL/min/1.73m²`, facts.src.egfr);
+    case 'bcg_failure':
+      if (facts.bcgResponse === '无应答') return mk('met', 'BCG 无应答（医生判定）', '医生原话');
+      if (facts.bcgResponse === '有应答') return mk('unmet', 'BCG 有应答（医生判定）', '医生原话');
+      return unknown('BCG 应答：未判定（要有医生原话才能记成无应答）', '未判定，缺医生原话');
+    case 'variant_absent':
+      if (facts.variantReported == null) {
+        return unknown('病理报告未提及组织学变异型（「没提」不等于「没有」）', `${PATHOLOGY.reportDate} 病理报告`);
+      }
+      return /微乳头|腺样|鳞状|巢状/.test(String(facts.variantReported))
+        ? mk('unmet', `报告写有：${facts.variantReported}`, `${PATHOLOGY.reportDate} 病理报告`)
+        : mk('met', '报告写明无变异型', `${PATHOLOGY.reportDate} 病理报告`);
+    case 'age_min':
+      return unknown('档案里没有年龄字段，无法自动匹配');
+    case 'ecog_max':
+      return unknown('本地未建档 ECOG 评分，无法自动匹配');
+    case 'metastatic':
+      return unknown('影像结论没有结构化的转移状态，无法自动匹配');
+    case 'prior_systemic_naive':
+      return unknown('记录里只有膀胱灌注；「没有记录」不等于「确认未用过」');
+    case 'unstructured':
+      return unknown('条目无法结构化，需人工核对', '登记原文为综合判断');
+    default:
+      return unknown('这一条暂无对应字段，无法自动匹配');
+  }
+}
+
+function matchOneTrial(t) {
+  const facts = trialMatchFacts();
+  const evals = (t.criteria || []).map((c) => ({ c, r: evalTrialCriterion(c, facts) }));
+  const count = (s) => evals.filter((e) => e.r.state === s).length;
+  const met = count('met'), unmet = count('unmet'), unknown = count('unknown');
+  const compared = met + unmet + unknown;
+  const thin = compared < 2;                       // 35 号 §七.3：不足 2 条不给百分数
+  const pct = thin ? null : Math.round((met / Math.max(1, compared)) * 100);
+  const hardUnmet = evals.filter((e) => e.r.state === 'unmet' && e.c.hard);
+  const band = hardUnmet.length ? 'ineligible'
+    : thin ? 'needs_info'
+      : (pct >= 80 && unknown <= 1) ? 'high'
+        : pct >= 55 ? 'partial' : 'needs_info';
+  return { trial: t, evals, met, unmet, unknown, compared, pct, thin, band, hardUnmet };
+}
+
+function matchAllTrials() {
+  return (TRIAL_DEMO_MATCH || []).map(matchOneTrial);
+}
+
+/** 证据链的一行：三态 + 条件类别 + 硬性标记 + 「记录里是… · 条件要求…」 */
+function trialCritLine(e) {
+  const [zh, cls, mark] = TMATCH_STATE[e.r.state];
+  const c = e.c;
+  return `<li class="crit ${e.r.state}">
+    <div class="crit-line">
+      <span class="crit-mark ${cls}" aria-hidden="true">${mark}</span>
+      <b>${c.kind === 'exclude' ? '排除' : '入组'} · ${esc(TMATCH_CAT[c.cat] || c.cat)}</b>
+      ${c.hard ? '<span class="muted">硬性</span>' : '<span class="muted">非硬性</span>'}
+      <span class="chip chip-sm ${cls === 'tms-ok' ? 'chip-ok' : cls === 'tms-no' ? 'chip-stop' : 'chip-warn'}">${zh}</span>
+    </div>
+    <p class="crit-text">${esc(c.text)}</p>
+    <p class="crit-evi">记录里是：${esc(e.r.actual)}（${esc(e.r.src)}）· 条件要求：${esc(e.r.need)}</p>
+  </li>`;
+}
+
+/** 单张匹配卡：分数方块 + 分母 + 固定声明 + 证据链（不符合/待确认先展示）。 */
+function trialMatchCard(m) {
+  const st = trialMatchState();
+  const saved = st.saved[m.trial.reg];
+  const [bandZh, bandCls] = TMATCH_BAND[m.band];
+  const open = m.evals.filter((e) => e.r.state !== 'met');
+  const folded = m.evals.filter((e) => e.r.state === 'met');
+  const showOpen = open.length ? open : folded.slice(0, 2);
+  const rest = open.length ? folded : folded.slice(2);
+  const score = m.thin ? '—' : String(m.pct);
+  return `<article class="trial-card ${m.band === 'ineligible' ? 'ineligible' : ''}" data-reg="${esc(m.trial.reg)}">
+    <div class="trial-top">
+      <div class="trial-main">
+        <div class="trial-tags">
+          <span class="chip chip-warn">未核验</span>
+          <span class="chip chip-neutral">${esc(m.trial.phase)}</span>
+          <span class="chip chip-cat">${esc(m.trial.scope === 'mibc' ? 'MIBC' : m.trial.scope === 'advanced' ? '晚期 / 转移' : 'NMIBC')}</span>
+        </div>
+        <h3>${esc(m.trial.short)}</h3>
+        <p class="src"><code>${esc(m.trial.reg)}</code> · ${esc(m.trial.sponsor)} · ${esc(m.trial.poolNote)}</p>
+      </div>
+      <div class="fit ${bandCls}">
+        <b>${score}<small>${m.thin ? '' : '%'}</small></b>
+        <span>粗筛符合度</span>
+        <em>${bandZh}</em>
+        <i class="fit-disclaimer">这不是入组资格，也不代表效果</i>
+      </div>
+    </div>
+    <p class="fit-note">
+      ${m.thin
+        ? '可对照项不足 2 条，不给百分数 —— 只给「需补充信息」。'
+        : `${m.met} / ${m.compared} 项对得上 · ${m.unknown} 项待确认。pct = 符合项 ÷ 已对照项，待确认按 0 计，所以只会偏低。`}
+    </p>
+    ${m.hardUnmet.length
+      ? `<p class="fit-hard">挡住了这条的硬性条件：${m.hardUnmet.map((e) => esc(e.c.text)).join('；')}</p>`
+      : ''}
+    <ul class="crit-list">${showOpen.map(trialCritLine).join('')}</ul>
+    ${rest.length ? `<details class="crit-more"><summary>其余 ${rest.length} 条条件（多为已符合项）</summary>
+      <ul class="crit-list">${rest.map(trialCritLine).join('')}</ul></details>` : ''}
+    <div class="trial-actions">
+      <button type="button" class="btn btn-sm ${saved ? '' : 'btn-primary'}" data-trial-save="${esc(m.trial.reg)}"
+        aria-label="${saved ? '取消收藏' : '收藏'} ${esc(m.trial.short)}">${saved ? `已收藏（${esc(saved.state)}）` : '收藏到 saved_trial'}</button>
+      <button type="button" class="btn btn-sm" data-trial-reject="${esc(m.trial.reg)}"
+        aria-label="拒收 ${esc(m.trial.short)}（仅本次视图隐藏）">拒收（零副作用）</button>
+      <span class="src">收藏只落 <code>saved_trial(trial_key, saved_at)</code>，不改档案、不写判定列。</span>
+    </div>
+  </article>`;
+}
+
+/** 三段步骤条：不是跳转锚点，而是「现在这条流程走到哪」的可见说明。 */
+function trialFlowSteps() {
+  const steps = [
+    ['①', '建档', '只列参与匹配的字段；未核对候选不参与'],
+    ['②', '检索', '本地快照 + 在线通道；快照会过期'],
+    ['③', '匹配结果', '四档分层 + 逐条证据链'],
+  ];
+  return `<ol class="flow-steps" aria-label="临床试验匹配流程">${steps.map(([n, t, d]) => `
+    <li class="done"><b aria-hidden="true">${n}</b><span><strong>${t}</strong><small>${d}</small></span></li>`).join('')}</ol>`;
+}
+
+function trialMatchFlow() {
+  const fields = trialMatchFields();
+  const confirmed = fields.filter((f) => f.state === 'confirmed');
+  const st = trialMatchState();
+  const all = matchAllTrials().filter((m) => !st.rejected[m.trial.reg]);
+  const ranked = all.filter((m) => m.band !== 'ineligible')
+    .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
+  const bad = all.filter((m) => m.band === 'ineligible');
+  const groups = ['high', 'partial', 'needs_info'].map((band) => [band, ranked.filter((m) => m.band === band)]);
+  const savedCount = Object.keys(st.saved).length;
+  const rejectedCount = Object.keys(st.rejected).length;
+
+  const fieldRow = (f) => {
+    const tag = f.state === 'confirmed'
+      ? '<span class="chip chip-ok">已确认入库 · 参与</span>'
+      : f.state === 'candidate'
+        ? '<span class="chip chip-warn">未核对候选 · 不参与</span>'
+        : '<span class="chip chip-neutral">未建档 · 不参与</span>';
+    return `<tr class="${f.state === 'confirmed' ? '' : 'row-muted'}">
+      <td>${esc(f.label)}<div class="src">${esc(f.note || '')}</div></td>
+      <td><b>${esc(f.value)}</b></td>
+      <td class="src">${esc(f.source)}</td>
+      <td>${tag}</td>
+    </tr>`;
+  };
+
+  const step1 = `<section class="card match-step" aria-labelledby="ms1">
+    <div class="card-title"><h3 id="ms1">① 建档 · 参与匹配的字段</h3>
+      <span class="chip chip-ok">${confirmed.length} / ${fields.length} 项已确认</span></div>
+    <div class="notice notice-info">只有「<b>已确认入库</b>」的字段参与匹配。未核对候选、未建档的字段一律不参与 ——
+      它们不会被写成一个阴性结论，只会让对应条件落到「无法自动匹配 / 待确认」。</div>
+    <table class="tbl" style="margin-top:12px"><thead><tr>
+      <th>字段</th><th>记录里是</th><th>来源（日期 · 谁记的）</th><th>是否参与匹配</th>
+    </tr></thead><tbody>${fields.map(fieldRow).join('')}</tbody></table>
+  </section>`;
+
+  const step2 = `<section class="card match-step" aria-labelledby="ms2">
+    <div class="card-title"><h3 id="ms2">② 检索 · 本地快照 + 在线通道</h3>
+      <span class="chip chip-warn">快照会过期</span></div>
+    <div class="grid grid-4" style="margin-bottom:12px">
+      <div><div class="src">本地快照日期</div><div class="bc-main num">${esc(TRIALS_STATS.fetchedAt)}</div></div>
+      <div><div class="src">快照内登记记录</div><div class="bc-main num">${TRIALS_STATS.total}</div></div>
+      <div><div class="src">本次候选池</div><div class="bc-main num">${(TRIAL_DEMO_MATCH || []).length} / ${TRIALS_STATS.total}</div></div>
+      <div><div class="src">在线通道</div><div class="bc-main">未连接</div></div>
+    </div>
+    <table class="tbl"><thead><tr><th>通道</th><th>状态</th><th>这一轮实际发生了什么</th></tr></thead><tbody>
+      <tr><td>本地快照</td><td><span class="chip chip-ok">可用</span></td>
+        <td>读本机 2026-10-23 抓取的快照；候选池是「已载 ${(TRIAL_DEMO_MATCH || []).length} / ${TRIALS_STATS.total}」的演示子集，<b>不是全库扫描</b>。</td></tr>
+      <tr><td>ClinicalTrials.gov（在线）</td><td><span class="chip chip-warn">未查询</span></td>
+        <td>本机演示未连 unified-trial-mcp。<b>未查询 ≠ 没有匹配</b>；FAILED / DENIED 也不算「查过」，不计覆盖率。</td></tr>
+      <tr><td>ChiCTR（在线）</td><td><span class="chip chip-warn">未查询</span></td>
+        <td>同上；ChinaDrugTrials（CDE）本轮未采集，未命中不能解释为不存在。</td></tr>
+    </tbody></table>
+    <div class="notice notice-warn" style="margin-top:12px">
+      <b>快照会过期。</b>登记状态、中心与入排标准以官方登记页为准；本页没有核验日期的条目只显示「<b>未核验</b>」，
+      不显示「招募中」。
+    </div>
+  </section>`;
+
+  const groupBlock = ([band, list]) => (list.length ? `<div class="match-group" data-band="${band}">
+      <h4 class="match-group-title">${TMATCH_BAND[band][0]} <span class="src">${list.length} 条</span></h4>
+      ${list.map(trialMatchCard).join('')}
+    </div>` : '');
+
+  const step3 = `<section class="match-step" aria-labelledby="ms3">
+    <div class="card-title" style="margin-bottom:10px"><h3 id="ms3">③ 匹配结果</h3>
+      <span class="src">共 ${all.length} 条候选 · 已收藏 ${savedCount} · 已拒收 ${rejectedCount}</span></div>
+    <div class="notice notice-stop" style="margin-bottom:14px">
+      <b>本页 ${(TRIAL_DEMO_MATCH || []).length} 条匹配条目都是合成演示数据（登记号 DEMO- 开头），不是真实在招试验。</b>
+      真实版本必须接 ClinicalTrials.gov / ChiCTR，逐条显示登记号、状态与核验日期。
+      工作台不写「你能入组」，也不替研究团队判断谁符合；能不能参加由研究团队判断。
+    </div>
+    ${groups.map(groupBlock).join('') || '<div class="empty"><strong>当前没有可对照的条目</strong><p>已拒收的条目只在本次视图隐藏，不改任何记录。</p></div>'}
+    ${bad.length ? `<details class="bad-trials">
+      <summary>硬性条件不满足的 ${bad.length} 条（单列，不参与上面的排序）</summary>
+      ${bad.map(trialMatchCard).join('')}
+    </details>` : ''}
+    ${Object.keys(st.rejected).length ? `<details class="bad-trials">
+      <summary>已拒收 ${Object.keys(st.rejected).length} 条（只在本次视图隐藏，可恢复）</summary>
+      <div class="btn-row" style="padding:8px 0">
+        ${Object.keys(st.rejected).map((reg) => `<button type="button" class="btn btn-sm" data-trial-restore="${esc(reg)}"
+          aria-label="恢复 ${esc(reg)}">恢复 ${esc(reg)}</button>`).join('')}
+      </div>
+      <p class="src">拒收不改任何记录、不写档案、不影响其它页 —— 它只是让你这次先别看。</p>
+    </details>` : ''}
+  </section>`;
+
+  return `<div class="notice notice-info" style="margin-bottom:14px">
+      <b>这里是「带证据链的检索线索 + 粗筛符合度」，不是入组资格结论。</b>
+      判定归医生与研究中心；pct 只是登记字段对上了几项。
+    </div>`
+    + trialFlowSteps() + step1 + step2 + step3;
+}
+
 function pageTrials(tab) {
   let body;
-  if (tab === '线索') {
+  if (tab === '匹配') {
+    body = trialMatchFlow();
+  } else if (tab === '登记快照') {
     body = card(`2026 年登记数据：共 ${TRIALS_STATS.total} 条（抓取于 ${TRIALS_STATS.fetchedAt}）`, `
       <div class="grid grid-4" style="margin-bottom:14px">
         <div><div class="src">总记录</div><div class="bc-main num">${TRIALS_STATS.total}</div></div>
@@ -2041,32 +3259,62 @@ function pageTrials(tab) {
         <code>utuc</code>（上尿路尿路上皮癌）与 <code>urothelial-unspecified</code>（尿路上皮癌未特指）是不同口径，已单独标注。
         ChinaDrugTrials（CDE）本轮<b>未采集</b>，未命中不能解释为不存在。
       </p>`);
-  } else if (tab === '已收藏') {
+  } else if (tab === '收藏与跟踪') {
     const F = TRIAL_FAVORITES;
     const withQ = F.filter((f) => /已转成/.test(f.next)).length;
-    body = card('已收藏的线索', `
+    const st = trialMatchState();
+    const demo = Object.keys(st.saved).map((reg) => ({ reg, ...st.saved[reg] }));
+    body = card('收藏与跟踪', `
       <div class="notice notice-info"><b>收藏不等于报名</b>，也不代表你符合条件。
       收藏之后的动作只有两个：<b>转成问题</b>、<b>带去门诊</b>。</div>
       ${statStrip([
-        ['收藏数', `${F.length} 条`, '来自「线索」页'],
+        ['本次匹配收藏', `${demo.length} 条`, '只落 saved_trial，不进档案'],
+        ['手工收藏的线索', `${F.length} 条`, '来自「登记快照」页'],
         ['已转成问题', `${withQ} 条`, '可在「入组问题」页看到'],
-        ['待办', `${F.length - withQ} 条`, '还没想好下一步'],
         ['数据日期', TRIALS_STATS.fetchedAt, `共 ${TRIALS_STATS.total} 条登记记录`],
-      ])}
-      <table class="tbl" style="margin-top:12px"><thead><tr>
+      ])}`)
+    + card('本次匹配收藏（saved_trial：只存 trial_key / saved_at / 手工状态）', `
+      ${demo.length ? `<table class="tbl"><thead><tr>
+          <th>登记号</th><th>我为什么收藏它</th><th>收藏日期</th><th>状态（手工）</th><th>操作</th>
+        </tr></thead><tbody>
+          ${demo.map((d) => `<tr>
+            <td><code>${esc(d.reg)}</code></td>
+            <td>${esc(d.why || '（还没写理由，可以点修改补一句）')}</td>
+            <td>${esc(d.on)}</td>
+            <td><span class="chip chip-neutral">${esc(d.state)}</span></td>
+            <td><div class="btn-row">
+              <button class="btn btn-sm" data-crud="edit" data-kind="trialSaved" data-idx="${esc(d.reg)}"
+                aria-label="修改收藏：${esc(d.reg)}">修改</button>
+              <button class="btn btn-sm" data-crud="del" data-kind="trialSaved" data-idx="${esc(d.reg)}"
+                aria-label="删除收藏：${esc(d.reg)}">删除</button>
+            </div></td>
+          </tr>`).join('')}
+        </tbody></table>` : `<div class="empty"><strong>还没有从匹配结果里收藏的条目</strong>
+          <p>去「匹配」页点「收藏到 saved_trial」；收藏只在本机留一行 key 与日期，不改档案、不写判定列。</p></div>`}
+      <p class="src" style="margin-top:10px">收藏日期由本机记录；状态（在跟 / 准备问 / 已归档）是<b>手工标记</b>。
+      快照没有变更历史时，这里不画进度条，也不推测结果。</p>`)
+    + card('手工收藏的登记线索', `
+      <table class="tbl"><thead><tr>
         <th>登记号</th><th>我为什么收藏它</th><th>收藏日期</th><th>下一步</th><th>操作</th>
       </tr></thead><tbody>
-        ${F.map((f) => `<tr>
+        ${F.filter((f) => !f.voided).map((f) => {
+          const i = F.indexOf(f);
+          return `<tr>
           <td><code>${esc(f.reg)}</code></td>
           <td>${esc(f.why)}</td>
           <td>${esc(f.on)}</td>
           <td class="src">${esc(f.next)}</td>
           <td><div class="btn-row">
             <button class="btn btn-sm" data-goto="trials" data-tab="入组问题">转成问题</button>
-            <button class="btn btn-sm">取消收藏</button>
+            <button class="btn btn-sm" data-crud="edit" data-kind="trialFav" data-idx="${i}"
+              aria-label="修改收藏：${esc(f.reg)}">修改</button>
+            <button class="btn btn-sm" data-crud="del" data-kind="trialFav" data-idx="${i}"
+              aria-label="删除收藏：${esc(f.reg)}">删除</button>
           </div></td>
-        </tr>`).join('')}
+        </tr>`;
+        }).join('')}
       </tbody></table>
+      ${voidedBlock('trialFav', F)}
       ${collapsible('为什么收藏时要写一句「我为什么收藏它」', `
         <p>因为过两周你只会看到一串登记号，想不起来当初为什么点的那颗心。</p>
         <p>写一句话之后，即便最后不去，你也能说清自己当时在关心什么 ——
@@ -2076,8 +3324,8 @@ function pageTrials(tab) {
           <tr><td>转成问题</td><td>进「入组问题」清单，门诊时逐条问</td><td>不会替你判断符合不符合</td></tr>
           <tr><td>带去门诊</td><td>打印或复制成一段文字</td><td>不会自动联系研究团队</td></tr>
           <tr><td>自己联系研究团队</td><td>登记页上通常有联系方式</td><td>工作台不代发、不代约</td></tr>
-        </tbody></table>
-        <p class="src">「已收藏」为空时，这一页会说明去哪儿收藏，而不是留一块空白。</p>`)}`);
+        </tbody></table>`)}`,
+      `<button type="button" class="btn btn-sm btn-primary" data-crud="new" data-kind="trialFav">+ 手工收藏一条</button>`);
   } else {
     const Q = TRIAL_QUESTIONS;
     const studies = new Set(Q.map((q) => q.for).filter((x) => x !== '—')).size;
@@ -2089,7 +3337,7 @@ function pageTrials(tab) {
         ['问题总数', `${Q.length} 条`, `${groups.length} 组`],
         ['涉及具体研究', `${studies} 项`, '另外几条是通用问题'],
         ['还没问', `${Q.filter((q) => !q.asked).length} 条`, '下次门诊带上'],
-        ['收藏的线索', `${TRIAL_FAVORITES.length} 条`, '来自「已收藏」'],
+        ['收藏的线索', `${TRIAL_FAVORITES.length} 条`, '来自「收藏与跟踪」'],
       ])}
       <table class="tbl" style="margin-top:12px"><thead><tr>
         <th>分组</th><th>问题</th><th>针对哪项研究</th><th>问了没有</th>
@@ -2127,7 +3375,8 @@ function pageTrials(tab) {
         「未逐条核对」，鼠标停上去能看到原始值 —— 让你知道这只是个入口，不是结论。</p>`)}`);
   }
 
-  return H('临床试验', '2026 年真实登记数据；登记状态 ≠ 入组资格；不构成推荐。')
+  return H('临床试验', '先建档，再检索，最后才看匹配结果。粗筛符合度不是入组资格，也不代表效果；'
+    + '缺字段一律写「无法自动匹配」。')
     + tabsHTML('trials') + body;
 }
 
@@ -2165,23 +3414,12 @@ function openSettings() {
           切换目录会使旧快照失效。<b>卸载不删除业务数据。</b>
         </div>
 
-        <h4 style="margin:16px 0 8px">文档解析（PDF 报告导入）</h4>
-        <dl class="kv">
-          <dt>状态</dt><dd><span class="chip chip-neutral">未配置</span></dd>
-          <dt>令牌来源</dt><dd>无（优先级：显式 &gt; 文件 &gt; 环境变量）</dd>
-          <dt>密钥文件</dt><dd><code>~/.uropal/secrets/mineru.json</code>（<span class="src">当前不存在</span>）</dd>
-        </dl>
-        <div class="field" style="margin-top:12px">
-          <label for="mToken">MinerU 令牌</label>
-          <input type="password" id="mToken" autocomplete="new-password" placeholder="粘贴令牌后点保存">
-          <span class="hint">令牌只写入本机密钥文件（权限 600）；界面与日志只显示掩码，永不回显原文。</span>
+        <h4 style="margin:16px 0 8px">材料导入</h4>
+        <div class="notice notice-info">
+          导入只有一个入口：<b>病情整理 › 资料库 › 「导入材料」</b>。
+          选文件、嗅探与闸门、抽候选、逐项确认、落库，五步都在同一条流程里完成 ——
+          设置里不再单独配置解析，也不把某一步拆到别的页。
         </div>
-        <div class="btn-row">
-          <button class="btn btn-primary" data-act="saveToken">保存</button>
-          <button class="btn" data-act="clearToken">清除</button>
-          <a class="btn" href="https://mineru.net" target="_blank" rel="noopener">申请地址</a>
-        </div>
-        <p class="src" style="margin-top:8px">本原型<b>不联网</b>，以上为接口与界面骨架。</p>
 
         <h4 style="margin:16px 0 8px">字号</h4>
         <div class="btn-row">
@@ -2303,7 +3541,13 @@ function bindPage() {
     renderPage();
   }));
   $$('[data-win]', scope).forEach((b) => b.addEventListener('click', () => {
-    APP.$chart.win = b.dataset.win; renderPage();
+    APP.$chart.win = b.dataset.win;
+    renderPage();                       // 重绘触发进场动画，切窗口有淡入过渡
+    toast(`时间窗：${b.textContent.trim()}（曲线按该指标全部记录范围缩放，不因换窗口变形）`);
+  }));
+  $$('[data-replay-chart]', scope).forEach((b) => b.addEventListener('click', () => {
+    paintCharts();                      // 只重绘图表容器，不整页重渲染（不丢滚动与焦点）
+    toast('已重播趋势动画');
   }));
 
   // 问题清单
@@ -2327,7 +3571,21 @@ function bindPage() {
       STATE.line = null; STATE.route = 'dashboard'; location.hash = '#/dashboard';
       saveState(); renderNav(); renderPage(); toast('已回到分野选择，可以重新选');
     }
-    else if (a === 'batchAdd') toast('已加入本批（原型不写入）');
+    else if (a === 'batchAdd') {
+      /* 造口日记：一次录一批。真写进 STOMA_LOG（本机演示列表），否则「添加」只是句 toast。 */
+      const on = ($('#stomaOn') || {}).value;
+      if (!on) return toast('先填批次日期');
+      const supply = $('#stomaSupply');
+      STOMA_LOG.push({
+        batchOn: on,
+        supplyId: (supply && supply.value) || STOMA_SELECT(),
+        changes: Number(($('#stomaChanges') || {}).value || 0),
+        leaks: Number(($('#stomaLeaks') || {}).value || 0),
+        skin: ($('#stomaSkin') || {}).value || '无',
+      });
+      renderPage();
+      toast('已加入本批（本机演示，刷新重置）');
+    }
     else if (a === 'toVisit') {
       /* 把「这个词要问医生」变成一条待问项：跳到复诊准备的问题清单。
          注意 hash 只带路由，不带页签 —— 页签走 STATE.tab。 */
@@ -2343,8 +3601,46 @@ function bindPage() {
     }
   }));
   $$('[data-confirm]', scope).forEach((b) => b.addEventListener('click', () => toast('已确认（候选才进入事实层）')));
+
+  /* 29 号：材料导入的**唯一入口**。所有页面的这个按钮都打开同一条五步流程。 */
+  $$('[data-import]', scope).forEach((b) => b.addEventListener('click', () => openImportWizard()));
+
+  /* 记录类视图的三件按钮：添加 / 修改 / 删除（软删）/ 恢复。 */
+  $$('[data-crud]', scope).forEach((b) => b.addEventListener('click', () => {
+    const act = b.dataset.crud;
+    const kind = b.dataset.kind;
+    const idx = b.dataset.idx;
+    if (act === 'new') openCrudForm(kind, -1);
+    else if (act === 'edit') openCrudForm(kind, idx);
+    else if (act === 'del') confirmCrudDelete(kind, idx);
+    else if (act === 'restore') restoreCrud(kind, idx);
+  }));
+
+  /* 35 号：匹配结果可收藏（saved_trial）/ 拒收（只在本次视图隐藏，零副作用）。 */
+  $$('[data-trial-save]', scope).forEach((b) => b.addEventListener('click', () => {
+    const reg = b.dataset.trialSave;
+    const st = trialMatchState();
+    if (st.saved[reg]) { delete st.saved[reg]; toast('已取消收藏（本机演示，不写档案）'); }
+    else { st.saved[reg] = { on: TMATCH_TODAY, why: '', state: '在跟' }; toast('已收藏到 saved_trial（本机演示，不写档案）'); }
+    renderPage();
+  }));
+  $$('[data-trial-reject]', scope).forEach((b) => b.addEventListener('click', () => {
+    trialMatchState().rejected[b.dataset.trialReject] = true;
+    renderPage();
+    toast('已拒收：只在本次视图隐藏，不改任何记录（零副作用）');
+  }));
+  $$('[data-trial-restore]', scope).forEach((b) => b.addEventListener('click', () => {
+    delete trialMatchState().rejected[b.dataset.trialRestore];
+    renderPage();
+    toast('已恢复这条候选');
+  }));
+
   $$('[data-goto]', scope).forEach((b) => b.addEventListener('click', () => {
-    STATE.route = 'urgent'; location.hash = '#/urgent'; renderNav(); renderPage();
+    const route = PAGE_FN[b.dataset.goto] ? b.dataset.goto : 'urgent';
+    STATE.route = route;
+    if (b.dataset.tab) STATE.tab[route] = b.dataset.tab;
+    location.hash = `#/${route}`;
+    renderNav(); renderPage();
   }));
 }
 
@@ -2564,8 +3860,63 @@ function paintCharts() {
       ? `<div class="treat-lane"></div><div class="plot"><div class="plot-empty">${esc(r.reason || '所选时间窗内没有记录')}</div></div>`
       : `<div class="treat-lane" style="height:${r.laneH || 30}px">${r.treatLane}</div><div class="plot">${r.svg}</div>`;
     if (leg) leg.innerHTML = r.legend || '';
+    /* 悬停提示：一个可见的浮层（不是只有 <title>）。放在 .chart-block 里，
+       位置按「点相对 block」计算，所以 chart-wrap 横滚时也不会飘。 */
+    if (!block.querySelector('.chart-tip')) {
+      const tip = document.createElement('div');
+      tip.className = 'chart-tip';
+      tip.setAttribute('role', 'status');
+      tip.setAttribute('aria-live', 'polite');
+      tip.hidden = true;
+      block.appendChild(tip);
+    }
   });
   paintSparklines();
+  bindChartInteractions();
+}
+
+/** 一图秀的悬停 / 聚焦 / 点击（小巢宝同款交互：点悬停提示 + 治疗节点可点）。 */
+function bindChartInteractions() {
+  $$('.chart-block').forEach((block) => {
+    if (block.dataset.tipBound === '1') return;
+    block.dataset.tipBound = '1';
+    const tip = block.querySelector('.chart-tip');
+    if (!tip) return;
+
+    const showAt = (text, clientX, clientY) => {
+      if (!text) return;
+      const box = block.getBoundingClientRect();
+      tip.textContent = text;
+      tip.hidden = false;
+      const tw = 240;
+      const left = Math.min(Math.max(8, clientX - box.left + 12), Math.max(8, box.width - tw));
+      const top = Math.max(8, clientY - box.top - 14);
+      tip.style.left = `${left}px`;
+      tip.style.top = `${top}px`;
+    };
+    const hide = () => { tip.hidden = true; };
+
+    block.addEventListener('pointermove', (e) => {
+      const dot = e.target.closest && e.target.closest('.series-dot');
+      if (dot) { showAt(dot.getAttribute('data-tip') || '', e.clientX, e.clientY); return; }
+      const mark = e.target.closest && e.target.closest('.treat-mark');
+      if (mark) { showAt(mark.getAttribute('data-tip') || '', e.clientX, e.clientY); return; }
+      hide();
+    });
+    block.addEventListener('pointerleave', hide);
+    /* 键盘：Tab 到点/治疗节点时同样能看到提示（R12：键盘能到、内容可读）。 */
+    block.addEventListener('focusin', (e) => {
+      const el = e.target.closest && e.target.closest('.series-dot, .treat-mark');
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      showAt(el.getAttribute('data-tip') || el.getAttribute('aria-label') || '', r.left + r.width / 2, r.top);
+    });
+    block.addEventListener('focusout', hide);
+    block.addEventListener('click', (e) => {
+      const mark = e.target.closest && e.target.closest('.treat-mark');
+      if (mark) toast(`${mark.getAttribute('data-tip') || mark.getAttribute('aria-label')}｜这条事件不影响曲线坐标`);
+    });
+  });
 }
 
 /* 3D 卡背面的迷你折线按容器实测尺寸重绘 —— 尺寸随卡片宽度/字号档变化，
