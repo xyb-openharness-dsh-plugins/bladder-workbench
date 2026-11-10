@@ -224,6 +224,15 @@
         return workbenchOwnsSession(id) ? id : null
       }
 
+      /* 会话创建：优先默认工作区；无可用工作区时传 undefined，让宿主按其流程提示选目录。
+         不要用 ensureSession({})：customFrame 下它不保证归属，也不会自动挂载面板。 */
+      async function createOwnedSession() {
+        const service = bridge?.desktopWorkbenches
+        let workspaceId
+        try { workspaceId = service?.defaultWorkspace?.()?.workspaceId } catch { workspaceId = undefined }
+        return service.newSession(workspaceId)
+      }
+
       /* ---------------- 原生草稿：只填入，不发送 ---------------- */
 
       function fillDraft(sessionId, prompt) {
@@ -301,7 +310,7 @@
            所以"有没有可用会话"只能问 desktopWorkbenches：当前会话是否绑定到本工作台。
            把 Boolean(conversation) 当会话判据，按钮一上来就是「收起 AI 对话」，
            点击只切显隐、永远走不到 ensureSession —— 这是"拉不起原生 pane"的直接原因。 */
-        const canOpenSession = typeof bridge?.desktopWorkbenches?.ensureSession === 'function'
+        const canOpenSession = typeof bridge?.desktopWorkbenches?.newSession === 'function'
         const [sessionId, setSessionId] = React.useState(() => ownedSession())
         const hasSession = Boolean(sessionId)
 
@@ -409,8 +418,12 @@
               setNote('没能调起会话：服务没有给出资料目录。请重启 DSH Desktop 后重试（若仍如此，说明装机版本早于 0.1.4）')
               return
             }
-            const id = await bridge.desktopWorkbenches.ensureSession({ folder: dir })
-            rememberDraft({ sessionId: id, prompt: prompt || onboardingPrompt(dir) })
+            const id = await createOwnedSession()
+                        if (!id) {
+              setNote('已取消资料目录选择，没有创建会话。可以再次点击「AI 对话」重试。')
+              return
+            }
+rememberDraft({ sessionId: id, prompt: prompt || onboardingPrompt(dir) })
             const filled = flushDraft()
             setPaneOpen(true)
             setNote(filled

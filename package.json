@@ -1,6 +1,6 @@
 {
   "name": "@xyb-community/bladder-workbench",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "面向膀胱癌患者与照护者的本机优先工作台：NMIBC/MIBC 分野读懂、TURBT 与二次电切、膀胱灌注周期、膀胱镜复查与复发恐惧、尿流改道三术式与造口日常、肾功能与上尿路长期监测、复诊准备与临床试验档案",
   "private": true,
   "type": "module",
@@ -45,7 +45,7 @@
     "probe:install": "node scripts/probe-install.mjs",
     "install:local": "node scripts/install-local.mjs",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.mjs",
-    "check": "npm run check:version && npm run check:client && npm run check:public && npm run check:demo && npm run check:syntax && npm run check:schema && npm run check:wording && npm run check:package && node scripts/check-primer-links.mjs && npm test",
+    "check": "npm run check:version && npm run check:client && npm run check:public && npm run check:demo && npm run check:syntax && npm run check:schema && npm run check:wording && npm run check:package && node scripts/check-primer-links.mjs && npm test && node scripts/check-agent-pane-contract.mjs .",
     "pack:check": "npm pack --dry-run",
     "probe:primer": "node scripts/probe-disease-primer.mjs"
   },

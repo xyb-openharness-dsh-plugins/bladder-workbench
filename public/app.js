@@ -390,7 +390,7 @@ const CHART = (() => {
 
 /* 定点替换（M5 第 5 处）：版本号单一来源。页面里的值由服务端从 lib/version.js 注入，
    而 lib/version.js 由 VERSION 文件生成——所以顶栏、页脚、package.json 三处同源。 */
-const APP_VERSION = (window.__WB_INFO__ && window.__WB_INFO__.version) || '0.1.3';
+const APP_VERSION = (window.__WB_INFO__ && window.__WB_INFO__.version) || '0.1.4';
 
 /* ---------------- 工具 ---------------- */
 const $  = (s, r = document) => r.querySelector(s);
